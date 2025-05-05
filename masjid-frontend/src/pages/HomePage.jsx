@@ -2,6 +2,8 @@ import React, { Component } from 'react';
 import Navbar from '../components/nav';
 import JadwalSholat from '../components/JadwalSholat';
 import Footer from '../components/footer';
+import { Button } from "@/components/ui/button"
+
 
 export class HomePage extends Component {
   render() {
@@ -24,9 +26,9 @@ export class HomePage extends Component {
             <p className="mb-6 text-lg">
               Pusat Informasi, Ibadah, dan Kegiatan Sosial Umat
             </p>
-            <button className="bg-teal-500 hover:bg-teal-600 px-6 py-2 rounded text-white font-semibold">
+            <Button >
               Lihat Jadwal Sholat
-            </button>
+            </Button>
           </div>
         </section>
 
