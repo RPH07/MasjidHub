@@ -9,6 +9,8 @@ import Dashboard from './pages/admin/Dashboard';
 import KegiatanPage from './pages/admin/Kegiatan';
 import KasPage from './pages/admin/Kas.jsx';
 import ExportPage from './pages/admin/Export';
+import AdminSignup from './auth/AdminSignup';
+import AdminRoute from './components/route-guard/AdminRoute';
 
 const router = createBrowserRouter([
   {
@@ -25,12 +27,19 @@ const router = createBrowserRouter([
     element: <RegisterPages />
   },
   {
+      path: "/admin/signup",
+      element: <AdminSignup />
+  },
+  {
     path: "/zakat",
     element: <ZakatForm />,
   },
   {
     path: "/admin",
-    element: <AdminLayout />,
+    element:(
+    <AdminRoute>
+      <AdminLayout />
+    </AdminRoute>),
     children: [
       {
         index: true, // /admin
