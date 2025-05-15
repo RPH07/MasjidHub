@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom'; // Import useNavigate
+import { useNavigate, Link } from 'react-router-dom';
 
 const LoginPages = () => {
     const navigate = useNavigate(); // Initialize useNavigate
@@ -33,11 +33,11 @@ const LoginPages = () => {
             localStorage.setItem('token', res.data.token);
             
             // Simpan role untuk kontrol akses di UI
-            localStorage.setItem('userRole', res.data.data.role);
+            localStorage.setItem('userRole', res.data.user.role);
             
             // Redirect sesuai role
-            if (res.data.data.role === 'admin') {
-                navigate('/admin/dashboard');
+            if (res.data.user.role === 'admin') {
+                navigate('/admin');
             } else {
                 navigate('/dashboard');
             }
@@ -98,9 +98,9 @@ const LoginPages = () => {
                     
                     <p className="mt-4 text-center text-sm">
                         Belum punya akun?{' '}
-                        <a href="/register" className="text-blue-500 hover:underline">
+                        <Link to="/signup" className="text-blue-500 hover:underline">
                             Daftar di sini
-                        </a>
+                        </Link>
                     </p>
                 </form>
             </div>
