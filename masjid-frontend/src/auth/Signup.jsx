@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { Link } from 'react-router-dom';
 
 const RegisterPages = () => {
   const [formData, setFormData] = useState({
     nama: '',
     email: '',
-    password: ''
+    password: '',
+    secret: ''
   });
 
   const [error, setError] = useState('');
@@ -23,7 +25,7 @@ const RegisterPages = () => {
     setError('');
     setSuccess('');
     try {
-      await axios.post('http://localhost:5000/api/signup', formData);
+      await axios.post('http://localhost:5000/api/auth/signup', formData);
       setSuccess('Registrasi berhasil! Silakan login.');
     } catch (err) {
       console.error(err);
@@ -90,6 +92,12 @@ const RegisterPages = () => {
           >
             Register
           </button>
+            <p className="mt-4 text-center text-sm">
+              Sudah punya akun?{' '}
+              <Link to="/login" className="text-blue-500 hover:underline">
+                  Login di sini
+              </Link>
+            </p>
         </form>
       </div>
     </div>
