@@ -16,19 +16,21 @@ router.post('/admin/signup', async (req, res) => {
   }
 
   try {
-    const bcrypt = require('bcryptjs');
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const sql = 'INSERT INTO users (nama, email, password, role) VALUES (?, ?, ?, ?)';
     db.query(sql, [nama, email, hashedPassword, 'admin'], (err, result) => {
-      if (err) return res.status(500).json({ message: 'Gagal menyimpan admin', error: err });
+      if (err) return res.status(500).json({ message: 'Gagal menyimpan admin', error: err.message });
       res.status(201).json({ message: 'Admin berhasil didaftarkan' });
     });
   } catch (error) {
-    res.status(500).json({ message: 'Terjadi kesalahan', error });
+    // handle error karena email duplikat
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({ message: 'Email sudah terdaftar' });
+    }
+    return res.status(500).json({ message: 'Terjadi kesalahan server', error: error.message });
   }
 });
-
 
 // SIGNUP
 router.post('/signup', async (req, res) => {
@@ -39,43 +41,48 @@ router.post('/signup', async (req, res) => {
     }
 
     try {
-        // hash password
         const hashedPassword = await bcrypt.hash(password, 10);
-
-        const sql = 'INSERT INTO users (nama, email, password) VALUES (?, ?, ?)';
-        db.query(sql, [nama, email, hashedPassword], (err, result) => {
-            if (err) {
-                return res.status(500).json({ message: 'Gagal menyimpan user', error: err });
-            }
-            res.status(201).json({ message: 'User berhasil didaftarkan' });
-        });
+        await db.query('INSERT INTO users (nama, email, password) VALUES (?, ?, ?)', 
+            [nama, email, hashedPassword]);
+        res.status(201).json({ message: 'User berhasil didaftarkan' });
     } catch (error) {
-        return res.status(500).json({ message: 'Terjadi kesalahan server', error });
+      // handle error karena email duplikat
+        if(error.code === 'ER_DUP_ENTRY') {
+            return res.status(400).json({ message: 'Email sudah terdaftar' });
+        }
+        return res.status(500).json({ message: 'Terjadi kesalahan server', error: error.message });
     }
 });
 
-// LOGIN (sementara masih plain)
+// LOGIN
 router.post('/login', async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-        return res.status(400).json({ message: 'Semua field wajib diisi' });
+        return res.status(400).json({ message: 'Email dan password wajib diisi' });
     }
 
-    try{
-        const [row] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
-        if (row.length === 0) {
-            return res.status(401).json({ message: 'Maaf, tapi email yang kamu masukin tidak ditemukan' });
+    try {
+        const [rows] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
+        if (rows.length === 0) {
+            return res.status(401).json({ message: 'Email tidak ditemukan' });
         }
-        const user = row[0];
+        
+        const user = rows[0];
         const match = await bcrypt.compare(password, user.password);
         if (!match) {
-            return res.status(401).json({ message: 'Maaf, tapi password yang kamu masukin salah' });
+            return res.status(401).json({ message: 'Password salah' });
         }
 
-        res.status(200).json({ message: 'Login berhasil', user });
+        // Jangan kirim password dalam respons
+        const { password: _, ...userWithoutPassword } = user;
+        
+        res.status(200).json({ 
+            message: 'Login berhasil', 
+            user: userWithoutPassword 
+        });
     } catch (error) {
-        return res.status(500).json({ message: 'Terjadi kesalahan server', error });
+        return res.status(500).json({ message: 'Terjadi kesalahan server', error: error.message });
     }
 });
 
