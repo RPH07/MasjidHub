@@ -1,6 +1,6 @@
 import React from 'react';
 
-const FloatingInput = ({ label, type, name, value, onChange }) => {
+const FloatingInput = ({ label, type, name, value, onChange, required, icon }) => {
   // Fungsi format angka pakai koma
   const formatNumber = (val) => {
     return val
@@ -22,26 +22,27 @@ const FloatingInput = ({ label, type, name, value, onChange }) => {
   };
 
   return (
-    <div className="relative w-full">
+<div className="relative">
       <input
-        type="text" // tetap pakai text biar koma bisa tampil
+        type={type}
         name={name}
-        id={name}
-        placeholder=" "
         value={value}
         onChange={handleChange}
-        className="peer w-full border rounded px-3 pt-3 pb-4 focus:outline-none focus:ring-2 focus:ring-teal-500"
-        required
+        placeholder=" "
+        required={required}
+        className="peer w-full border rounded px-3 py-2 pl-10 focus:outline-none focus:ring-2 focus:ring-teal-500"
       />
       <label
-        htmlFor={name}
-        className="absolute left-3 -top-2.5 bg-white px-1 text-gray-500 text-sm transition-all duration-300 ease-in-out 
-                   peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-base 
-                   peer-placeholder-shown:text-gray-400 peer-placeholder-shown:bg-transparent
-                   peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-teal-600 peer-focus:bg-white"
+        className="absolute left-10 -top-2.5 bg-white px-1 text-gray-500 text-sm transition-all
+          peer-placeholder-shown:top-2.5 peer-placeholder-shown:left-10 peer-placeholder-shown:text-base
+          peer-placeholder-shown:text-gray-400 peer-focus:-top-2.5 peer-focus:text-sm
+          peer-focus:text-teal-600 peer-focus:bg-white"
       >
         {label}
       </label>
+      <span className="absolute left-3 top-2.5 text-gray-500">
+        {icon}
+      </span>
     </div>
   );
 };
