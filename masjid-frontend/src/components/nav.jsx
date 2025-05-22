@@ -28,7 +28,7 @@ const Navbar = () => {
                         <Link to="/contact" className="py-4 px-2 text-gray-500 hover:text-green-500 transition duration-300">Kontak</Link>
                         <Link to="/zakat" className="py-4 px-2 text-gray-500 hover:text-green-500 transition duration-300">Zakat</Link>
                         <Link to="/login" className="py-2 px-4 bg-green-500 text-white rounded hover:bg-green-600 transition duration-300">Masuk</Link>
-                        <Link to="/signup" className="py-2 px-4 bg-green-500 text-white rounded hover:bg-green-600 transition duration-300">Masuk</Link>
+                        <Link to="/signup" className="py-2 px-4 bg-green-500 text-white rounded hover:bg-green-600 transition duration-300">Daftar</Link>
                     </div>
 
                     {/* Mobile menu button */}
@@ -61,6 +61,8 @@ const Navbar = () => {
                     <Link to="/about" className="block px-2 py-1 text-gray-500 hover:text-green-500 transition duration-300">About</Link>
                     <Link to="/services" className="block px-2 py-1 text-gray-500 hover:text-green-500 transition duration-300">Services</Link>
                     <Link to="/contact" className="block px-2 py-1 text-gray-500 hover:text-green-500 transition duration-300">Contact</Link>
+                        <Link to="/login" className="py-2 px-4 bg-green-500 text-white rounded hover:bg-green-600 transition duration-300">Masuk</Link>
+                        <Link to="/signup" className="py-2 px-4 bg-green-500 text-white rounded hover:bg-green-600 transition duration-300">Daftar</Link>
                 </div>
             </div>
         </nav>
