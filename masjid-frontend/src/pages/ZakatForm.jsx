@@ -47,27 +47,32 @@ const ZakatForm = () => {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <FloatingInput
-            label= "Nama Lengkap"
+            label="Nama Lengkap"
             type="text"
             name="nama"
-            className="w-full border px-3 py-2 rounded"
             value={formData.nama}
             onChange={handleChange}
             required
+            icon={
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            }
           />
         </div>
         <div>
-        <FloatingInput
-            label="Nominal Zakat (Rp)"
-            type="currency"
+          <FloatingInput
+            label="Nominal Zakat"
+            type="text"
             name="nominal"
             value={formData.nominal}
-            onChange={(e) =>
-                setFormData({ ...formData, nominal: e.target.value })
-            }
+            onChange={(e) => {
+              const value = e.target.value.replace(/\D/g, '');
+              setFormData({ ...formData, nominal: value });
+            }}
             required
-        />
-
+            icon="Rp"
+          />
         </div>
         {/* Form Opsi */}
         <div className="relative w-full">
