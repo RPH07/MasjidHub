@@ -11,6 +11,8 @@ import KasPage from './pages/admin/Kas.jsx';
 import ExportPage from './pages/admin/Export';
 import AdminSignup from './auth/AdminSignup';
 import AdminRoute from './components/route-guard/AdminRoute';
+import ProtectedRoute from './components/route-guard/ProtectedRoute';
+import AuthCallback from './auth/AuthCallback';
 
 const router = createBrowserRouter([
   {
@@ -35,10 +37,16 @@ const router = createBrowserRouter([
     element: <ZakatForm />,
   },
   {
+    path: "/auth/callback",
+    element: <AuthCallback />,
+  },
+  {
     path: "/admin",
     element:(
     <AdminRoute>
-      <AdminLayout />
+      <ProtectedRoute>
+        <AdminLayout />
+      </ProtectedRoute>
     </AdminRoute>),
     children: [
       {
