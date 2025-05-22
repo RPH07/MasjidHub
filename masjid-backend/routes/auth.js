@@ -13,18 +13,17 @@ router.post('/admin/signup', async (req, res) => {
 
   if (!nama || !email || !password) {
     return res.status(400).json({ message: 'Semua field wajib diisi' });
-  }
+  } 
 
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    const sql = 'INSERT INTO users (nama, email, password, role) VALUES (?, ?, ?, ?)';
-    db.query(sql, [nama, email, hashedPassword, 'admin'], (err, result) => {
-      if (err) return res.status(500).json({ message: 'Gagal menyimpan admin', error: err.message });
-      res.status(201).json({ message: 'Admin berhasil didaftarkan' });
-    });
-  } catch (error) {
     // handle error karena email duplikat
+    await db.query('INSERT INTO users (nama, email, password, role) VALUES (?, ?, ?, ?)',
+      [nama, email, hashedPassword, 'admin']
+    );
+    res.status(201).json({ message: 'Admin berhasil didaftarkan' });
+  } catch (error) {
+    
     if (error.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ message: 'Email sudah terdaftar' });
     }
