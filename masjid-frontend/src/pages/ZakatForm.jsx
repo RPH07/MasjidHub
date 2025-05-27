@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import FloatingInput from '../components/FloatingInput';
+import FloatingInput from '../components/form/FloatingInput';
 
 const ZakatForm = () => {
   const [formData, setFormData] = useState({
