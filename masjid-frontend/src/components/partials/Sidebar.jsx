@@ -17,6 +17,7 @@ import {
 import {
   Sheet,
   SheetContent,
+  SheetTitle,
   SheetTrigger,
 } from "../../components/ui/sheet";
 
@@ -154,16 +155,18 @@ const Sidebar = ({ className, isMobile = false, isCollapsed = false }) => {
   // Untuk tampilan mobile menggunakan Sheet dari shadcn
   if (isMobile) {
     return (
-      <Sheet>
-        <SheetTrigger asChild>
-          <button className="p-2 rounded-md hover:bg-gray-100">
-            <Menu className="h-5 w-5" />
-          </button>
-        </SheetTrigger>
-        <SheetContent side="left" className="p-0 w-72">
-          <SidebarContent />
-        </SheetContent>
-      </Sheet>
+    <Sheet>
+      <SheetTrigger asChild>
+        <button className="p-2 rounded-md hover:bg-gray-100">
+          <Menu className="h-5 w-5" />
+        </button>
+      </SheetTrigger>
+      <SheetContent side="left" className="p-0 w-72">
+        {/* Tambahkan baris ini untuk fix error */}
+        <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
+        <SidebarContent />
+      </SheetContent>
+    </Sheet>
     );
   }
 
