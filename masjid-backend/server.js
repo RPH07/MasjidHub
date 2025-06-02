@@ -4,6 +4,7 @@ const dotenv = require('dotenv');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
 const kegiatanRoutes = require('./routes/kegiatan');
+const kasRoutes = require('./routes/kas');
 
 dotenv.config();
 
@@ -18,6 +19,7 @@ app.use('/uploads', express.static('uploads'));
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/kegiatan', kegiatanRoutes);
+app.use('/api/kas', kasRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
