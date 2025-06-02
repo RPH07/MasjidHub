@@ -8,6 +8,7 @@ const ZakatForm = () => {
     jenisZakat: '',
     bukti: null,
   });
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
@@ -20,12 +21,15 @@ const ZakatForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
 
     const data = new FormData();
     data.append('nama', formData.nama);
     data.append('nominal', formData.nominal);
     data.append('jenisZakat', formData.jenisZakat);
-    data.append('bukti', formData.bukti);
+    if (formData.bukti) {
+      data.append('bukti', formData.bukti);
+    }
 
     try {
       const response = await fetch('http://localhost:5000/api/zakat', {
@@ -34,10 +38,26 @@ const ZakatForm = () => {
       });
 
       const result = await response.json();
-      alert(result.message);
+      
+      if (response.ok) {
+        alert(result.message);
+        // Reset form setelah berhasil
+        setFormData({
+          nama: '',
+          nominal: '',
+          jenisZakat: '',
+          bukti: null,
+        });
+        // Reset file input
+        document.querySelector('input[type="file"]').value = '';
+      } else {
+        alert(result.message || 'Terjadi kesalahan saat mengirim data.');
+      }
     } catch (err) {
       console.error(err);
       alert('Terjadi kesalahan saat mengirim data.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -74,30 +94,29 @@ const ZakatForm = () => {
             icon="Rp"
           />
         </div>
-        {/* Form Opsi */}
         <div className="relative w-full">
-        <select
+          <select
             name="jenisZakat"
             id="jenisZakat"
             value={formData.jenisZakat}
             onChange={handleChange}
-           className="peer w-full border rounded px-3 pt-4 pb-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            className="peer w-full border rounded px-3 pt-4 pb-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
             required
-        >
-            <option value="" disabled >-- Pilih Jenis Zakat --</option>
+          >
+            <option value="" disabled>-- Pilih Jenis Zakat --</option>
             <option value="fitrah">Zakat Fitrah</option>
             <option value="maal">Zakat Maal</option>
             <option value="profesi">Zakat Profesi</option>
-        </select>
-        <label
+          </select>
+          <label
             htmlFor="jenisZakat"
             className="absolute left-3 -top-2.5 bg-white px-1 text-gray-500 text-sm transition-all  
             peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-base 
             peer-placeholder-shown:text-gray-400 peer-placeholder-shown:bg-transparent
             peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-teal-600 peer-focus:bg-white"
-        >
+          >
             Jenis Zakat
-        </label>
+          </label>
         </div>
 
         <div>
@@ -113,9 +132,14 @@ const ZakatForm = () => {
         </div>
         <button
           type="submit"
-          className="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold py-2 rounded"
+          disabled={isLoading}
+          className={`w-full font-semibold py-2 rounded ${
+            isLoading 
+              ? 'bg-gray-400 cursor-not-allowed' 
+              : 'bg-teal-600 hover:bg-teal-700 text-white'
+          }`}
         >
-          Kirim Zakat
+          {isLoading ? 'Mengirim...' : 'Kirim Zakat'}
         </button>
       </form>
     </div>
