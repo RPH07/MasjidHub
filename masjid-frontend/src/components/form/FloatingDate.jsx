@@ -17,7 +17,7 @@ const FloatingDateInput = ({ label, name, value, onChange, required, icon }) => 
       />
       <label
         htmlFor={inputId}
-        className={`absolute left-10 ${value ? '-top-2.5 text-sm bg-white' : 'top-2.5 text-base bg-white'} px-1 text-gray-500 transition-all peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-blue-600 peer-focus:bg-white`}
+        className={`absolute left-10 ${value ? '-top-2.5 text-sm bg-gray-50' : 'top-2.5 text-base bg-gray-50'} px-1 text-gray-500 transition-all peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-blue-600 peer-focus:bg-gray-50`}
       >
         {label}
       </label>
