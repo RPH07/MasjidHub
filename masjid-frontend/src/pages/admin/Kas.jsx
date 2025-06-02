@@ -39,6 +39,8 @@ export class Kas extends Component {
         kategori: 'operasional'
       },
       editId: null,
+      showBuktiModal: false,
+      selectedBukti: null,
     };
   }
 
@@ -245,7 +247,7 @@ getPeriodText = () => {
     const infaqTotal = infaqData.reduce((sum, item) => sum + item.jumlah, 0);
     const lelangTotal = lelangData.reduce((sum, item) => sum + item.harga_akhir || 0, 0);
 
-    // Calculate expenses by category (you may need to add category field to kas table)
+    // Calculate expenses by category
     const pengeluaranKategori = {
       operasional: kasData
         .filter(item => item.jenis === 'keluar' && item.kategori === 'operasional')
@@ -292,6 +294,20 @@ getPeriodText = () => {
     };
     return labels[this.state.selectedPeriod];
   };
+
+  openBuktiModal = (buktiTransfer) => {
+    this.setState({
+      showBuktiModal: true,
+      selectedBukti: buktiTransfer
+    });
+  }
+
+  closeBuktiModal = () => {
+    this.setState({
+      showBuktiModal: false,
+      selcetBukti: null
+    });
+  }
 
   openModal = (type, data = null) =>{
       if(data) {
@@ -398,7 +414,7 @@ getPeriodText = () => {
   }
 
   render() {
-    const { loading, summary, kasData, zakatData, infaqData, showModal, modalType, formData } = this.state;
+    const { loading, summary, kasData, zakatData, infaqData, showModal, modalType, formData, showBuktiModal, selectedBukti } = this.state;
 
     if (loading) {
       return (
@@ -409,12 +425,12 @@ getPeriodText = () => {
     }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold tracking-tight">Manajemen Kas</h2>
-        <div className="flex gap-2">
+    <div className="space-y-6 px-5 sm:px-0">
+     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-4 sm:space-y-0">
+        <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Manajemen Kas</h2>
+        <div className="flex flex-col sm:flex-row gap-2">
           <select 
-            className="border rounded-md px-3 py-2"
+            className="border rounded-md px-3 py-2 text-sm"
             value={this.state.selectedPeriod}
             onChange={(e) => this.setState({selectedPeriod: e.target.value})}
           >
@@ -423,84 +439,86 @@ getPeriodText = () => {
             <option value="bulan-ini">Bulan Ini</option>
             <option value="tahun-ini">Tahun Ini</option>
           </select>
-          <button className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+          <button className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm">
             Laporan PDF
           </button>
         </div>
       </div>
 
-      {/* Tab Navigation */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
-          {['overview', 'pemasukan', 'pengeluaran', 'riwayat'].map((tab) => (
+      {/* Tab Navigation - Horizontal Scroll */}
+      <div className="border-b border-gray-200 -mx-4 px-4 sm:mx-0 sm:px-0">
+        <nav className="flex space-x-2 sm:space-x-8 overflow-x-auto no-scrollbar">
+          {[
+            { key: 'overview', label: 'Ringkasan' },
+            { key: 'pemasukan', label: 'Pemasukan' },
+            { key: 'pengeluaran', label: 'Pengeluaran' },
+            { key: 'riwayat', label: 'Riwayat' }
+          ].map((tab) => (
             <button
-              key={tab}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                this.state.activeTab === tab
+              key={tab.key}
+              className={`py-2 px-3 sm:px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                this.state.activeTab === tab.key
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
-              onClick={() => this.setState({activeTab: tab})}
+              onClick={() => this.setState({activeTab: tab.key})}
             >
-              {tab === 'overview' && 'Ringkasan'}
-              {tab === 'pemasukan' && 'Pemasukan'}
-              {tab === 'pengeluaran' && 'Pengeluaran'}
-              {tab === 'riwayat' && 'Riwayat Transaksi'}
+              {tab.label}
             </button>
           ))}
         </nav>
       </div>
 
-      {/* Overview Tab */}
+      {/* Overview Tab - Responsive Cards */}
       {this.state.activeTab === 'overview' && (
-  <div className="space-y-6">
-    {/* Saldo Cards */}
-    <div className="grid gap-4 md:grid-cols-3">
-      <div className="rounded-lg border bg-gradient-to-r from-green-500 to-green-600 text-white p-6 shadow-sm">
-        <div className="text-sm opacity-90">Saldo Saat Ini</div>
-        <div className="mt-2 text-3xl font-bold">{this.formatCurrency(summary.totalSaldo)}</div>
-        <div className="mt-2">
-          {summary.percentageChanges && this.renderPercentageBadge(summary.percentageChanges.saldo)}
-        </div>
-      </div>
-      
-      <div className="rounded-lg border bg-blue-50 p-6 shadow-sm">
-        <div className="text-sm text-blue-600">Total Pemasukan</div>
-        <div className="mt-2 text-2xl font-bold text-blue-700">{this.formatCurrency(summary.totalPemasukan)}</div>
-        <div className="mt-2">
-          {summary.percentageChanges && this.renderPercentageBadge(summary.percentageChanges.pemasukan)}
-        </div>
-      </div>
-      
-      <div className="rounded-lg border bg-red-50 p-6 shadow-sm">
-        <div className="text-sm text-red-600">Total Pengeluaran</div>
-        <div className="mt-2 text-2xl font-bold text-red-700">{this.formatCurrency(summary.totalPengeluaran)}</div>
-        <div className="mt-2">
-          {summary.percentageChanges && this.renderPercentageBadge(summary.percentageChanges.pengeluaran)}
-        </div>
-      </div>
-    </div>
+        <div className="space-y-6">
+          {/* Saldo Cards - Stack on mobile */}
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="rounded-lg border bg-gradient-to-r from-green-500 to-green-600 text-white p-4 sm:p-6 shadow-sm">
+              <div className="text-sm opacity-90">Saldo Saat Ini</div>
+              <div className="mt-2 text-2xl sm:text-3xl font-bold">{this.formatCurrency(summary.totalSaldo)}</div>
+              <div className="mt-2">
+                {summary.percentageChanges && this.renderPercentageBadge(summary.percentageChanges.saldo)}
+              </div>
+            </div>
+            
+            <div className="rounded-lg border bg-blue-50 p-4 sm:p-6 shadow-sm">
+              <div className="text-sm text-blue-600">Total Pemasukan</div>
+              <div className="mt-2 text-xl sm:text-2xl font-bold text-blue-700">{this.formatCurrency(summary.totalPemasukan)}</div>
+              <div className="mt-2">
+                {summary.percentageChanges && this.renderPercentageBadge(summary.percentageChanges.pemasukan)}
+              </div>
+            </div>
+            
+            <div className="rounded-lg border bg-red-50 p-4 sm:p-6 shadow-sm sm:col-span-2 lg:col-span-1">
+              <div className="text-sm text-red-600">Total Pengeluaran</div>
+              <div className="mt-2 text-xl sm:text-2xl font-bold text-red-700">{this.formatCurrency(summary.totalPengeluaran)}</div>
+              <div className="mt-2">
+                {summary.percentageChanges && this.renderPercentageBadge(summary.percentageChanges.pengeluaran)}
+              </div>
+            </div>
+          </div>
 
-          {/* Breakdown by Category */}
-          <div className="grid gap-4 md:grid-cols-2">
+          {/* Breakdown by Category - Stack on mobile */}
+          <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
             <div className="rounded-lg border bg-white p-4 shadow-sm">
               <h3 className="text-lg font-medium mb-4">Pemasukan per Kategori</h3>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
-                  <span>Zakat</span>
-                  <span className="font-medium text-green-600">{this.formatCurrency(summary.pemasukanKategori.zakat)}</span>
+                  <span className="text-sm sm:text-base">Zakat</span>
+                  <span className="font-medium text-green-600 text-sm sm:text-base">{this.formatCurrency(summary.pemasukanKategori.zakat)}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span>Infaq</span>
-                  <span className="font-medium text-green-600">{this.formatCurrency(summary.pemasukanKategori.infaq)}</span>
+                  <span className="text-sm sm:text-base">Infaq</span>
+                  <span className="font-medium text-green-600 text-sm sm:text-base">{this.formatCurrency(summary.pemasukanKategori.infaq)}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span>Lelang</span>
-                  <span className="font-medium text-green-600">{this.formatCurrency(summary.pemasukanKategori.lelang)}</span>
+                  <span className="text-sm sm:text-base">Lelang</span>
+                  <span className="font-medium text-green-600 text-sm sm:text-base">{this.formatCurrency(summary.pemasukanKategori.lelang)}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span>Donasi Lainnya</span>
-                  <span className="font-medium text-green-600">{this.formatCurrency(summary.pemasukanKategori.donasi)}</span>
+                  <span className="text-sm sm:text-base">Donasi Lainnya</span>
+                  <span className="font-medium text-green-600 text-sm sm:text-base">{this.formatCurrency(summary.pemasukanKategori.donasi)}</span>
                 </div>
               </div>
             </div>
@@ -509,20 +527,20 @@ getPeriodText = () => {
               <h3 className="text-lg font-medium mb-4">Pengeluaran per Kategori</h3>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
-                  <span>Operasional Masjid</span>
-                  <span className="font-medium text-red-600">{this.formatCurrency(summary.pengeluaranKategori.operasional)}</span>
+                  <span className="text-sm sm:text-base">Operasional Masjid</span>
+                  <span className="font-medium text-red-600 text-sm sm:text-base">{this.formatCurrency(summary.pengeluaranKategori.operasional)}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span>Kegiatan Masjid</span>
-                  <span className="font-medium text-red-600">{this.formatCurrency(summary.pengeluaranKategori.kegiatan)}</span>
+                  <span className="text-sm sm:text-base">Kegiatan Masjid</span>
+                  <span className="font-medium text-red-600 text-sm sm:text-base">{this.formatCurrency(summary.pengeluaranKategori.kegiatan)}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span>Pemeliharaan</span>
-                  <span className="font-medium text-red-600">{this.formatCurrency(summary.pengeluaranKategori.pemeliharaan)}</span>
+                  <span className="text-sm sm:text-base">Pemeliharaan</span>
+                  <span className="font-medium text-red-600 text-sm sm:text-base">{this.formatCurrency(summary.pengeluaranKategori.pemeliharaan)}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span>Bantuan Sosial</span>
-                  <span className="font-medium text-red-600">{this.formatCurrency(summary.pengeluaranKategori.bantuan)}</span>
+                  <span className="text-sm sm:text-base">Bantuan Sosial</span>
+                  <span className="font-medium text-red-600 text-sm sm:text-base">{this.formatCurrency(summary.pengeluaranKategori.bantuan)}</span>
                 </div>
               </div>
             </div>
@@ -530,87 +548,241 @@ getPeriodText = () => {
         </div>
       )}
 
-      {/* Pemasukan Tab */}
+      {/* Pemasukan Tab - Responsive Table */}
       {this.state.activeTab === 'pemasukan' && (
         <div className="space-y-4">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-4 sm:space-y-0">
             <h3 className="text-lg font-medium">Data Pemasukan</h3>
             <button
-              className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"
+              className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 text-sm sm:text-base"
               onClick={() => this.openModal('add-pemasukan')}
             >
               + Tambah Pemasukan
             </button>
           </div>
           
-          <div className="rounded-lg border bg-white shadow-sm overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kategori</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Deskripsi</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Jumlah</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {/* Data Zakat */}
-                {zakatData.map((item) => (
-                  <tr key={`zakat-${item.id}`}>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {new Date(item.created_at).toLocaleDateString('id-ID')}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">Zakat {item.jenis_zakat}</td>
-                    <td className="px-6 py-4 text-sm text-gray-900">{item.nama}</td>
-                    <td className="px-6 py-4 text-sm font-medium text-green-600">{this.formatCurrency(item.jumlah)}</td>
-                    <td className="px-6 py-4 text-sm text-gray-500">Auto</td>
+          {/* Mobile Card View */}
+          <div className="block sm:hidden space-y-4">
+            {/* Data Zakat */}
+            {zakatData.map((item) => (
+              <div key={`zakat-${item.id}`} className="bg-white border rounded-lg p-4 shadow-sm">
+                <div className="flex justify-between items-start mb-2">
+                  <div className="text-sm text-gray-500">
+                    {new Date(item.created_at).toLocaleDateString('id-ID')}
+                  </div>
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    Auto
+                  </span>
+                </div>
+                <div className="text-sm font-medium text-gray-900 mb-1">Zakat {item.jenis_zakat}</div>
+                <div className="text-sm text-gray-600 mb-2">{item.nama}</div>
+                <div className="flex justify-between items-center">
+                  <div className="text-lg font-medium text-green-600">{this.formatCurrency(item.jumlah)}</div>
+                  <div>
+                    {item.bukti_transfer ? (
+                      <button
+                        onClick={() => this.openBuktiModal(item.bukti_transfer)}
+                        className="text-blue-600 hover:text-blue-900 text-sm bg-blue-50 px-2 py-1 rounded"
+                      >
+                        Lihat Bukti
+                      </button>
+                    ) : (
+                      <span className="text-gray-400 text-sm">Tidak ada</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+            
+            {/* Data Infaq */}
+            {infaqData.map((item) => (
+              <div key={`infaq-${item.id}`} className="bg-white border rounded-lg p-4 shadow-sm">
+                <div className="flex justify-between items-start mb-2">
+                  <div className="text-sm text-gray-500">
+                    {new Date(item.tanggal).toLocaleDateString('id-ID')}
+                  </div>
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    Auto
+                  </span>
+                </div>
+                <div className="text-sm font-medium text-gray-900 mb-1">Infaq</div>
+                <div className="text-sm text-gray-600 mb-2">{item.keterangan || item.nama_pemberi}</div>
+                <div className="flex justify-between items-center">
+                  <div className="text-lg font-medium text-green-600">{this.formatCurrency(item.jumlah)}</div>
+                  <span className="text-gray-400 text-sm">Tidak ada</span>
+                </div>
+              </div>
+            ))}
+            
+            {/* Data Kas Masuk */}
+            {kasData.filter(item => item.jenis === 'masuk').map((item) => (
+              <div key={`kas-${item.id}`} className="bg-white border rounded-lg p-4 shadow-sm">
+                <div className="flex justify-between items-start mb-2">
+                  <div className="text-sm text-gray-500">
+                    {new Date(item.tanggal).toLocaleDateString('id-ID')}
+                  </div>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => this.openModal('edit', item)}
+                      className="text-blue-600 hover:text-blue-900 text-sm"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => this.handleDelete(item.id)}
+                      className="text-red-600 hover:text-red-900 text-sm"
+                    >
+                      Hapus
+                    </button>
+                  </div>
+                </div>
+                <div className="text-sm font-medium text-gray-900 mb-1">Donasi</div>
+                <div className="text-sm text-gray-600 mb-2">{item.keterangan}</div>
+                <div className="flex justify-between items-center">
+                  <div className="text-lg font-medium text-green-600">{this.formatCurrency(item.jumlah)}</div>
+                  <span className="text-gray-400 text-sm">Manual</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          {/* Desktop Table View */}
+          <div className="hidden sm:block rounded-lg border bg-white shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[600px]">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kategori</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Deskripsi</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Jumlah</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bukti</th>
                   </tr>
-                ))}
-                {/* Data Infaq */}
-                {infaqData.map((item) => (
-                  <tr key={`infaq-${item.id}`}>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {new Date(item.tanggal).toLocaleDateString('id-ID')}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">Infaq</td>
-                    <td className="px-6 py-4 text-sm text-gray-900">{item.keterangan || item.nama_pemberi}</td>
-                    <td className="px-6 py-4 text-sm font-medium text-green-600">{this.formatCurrency(item.jumlah)}</td>
-                    <td className="px-6 py-4 text-sm text-gray-500">Auto</td>
-                  </tr>
-                ))}
-                {/* Data Kas Masuk - Only these can be edited */}
-                {kasData.filter(item => item.jenis === 'masuk').map((item) => (
-                  <tr key={`kas-${item.id}`}>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {new Date(item.tanggal).toLocaleDateString('id-ID')}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">Donasi</td>
-                    <td className="px-6 py-4 text-sm text-gray-900">{item.keterangan}</td>
-                    <td className="px-6 py-4 text-sm font-medium text-green-600">{this.formatCurrency(item.jumlah)}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => this.openModal('edit', item)}
-                          className="text-blue-600 hover:text-blue-900 text-sm"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => this.handleDelete(item.id)}
-                          className="text-red-600 hover:text-red-900 text-sm"
-                        >
-                          Hapus
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {/* Data Zakat */}
+                  {zakatData.map((item) => (
+                    <tr key={`zakat-${item.id}`}>
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        {new Date(item.created_at).toLocaleDateString('id-ID')}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900">Zakat {item.jenis_zakat}</td>
+                      <td className="px-6 py-4 text-sm text-gray-900">{item.nama}</td>
+                      <td className="px-6 py-4 text-sm font-medium text-green-600">{this.formatCurrency(item.jumlah)}</td>
+                      <td className="px-6 py-4 text-sm text-gray-500">Auto</td>
+                      <td className="px-6 py-4">
+                        {item.bukti_transfer ? (
+                          <button
+                            onClick={() => this.openBuktiModal(item.bukti_transfer)}
+                            className="text-blue-600 hover:text-blue-900 text-sm bg-blue-50 px-2 py-1 rounded"
+                          >
+                            Lihat Bukti
+                          </button>
+                        ) : (
+                          <span className="text-gray-400 text-sm">Tidak ada</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {/* Data Infaq */}
+                  {infaqData.map((item) => (
+                    <tr key={`infaq-${item.id}`}>
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        {new Date(item.tanggal).toLocaleDateString('id-ID')}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900">Infaq</td>
+                      <td className="px-6 py-4 text-sm text-gray-900">{item.keterangan || item.nama_pemberi}</td>
+                      <td className="px-6 py-4 text-sm font-medium text-green-600">{this.formatCurrency(item.jumlah)}</td>
+                      <td className="px-6 py-4 text-sm text-gray-500">Auto</td>
+                      <td className="px-6 py-4">
+                        <span className="text-gray-400 text-sm">Tidak ada</span>
+                      </td>
+                    </tr>
+                  ))}
+                  {/* Data Kas Masuk */}
+                  {kasData.filter(item => item.jenis === 'masuk').map((item) => (
+                    <tr key={`kas-${item.id}`}>
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        {new Date(item.tanggal).toLocaleDateString('id-ID')}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900">Donasi</td>
+                      <td className="px-6 py-4 text-sm text-gray-900">{item.keterangan}</td>
+                      <td className="px-6 py-4 text-sm font-medium text-green-600">{this.formatCurrency(item.jumlah)}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => this.openModal('edit', item)}
+                            className="text-blue-600 hover:text-blue-900 text-sm"
+                          >
+                            Edit
+                          </button>
+                          <span className="text-gray-500">|</span>
+                          <button
+                            onClick={() => this.handleDelete(item.id)}
+                            className="text-red-600 hover:text-red-900 text-sm"
+                          >
+                            Hapus
+                          </button>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-gray-400 text-sm">Manual</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
+
+      {/* Modal untuk Bukti Transfer - Responsive */}
+      {showBuktiModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 p-4">
+          <div className="relative top-4 sm:top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium text-gray-900">Bukti Transfer</h3>
+                <button
+                  onClick={this.closeBuktiModal}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              <div className="text-center">
+                <img
+                  src={`http://localhost:5000/uploads/${selectedBukti}`}
+                  alt="Bukti Transfer"
+                  className="max-w-full max-h-96 mx-auto rounded border"
+                  onError={(e) => {
+                    e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkdhbWJhciB0aWRhayBkYXBhdCBkaW11YXQ8L3RleHQ+PC9zdmc+';
+                  }}
+                />
+                <div className="mt-4">
+                  <a
+                    href={`http://localhost:5000/uploads/${selectedBukti}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Download
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* Pengeluaran Tab */}
       {this.state.activeTab === 'pengeluaran' && (
@@ -757,62 +929,74 @@ getPeriodText = () => {
       )}
 
       {/* Riwayat Tab */}
-      {this.state.activeTab === 'riwayat' && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-medium">Riwayat Semua Transaksi</h3>
-          <div className="rounded-lg border bg-white shadow-sm overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kategori</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Deskripsi</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Jumlah</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {/* Combine all transactions and sort by date */}
-                {[
-                  ...kasData.map(item => ({...item, type: item.jenis, source: 'kas'})),
-                  ...zakatData.map(item => ({...item, type: 'masuk', source: 'zakat', tanggal: item.created_at})),
-                  ...infaqData.map(item => ({...item, type: 'masuk', source: 'infaq'}))
-                ]
-                .sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal))
-                .map((item, index) => (
-                  <tr key={`${item.source}-${item.id}-${index}`}>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {new Date(item.tanggal).toLocaleDateString('id-ID')}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        item.type === 'masuk' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {item.type === 'masuk' ? 'Pemasukan' : 'Pengeluaran'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {item.source === 'zakat' ? `Zakat ${item.jenis_zakat}` :
-                       item.source === 'infaq' ? 'Infaq' :
-                       item.kategori || 'Operasional'}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {item.keterangan || item.nama || item.nama_pemberi}
-                    </td>
-                    <td className="px-6 py-4 text-sm font-medium">
-                      <span className={item.type === 'masuk' ? 'text-green-600' : 'text-red-600'}>
-                        {item.type === 'masuk' ? '+' : '-'}{this.formatCurrency(item.jumlah)}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+{this.state.activeTab === 'riwayat' && (
+  <div className="space-y-4">
+    <h3 className="text-lg font-medium">Riwayat Semua Transaksi</h3>
+    <div className="rounded-lg border bg-white shadow-sm overflow-hidden">
+      <table className="w-full">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kategori</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Deskripsi</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Jumlah</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bukti</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-200">
+          {[
+            ...kasData.map(item => ({...item, type: item.jenis, source: 'kas'})),
+            ...zakatData.map(item => ({...item, type: 'masuk', source: 'zakat', tanggal: item.created_at})),
+            ...infaqData.map(item => ({...item, type: 'masuk', source: 'infaq'}))
+          ]
+          .sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal))
+          .map((item, index) => (
+            <tr key={`${item.source}-${item.id}-${index}`}>
+              <td className="px-6 py-4 text-sm text-gray-900">
+                {new Date(item.tanggal).toLocaleDateString('id-ID')}
+              </td>
+              <td className="px-6 py-4">
+                <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                  item.type === 'masuk' 
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-red-100 text-red-800'
+                }`}>
+                  {item.type === 'masuk' ? 'Pemasukan' : 'Pengeluaran'}
+                </span>
+              </td>
+              <td className="px-6 py-4 text-sm text-gray-900">
+                {item.source === 'zakat' ? `Zakat ${item.jenis_zakat}` :
+                 item.source === 'infaq' ? 'Infaq' :
+                 item.kategori || 'Operasional'}
+              </td>
+              <td className="px-6 py-4 text-sm text-gray-900">
+                {item.keterangan || item.nama || item.nama_pemberi}
+              </td>
+              <td className="px-6 py-4 text-sm font-medium">
+                <span className={item.type === 'masuk' ? 'text-green-600' : 'text-red-600'}>
+                  {item.type === 'masuk' ? '+' : '-'}{this.formatCurrency(item.jumlah)}
+                </span>
+              </td>
+              <td className="px-6 py-4">
+                {item.bukti_transfer ? (
+                  <button
+                    onClick={() => this.openBuktiModal(item.bukti_transfer)}
+                    className="text-blue-600 hover:text-blue-900 text-xs bg-blue-50 px-2 py-1 rounded"
+                  >
+                    Lihat
+                  </button>
+                ) : (
+                  <span className="text-gray-400 text-xs">—</span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+)}
     </div>
   );
 }
