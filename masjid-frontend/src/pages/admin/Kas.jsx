@@ -176,8 +176,9 @@ fetchKasData = async () => {
         ...currentSummary,
         percentageChanges,
         pemasukanKategori: {
-          zakat: (currentSummary.pemasukanKategori['zakat_fitrah'] || 0) + 
-                 (currentSummary.pemasukanKategori['zakat_mal'] || 0),
+          zakat: zakatData.reduce((sum, item) => sum + Number(item.jumlah || 0), 0) || 
+             (Number(currentSummary.pemasukanKategori['zakat_fitrah'] || 0) + 
+              Number(currentSummary.pemasukanKategori['zakat_mal'] || 0)),
           infaq: Object.keys(currentSummary.pemasukanKategori)
                 .filter(key => key.startsWith('infaq_'))
                 .reduce((sum, key) => sum + Number(currentSummary.pemasukanKategori[key] || 0), 0),
