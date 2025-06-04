@@ -21,7 +21,7 @@ const upload = multer({
     if (file.mimetype.startsWith('image/')) {
       cb(null, true);
     } else {
-      cb(new Error('Hanya file gambar yang diperbolehkan!'), false);
+      cb(new Error('Only image files are allowed!'), false);
     }
   },
   limits: {
@@ -31,38 +31,64 @@ const upload = multer({
 
 // POST - Submit pembayaran zakat
 router.post('/', upload.single('bukti'), async (req, res) => {
-  const { nama, nominal, jenisZakat } = req.body;
-  const buktiTransfer = req.file ? req.file.filename : null;
-
-  if (!nama || !nominal || !jenisZakat) {
-    return res.status(400).json({ message: 'Semua field wajib diisi' });
-  }
-
   try {
-    // Insert ke tabel zakat
-    const [result] = await db.query(
-      'INSERT INTO zakat (nama, jenis_zakat, jumlah, bukti_transfer) VALUES (?, ?, ?, ?)',
-      [nama, jenisZakat, parseInt(nominal), buktiTransfer]
-    );
+    const { nama, nominal, jenisZakat, metodePembayaran } = req.body;
+    const buktiTransfer = req.file ? req.file.filename : null;
+
+    if (!nama || !nominal || !jenisZakat || !metodePembayaran) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Semua field harus diisi!' 
+      });
+    }
+
+    if (!buktiTransfer) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Bukti transfer harus diupload!' 
+      });
+    }
+
+    const query = `
+      INSERT INTO zakat (nama, jumlah, jenis_zakat, bukti_transfer, metode_pembayaran, created_at) 
+      VALUES (?, ?, ?, ?, ?, NOW())
+    `;
     
-    res.status(201).json({ 
-      message: 'Pembayaran zakat berhasil disubmit. Terima kasih atas kontribusi Anda!',
-      id: result.insertId 
+    await db.execute(query, [nama, nominal, jenisZakat, buktiTransfer, metodePembayaran]);
+
+    res.status(201).json({
+      success: true,
+      message: 'Pembayaran zakat berhasil dikirim! Terima kasih atas kontribusi Anda.'
     });
-  } catch (err) {
-    console.error('Gagal menyimpan data zakat:', err);
-    res.status(500).json({ message: 'Terjadi kesalahan saat menyimpan data zakat' });
+
+  } catch (error) {
+    console.error('Error submitting zakat:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Terjadi kesalahan server'
+    });
   }
 });
 
 // GET - Ambil semua data zakat (untuk admin)
 router.get('/', async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT * FROM zakat ORDER BY created_at DESC');
-    res.json(rows);
-  } catch (err) {
-    console.error('Gagal mengambil data zakat:', err);
-    res.status(500).json({ message: 'Terjadi kesalahan saat mengambil data zakat' });
+    const [rows] = await db.execute(`
+      SELECT id, nama, jumlah, jenis_zakat, bukti_transfer, metode_pembayaran, created_at 
+      FROM zakat 
+      ORDER BY created_at DESC
+    `);
+    
+    res.json({
+      success: true,
+      data: rows
+    });
+  } catch (error) {
+    console.error('Error fetching zakat data:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Terjadi kesalahan server'
+    });
   }
 });
 
