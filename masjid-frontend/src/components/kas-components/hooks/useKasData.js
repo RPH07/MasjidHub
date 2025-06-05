@@ -77,11 +77,13 @@ export const useKasData = (selectedPeriod) => {
             default: 
                 return null;
         }
-    }, []);
-
-    const calculatePercentageChange = useCallback((current, previous) => {
+    }, []);    const calculatePercentageChange = useCallback((current, previous) => {
+        // Handle edge cases to prevent NaN
+        if (isNaN(current) || isNaN(previous) || current === null || previous === null) return 0;
         if (previous === 0) return current > 0 ? 100 : 0;
-      return ((current - previous) / previous) * 100;
+        
+        const percentage = ((current - previous) / previous) * 100;
+        return isNaN(percentage) ? 0 : percentage;
     }, []);
 
     const extractManualKategori = useCallback((pemasukanKategori) => {
