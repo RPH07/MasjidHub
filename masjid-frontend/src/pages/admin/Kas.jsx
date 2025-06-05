@@ -11,7 +11,7 @@ import {
   TransactionModal,
   BuktiModal
 } from '../../components/kas-components/components';
-import { TABS } from '../../components/kas-components/utils/constants';
+import { TABS, kategoriPemasukan } from '../../components/kas-components/utils/constants';
 
 const Kas = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -91,12 +91,11 @@ const Kas = () => {
           ))}
         </nav>
       </div>      {/* Tab Content */}
-      <div>
-        {activeTab === 'overview' && (
+      <div>        {activeTab === 'overview' && (
           <KasOverview
             summary={kasDataHook.summary}
             periodLabel={getPeriodLabel()}
-            kategoriPemasukan={kasDataHook.kategoriPemasukan}
+            kategoriPemasukan={kategoriPemasukan}
           />
         )}
 
