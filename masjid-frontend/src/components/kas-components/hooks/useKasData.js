@@ -94,8 +94,9 @@ export const useKasData = (selectedPeriod) => {
     return manualKategori;
   }, []);
 
-  const fetchKasData = useCallback(async () => {
+const fetchKasData = useCallback(async () => {
     setState(prev => ({ ...prev, loading: true }));
+    console.log('Fetching kas data for period:', selectedPeriod);
     
     try {
       const token = localStorage.getItem('token');
@@ -103,19 +104,28 @@ export const useKasData = (selectedPeriod) => {
         headers: { Authorization: `Bearer ${token}` }
       };
 
-      const [summaryResponse, kasManualResponse, zakatResponse, infaqResponse, lelangResponse] = await Promise.all([
-        axios.get(`http://localhost:5000/api/kas/summary?period=${selectedPeriod}`, config),
-        axios.get(`http://localhost:5000/api/kas/manual?period=${selectedPeriod}`, config),
-        axios.get(`http://localhost:5000/api/kas/zakat?period=${selectedPeriod}`, config),
-        axios.get(`http://localhost:5000/api/kas/infaq?period=${selectedPeriod}`, config),
-        axios.get(`http://localhost:5000/api/kas/lelang?period=${selectedPeriod}`, config)
-      ]);
+      // const [summaryResponse, kasManualResponse, zakatResponse, infaqResponse, lelangResponse] = await Promise.all([
+      //   axios.get(`http://localhost:5000/api/kas/summary?period=${selectedPeriod}`, config),
+      //   axios.get(`http://localhost:5000/api/kas/manual?period=${selectedPeriod}`, config),
+      //   axios.get(`http://localhost:5000/api/kas/zakat?period=${selectedPeriod}`, config),
+      //   axios.get(`http://localhost:5000/api/kas/infaq?period=${selectedPeriod}`, config),
+      //   axios.get(`http://localhost:5000/api/kas/lelang?period=${selectedPeriod}`, config)
+      // ]);
+    const [summaryResponse, kasResponse] = await Promise.all([
+      axios.get(`http://localhost:5000/api/kas/summary?period=${selectedPeriod}`, config),
+      axios.get(`http://localhost:5000/api/kas?period=${selectedPeriod}`, config)        // ✅ Satu endpoint aja
+    ]);
 
-      const currentSummary = summaryResponse.data;
-      const kasData = kasManualResponse.data;
-      const zakatData = zakatResponse.data;
-      const infaqData = infaqResponse.data;
-      const lelangData = lelangResponse.data;
+      console.log('Summary Response:', summaryResponse.data); // Debug log
+
+      // Add null checks untuk response structure
+    const currentSummary = summaryResponse.data?.data || {};
+    const kasResponseData = kasResponse.data?.data || {};
+    
+    const kasData = kasResponseData.kas || [];
+    const zakatData = kasResponseData.zakat || [];
+    const infaqData = kasResponseData.infaq || [];
+    const lelangData = kasResponseData.lelang || [];
 
       const previousPeriod = getPreviousPeriod(selectedPeriod);
       let previousSummary = { totalSaldo: 0, totalPemasukan: 0, totalPengeluaran: 0 };
@@ -126,17 +136,22 @@ export const useKasData = (selectedPeriod) => {
             `http://localhost:5000/api/kas/summary?startDate=${previousPeriod.startDate}&endDate=${previousPeriod.endDate}`, 
             config
           );
-          previousSummary = prevSummaryResponse.data;
+          previousSummary = prevSummaryResponse.data?.data || prevSummaryResponse.data || {};
         } catch {
           console.log('Could not fetch previous period data, using defaults');
         }
       }
 
       const percentageChanges = {
-        saldo: calculatePercentageChange(currentSummary.totalSaldo, previousSummary.totalSaldo),
+        saldo: calculatePercentageChange(currentSummary.saldoBersih || currentSummary.totalSaldo, previousSummary.saldoBersih || previousSummary.totalSaldo),
         pemasukan: calculatePercentageChange(currentSummary.totalPemasukan, previousSummary.totalPemasukan),
         pengeluaran: calculatePercentageChange(currentSummary.totalPengeluaran, previousSummary.totalPengeluaran)
       };
+
+      // Add null checks untuk Object.keys() calls
+      const pemasukanKategori = currentSummary.pemasukanKategori || {};
+      const pengeluaranKategori = currentSummary.pengeluaranKategori || {};
+      const breakdown = currentSummary.breakdown || {};
 
       setState(prev => ({
         ...prev,
@@ -145,36 +160,59 @@ export const useKasData = (selectedPeriod) => {
         infaqData,
         lelangData,
         summary: {
-          ...currentSummary,
+          totalSaldo: currentSummary.saldoBersih || 0,
+          totalPemasukan: currentSummary.totalPemasukan || 0,
+          totalPengeluaran: currentSummary.totalPengeluaran || 0,
           percentageChanges,
           pemasukanKategori: {
-            zakat: zakatData.reduce((sum, item) => sum + Number(item.jumlah || 0), 0) || 
-               (Number(currentSummary.pemasukanKategori['zakat_fitrah'] || 0) + 
-                Number(currentSummary.pemasukanKategori['zakat_mal'] || 0)),
-            infaq: Object.keys(currentSummary.pemasukanKategori)
-                  .filter(key => key.startsWith('infaq_'))
-                  .reduce((sum, key) => sum + Number(currentSummary.pemasukanKategori[key] || 0), 0),
-            lelang: currentSummary.pemasukanKategori['lelang'] || 0,
-            donasi: Object.keys(currentSummary.pemasukanKategori)
-                  .filter(key => key.startsWith('donasi_') || key === 'wakaf' || key === 'qurban')
-                  .reduce((sum, key) => sum + Number(currentSummary.pemasukanKategori[key] || 0), 0)
+            // Gunakan breakdown dari response baru
+            zakat: breakdown.zakat || 0,
+            infaq: breakdown.infaq || 0, 
+            lelang: breakdown.lelang || 0,
+            donasi: breakdown.kasManual || 0
           },
           pengeluaranKategori: {
-            operasional: Number(currentSummary.pengeluaranKategori['operasional'] || 0),
-            kegiatan: Number(currentSummary.pengeluaranKategori['kegiatan'] || 0),
-            pemeliharaan: Number(currentSummary.pengeluaranKategori['pemeliharaan'] || 0),
-            bantuan: Number(currentSummary.pengeluaranKategori['bantuan'] || 0)
+            operasional: Number(pengeluaranKategori['operasional'] || 0),
+            kegiatan: Number(pengeluaranKategori['kegiatan'] || 0),
+            pemeliharaan: Number(pengeluaranKategori['pemeliharaan'] || 0),
+            bantuan: Number(pengeluaranKategori['bantuan'] || 0)
           },
-          pemasukanKategoriManual: extractManualKategori(currentSummary.pemasukanKategori)
+          pemasukanKategoriManual: extractManualKategori(pemasukanKategori)
         },
         loading: false
       }));
 
     } catch (error) {
       console.error('Error fetching kas data:', error);
-      setState(prev => ({ ...prev, loading: false }));
+      setState(prev => ({ 
+        ...prev, 
+        loading: false,
+        // Set default values on error
+        summary: {
+          totalSaldo: 0,
+          totalPemasukan: 0,
+          totalPengeluaran: 0,
+          percentageChanges: { saldo: 0, pemasukan: 0, pengeluaran: 0 },
+          pemasukanKategori: { zakat: 0, infaq: 0, lelang: 0, donasi: 0 },
+          pengeluaranKategori: { operasional: 0, kegiatan: 0, pemeliharaan: 0, bantuan: 0 },
+          pemasukanKategoriManual: {}
+        }
+      }));
     }
   }, [selectedPeriod, getPreviousPeriod, calculatePercentageChange, extractManualKategori]);
+
+  // Also fix extractManualKategori function
+  // const extractManualKategori = useCallback((pemasukanKategori) => {
+  //   const manualKategori = {};
+  //   // Add null check here too
+  //   if (pemasukanKategori && typeof pemasukanKategori === 'object') {
+  //     Object.keys(kategoriPemasukan).forEach(key => {
+  //       manualKategori[key] = pemasukanKategori[key] || 0;
+  //     });
+  //   }
+  //   return manualKategori;
+  // }, []);
+
 
   useEffect(() => {
     fetchKasData();
