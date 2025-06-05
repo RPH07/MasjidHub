@@ -1,7 +1,7 @@
 import React from 'react';
 import { formatCurrency } from '../../utils/formatters';
 
-const KasRiwayat = ({ kasData, zakatData, infaqData, onOpenBuktiModal }) => {
+const KasRiwayat = ({ kasData, zakatData, infaqData, onOpenBukti }) => {
   // Gabungkan semua data dan urutkan berdasarkan tanggal
   const allTransactions = [
     ...kasData.map(item => ({ ...item, type: item.jenis, source: 'kas' })),
@@ -50,11 +50,10 @@ const KasRiwayat = ({ kasData, zakatData, infaqData, onOpenBuktiModal }) => {
                   <span className={item.type === 'masuk' ? 'text-green-600' : 'text-red-600'}>
                     {item.type === 'masuk' ? '+' : '-'}{formatCurrency(item.jumlah)}
                   </span>
-                </td>
-                <td className="px-6 py-4">
+                </td>                <td className="px-6 py-4">
                   {item.bukti_transfer ? (
                     <button
-                      onClick={() => onOpenBuktiModal(item.bukti_transfer)}
+                      onClick={() => onOpenBukti(item.bukti_transfer)}
                       className="text-blue-600 hover:text-blue-900 text-xs bg-blue-50 px-2 py-1 rounded"
                     >
                       Lihat
