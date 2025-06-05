@@ -38,109 +38,161 @@ const getPeriodFilter = (period) => {
 };
 
 // ===== MAIN ENDPOINT: GET kas buku besar berdasarkan periode =====
+// router.get('/', async (req, res) => {
+//   try {
+//     const { period = 'bulan-ini', startDate, endDate } = req.query;
+    
+//     let dateFilter;
+//     if (startDate && endDate) {
+//       dateFilter = { startDate, endDate };
+//     } else {
+//       dateFilter = getPeriodFilter(period);
+//     }
+
+//     // Ambil dari kas_buku_besar
+//     const [rows] = await db.query(
+//       'SELECT * FROM kas_buku_besar WHERE tanggal >= ? AND tanggal < ? ORDER BY tanggal DESC, id DESC',
+//       [dateFilter.startDate, dateFilter.endDate]
+//     );
+    
+//     res.json(rows);
+//   } catch (err) {
+//     console.error('Gagal mengambil data kas buku besar:', err);
+//     res.status(500).json({ message: 'Terjadi kesalahan saat mengambil data kas' });
+//   }
+// });
+
 router.get('/', async (req, res) => {
   try {
-    const { period = 'bulan-ini', startDate, endDate } = req.query;
-    
-    let dateFilter;
-    if (startDate && endDate) {
-      dateFilter = { startDate, endDate };
-    } else {
-      dateFilter = getPeriodFilter(period);
-    }
+    const { period = 'bulan-ini' } = req.query;
+    const { startDate, endDate } = getPeriodFilter(period);
 
-    // Ambil dari kas_buku_besar
-    const [rows] = await db.query(
-      'SELECT * FROM kas_buku_besar WHERE tanggal >= ? AND tanggal < ? ORDER BY tanggal DESC, id DESC',
-      [dateFilter.startDate, dateFilter.endDate]
-    );
-    
-    res.json(rows);
+    // 1. Kas manual saja (EXCLUDE yang dari zakat/infaq untuk avoid double)
+    const [kasRows] = await db.query(`
+      SELECT * FROM kas_buku_besar 
+      WHERE tanggal >= ? AND tanggal <= ?
+      AND (source_table IS NULL OR source_table NOT IN ('zakat', 'infaq'))
+      ORDER BY tanggal DESC, created_at DESC
+    `, [startDate, endDate]);
+
+    // 2. Zakat - HANYA APPROVED, langsung dari table zakat
+    const [zakatRows] = await db.query(`
+      SELECT id, nama, jenis_zakat, jumlah, bukti_transfer, created_at, metode_pembayaran
+      FROM zakat 
+      WHERE status = 'approved' 
+      AND DATE(created_at) >= ? AND DATE(created_at) <= ?
+      ORDER BY created_at DESC
+    `, [startDate, endDate]);
+
+    // 3. Infaq - HANYA APPROVED, langsung dari table infaq
+    const [infaqRows] = await db.query(`
+      SELECT id, nama_pemberi, jumlah, keterangan, kategori_infaq, tanggal
+      FROM infaq 
+      WHERE status = 'approved'
+      AND DATE(tanggal) >= ? AND DATE(tanggal) <= ?
+      ORDER BY tanggal DESC
+    `, [startDate, endDate]);
+
+    const lelangRows = []; // Kosongkan sementara
+
+    res.json({
+      success: true,
+      data: {
+        kas: kasRows,
+        zakat: zakatRows,
+        infaq: infaqRows,
+        lelang: lelangRows
+      }
+    });
+
   } catch (err) {
-    console.error('Gagal mengambil data kas buku besar:', err);
-    res.status(500).json({ message: 'Terjadi kesalahan saat mengambil data kas' });
+    console.error('Error fetching kas data:', err);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Terjadi kesalahan saat mengambil data kas' 
+    });
   }
 });
 
-// ===== GET summary kas untuk dashboard =====
+// Update summary juga
 router.get('/summary', async (req, res) => {
   try {
-    const { period = 'bulan-ini', startDate, endDate } = req.query;
+    const { period = 'bulan-ini' } = req.query;
+    const { startDate, endDate } = getPeriodFilter(period);
+
+    // Kas manual saja (EXCLUDE zakat/infaq untuk avoid double counting)
+    const [pemasukanResult] = await db.query(`
+      SELECT 
+        COALESCE(SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END), 0) as kas_masuk,
+        COALESCE(SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END), 0) as kas_keluar
+      FROM kas_buku_besar 
+      WHERE tanggal >= ? AND tanggal <= ?
+      AND (source_table IS NULL OR source_table NOT IN ('zakat', 'infaq'))
+    `, [startDate, endDate]);
+
+    // Zakat - HANYA APPROVED
+    const [zakatResult] = await db.query(`
+      SELECT COALESCE(SUM(jumlah), 0) as total_zakat
+      FROM zakat 
+      WHERE status = 'approved'
+      AND DATE(created_at) >= ? AND DATE(created_at) <= ?
+    `, [startDate, endDate]);
+
+    // Infaq - HANYA APPROVED
+    const [infaqResult] = await db.query(`
+      SELECT COALESCE(SUM(jumlah), 0) as total_infaq
+      FROM infaq 
+      WHERE status = 'approved'
+      AND DATE(tanggal) >= ? AND DATE(tanggal) <= ?
+    `, [startDate, endDate]);
+
+    const kasManual = Number(pemasukanResult[0].kas_masuk) || 0;
+    const totalZakat = Number(zakatResult[0].total_zakat) || 0;
+    const totalInfaq = Number(infaqResult[0].total_infaq) || 0;
+    const totalPengeluaran = Number(pemasukanResult[0].kas_keluar) || 0;
+
+    // Mathematical addition
+    const totalPemasukan = kasManual + totalZakat + totalInfaq;
+    const saldoBersih = totalPemasukan - totalPengeluaran;
+
+    // const totalPemasukan = 
+    //   pemasukanResult[0].kas_masuk + 
+    //   zakatResult[0].total_zakat + 
+    //   infaqResult[0].total_infaq;
+
+    // const totalPengeluaran = pemasukanResult[0].kas_keluar;
+    // const saldoBersih = totalPemasukan - totalPengeluaran;
     
-    let dateFilter;
-    if (startDate && endDate) {
-      dateFilter = { startDate, endDate };
-    } else {
-      dateFilter = getPeriodFilter(period);
-    }
-
-    // Summary total
-    const [summaryRows] = await db.query(`
-      SELECT 
-        SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END) as total_pemasukan,
-        SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END) as total_pengeluaran,
-        SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE -jumlah END) as saldo_periode
-      FROM kas_buku_besar 
-      WHERE tanggal >= ? AND tanggal < ?
-    `, [dateFilter.startDate, dateFilter.endDate]);
-
-    // Summary per kategori pemasukan
-    const [pemasukanRows] = await db.query(`
-      SELECT 
-        kategori,
-        SUM(jumlah) as total,
-        COUNT(*) as jumlah_transaksi
-      FROM kas_buku_besar 
-      WHERE jenis = 'masuk' AND tanggal >= ? AND tanggal < ?
-      GROUP BY kategori
-    `, [dateFilter.startDate, dateFilter.endDate]);
-
-    // Summary per kategori pengeluaran
-    const [pengeluaranRows] = await db.query(`
-      SELECT 
-        kategori,
-        SUM(jumlah) as total,
-        COUNT(*) as jumlah_transaksi
-      FROM kas_buku_besar 
-      WHERE jenis = 'keluar' AND tanggal >= ? AND tanggal < ?
-      GROUP BY kategori
-    `, [dateFilter.startDate, dateFilter.endDate]);
-
-    // Hitung saldo keseluruhan (dari awal)
-    const [saldoRows] = await db.query(`
-      SELECT 
-        SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE -jumlah END) as saldo_total
-      FROM kas_buku_besar 
-      WHERE tanggal <= ?
-    `, [dateFilter.endDate]);
-
-    // Format response
-    const summary = summaryRows[0];
-    const pemasukanKategori = {};
-    const pengeluaranKategori = {};
-
-    // Parse pemasukan per kategori
-    pemasukanRows.forEach(row => {
-      pemasukanKategori[row.kategori] = row.total;
+        console.log('Final summary:', {
+      totalPemasukan,
+      breakdown: {
+        kasManual: pemasukanResult[0].kas_masuk,
+        zakat: zakatResult[0].total_zakat,
+        infaq: infaqResult[0].total_infaq,
+        lelang: 0
+      }
     });
-
-    // Parse pengeluaran per kategori
-    pengeluaranRows.forEach(row => {
-      pengeluaranKategori[row.kategori] = row.total;
-    });
-
     res.json({
-      totalSaldo: saldoRows[0].saldo_total || 0,
-      totalPemasukan: summary.total_pemasukan || 0,
-      totalPengeluaran: summary.total_pengeluaran || 0,
-      saldoPeriode: summary.saldo_periode || 0,
-      pemasukanKategori,
-      pengeluaranKategori
+      success: true,
+      data: {
+        totalPemasukan,
+        totalPengeluaran,
+        saldoBersih,
+        breakdown: {
+          kasManual: pemasukanResult[0].kas_masuk,
+          zakat: zakatResult[0].total_zakat,
+          infaq: infaqResult[0].total_infaq,
+          lelang: 0
+        }
+      }
     });
 
   } catch (err) {
-    console.error('Gagal mengambil summary kas:', err);
-    res.status(500).json({ message: 'Terjadi kesalahan saat mengambil summary kas' });
+    console.error('Error fetching kas summary:', err);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Terjadi kesalahan saat mengambil ringkasan kas' 
+    });
   }
 });
 
@@ -180,16 +232,15 @@ router.get('/zakat', async (req, res) => {
       dateFilter = { startDate, endDate };
     } else {
       dateFilter = getPeriodFilter(period);
-    }
-
-    // Ambil dari kas_buku_besar dengan filter source_table = 'zakat'
+    }    // Ambil dari kas_buku_besar dengan filter source_table = 'zakat' dan status approved
     const [rows] = await db.query(`
       SELECT 
         kb.*,
-        z.nama, z.jenis_zakat, z.bukti_transfer, z.metode_pembayaran, z.created_at
+        z.nama, z.jenis_zakat, z.bukti_transfer, z.metode_pembayaran, z.created_at, z.status
       FROM kas_buku_besar kb
       LEFT JOIN zakat z ON kb.source_id = z.id AND kb.source_table = 'zakat'
       WHERE kb.source_table = 'zakat' 
+        AND z.status = 'approved'
         AND kb.tanggal >= ? AND kb.tanggal < ? 
       ORDER BY kb.tanggal DESC
     `, [dateFilter.startDate, dateFilter.endDate]);
@@ -337,6 +388,122 @@ router.delete('/:id', async (req, res) => {
   } catch (err) {
     console.error('Gagal menghapus transaksi kas:', err);
     res.status(500).json({ message: 'Terjadi kesalahan saat menghapus transaksi kas' });
+  }
+});
+
+// ===== GET pembayaran pending untuk validasi admin =====
+router.get('/pending', async (req, res) => {
+  try {
+    // Ambil zakat pending
+    const [zakatPending] = await db.query(`
+      SELECT 
+        id, nama, jumlah as nominal, jenis_zakat, bukti_transfer, 
+        metode_pembayaran, created_at, 'zakat' as type
+      FROM zakat 
+      WHERE status = 'pending'
+      ORDER BY created_at DESC
+    `);
+
+    // Ambil infaq pending (jika ada tabel infaq dengan sistem serupa)
+    const [infaqPending] = await db.query(`
+      SELECT 
+        id, nama_pemberi as nama, jumlah as nominal, kategori_infaq as jenis_zakat, 
+        bukti_transfer, metode_pembayaran, tanggal as created_at, 'infaq' as type
+      FROM infaq 
+      WHERE status = 'pending'
+      ORDER BY tanggal DESC
+    `).catch(() => [[]]);
+
+    const allPending = [...zakatPending, ...infaqPending];
+    
+    res.json(allPending);
+  } catch (err) {
+    console.error('Gagal mengambil data pending:', err);
+    res.status(500).json({ message: 'Terjadi kesalahan saat mengambil data pending' });
+  }
+});
+
+// ===== PUT approve/reject pembayaran =====
+router.put('/validate/:type/:id', async (req, res) => {
+  try {
+    const { type, id } = req.params;
+    const { action } = req.body; // 'approve' or 'reject'
+
+    if (!['approve', 'reject'].includes(action)) {
+      return res.status(400).json({ message: 'Action harus approve atau reject' });
+    }
+
+    if (!['zakat', 'infaq'].includes(type)) {
+      return res.status(400).json({ message: 'Type harus zakat atau infaq' });
+    }
+
+    let tableName = type;
+    let dataQuery = '';
+    let updateQuery = '';
+
+    if (type === 'zakat') {
+      dataQuery = 'SELECT * FROM zakat WHERE id = ?';
+      updateQuery = 'UPDATE zakat SET status = ?, validated_at = NOW() WHERE id = ?';
+    } else {
+      dataQuery = 'SELECT * FROM infaq WHERE id = ?';
+      updateQuery = 'UPDATE infaq SET status = ?, validated_at = NOW() WHERE id = ?';
+    }
+
+    // Get data first
+    const [dataRows] = await db.query(dataQuery, [id]);
+    
+    if (dataRows.length === 0) {
+      return res.status(404).json({ message: `Data ${type} tidak ditemukan` });
+    }
+
+    const itemData = dataRows[0];
+
+    if (itemData.status !== 'pending') {
+      return res.status(400).json({ message: 'Data sudah divalidasi sebelumnya' });
+    }
+
+    if (action === 'approve') {
+      // Update status ke approved
+      await db.query(updateQuery, ['approved', id]);
+      
+      // Insert ke kas_buku_besar
+      let kategori, keterangan, jumlah, tanggal;
+      
+      if (type === 'zakat') {
+        kategori = `zakat_${itemData.jenis_zakat}`;
+        keterangan = `Zakat ${itemData.jenis_zakat} dari ${itemData.nama}`;
+        jumlah = itemData.nominal || itemData.jumlah;
+        tanggal = new Date().toISOString().split('T')[0];
+      } else {
+        kategori = `infaq_${itemData.kategori_infaq || 'umum'}`;
+        keterangan = `Infaq dari ${itemData.nama_pemberi} - ${itemData.infaq_keterangan || ''}`;
+        jumlah = itemData.nominal || itemData.jumlah;
+        tanggal = itemData.tanggal;
+      }
+
+      await db.query(`
+        INSERT INTO kas_buku_besar (tanggal, deskripsi, jenis, jumlah, kategori, source_table, source_id, created_at)
+        VALUES (?, ?, 'masuk', ?, ?, ?, ?, NOW())
+      `, [tanggal, keterangan, jumlah, kategori, type, id]);
+
+      res.json({
+        success: true,
+        message: `Pembayaran ${type} berhasil diapprove`
+      });
+    } else {
+      // Update status ke rejected
+      await db.query(updateQuery, ['rejected', id]);
+      
+      res.json({
+        success: true,
+        message: `Pembayaran ${type} telah ditolak`
+      });
+    }
+
+  } catch (err) {
+    console.error('Error validating payment:', err);
+    res.status(500).json({ message: 'Terjadi kesalahan saat validasi pembayaran' });
+      console.error('Error validating payment:', err.message || err.sqlMessage || err);
   }
 });
 
