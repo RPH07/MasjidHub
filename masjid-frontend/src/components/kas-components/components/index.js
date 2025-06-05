@@ -3,6 +3,7 @@ export { default as KasOverview } from './KasOverview/KasOverview';
 export { default as KasPemasukan } from './KasPemasukan/KasPemasukan';
 export { default as KasPengeluaran } from './KasPengeluaran/KasPengeluaran';
 export { default as KasRiwayat } from './KasRiwayat/KasRiwayat';
+export { default as KasValidation } from './KasValidation/KasValidation';
 
 // Komponen Shared
 export { default as TransactionModal } from './shared/TransactionModal';
