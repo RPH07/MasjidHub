@@ -3,11 +3,14 @@ import { useKasData } from '../../components/kas-components/hooks/useKasData';
 import { usePeriodFilter } from '../../components/kas-components/hooks/usePeriodFilter';
 import { useModal } from '../../components/kas-components/hooks/useModal';
 import { useTransactionOps } from '../../components/kas-components/hooks/useTransactionOps';
+import { usePendingData } from '../../components/kas-components/hooks/usePendingData';
+import { useValidationOps } from '../../components/kas-components/hooks/useValidationOps';
 import {
   KasOverview,
   KasPemasukan,
   KasPengeluaran,
   KasRiwayat,
+  KasValidation,
   TransactionModal,
   BuktiModal
 } from '../../components/kas-components/components';
@@ -20,6 +23,11 @@ const Kas = () => {
   const { selectedPeriod, setPeriod, getPeriodLabel } = usePeriodFilter('bulan-ini');
   const kasDataHook = useKasData(selectedPeriod);
   const { deleteTransaction } = useTransactionOps(kasDataHook.refreshData);
+  const pendingDataHook = usePendingData();
+  const validationOps = useValidationOps(() => {
+    pendingDataHook.refreshData();
+    kasDataHook.refreshData();
+  });
   const {
     showModal,
     modalType,
@@ -99,6 +107,16 @@ const Kas = () => {
           />
         )}
 
+        {activeTab === 'validasi' && (
+          <KasValidation
+            pendingData={pendingDataHook.pendingData}
+            loading={pendingDataHook.loading}
+            onApprove={validationOps.approvePayment}
+            onReject={validationOps.rejectPayment}
+            onOpenBukti={openBuktiModal}
+          />
+        )}
+
         {activeTab === 'pemasukan' && (
           <KasPemasukan
             kasData={kasDataHook.kasData}
@@ -108,7 +126,7 @@ const Kas = () => {
             onEdit={handleEdit}
             onDelete={handleDelete}
             onOpenBukti={openBuktiModal}
-            onAddTransaction={() => openTransactionModal('add-pemasukan')}
+            onOpenModal={openTransactionModal}
           />
         )}
 
@@ -145,7 +163,7 @@ const Kas = () => {
       <BuktiModal
         isOpen={showBuktiModal}
         onClose={closeBuktiModal}
-        imageUrl={selectedBukti}
+        buktiTransfer={selectedBukti}
       />
     </div>
   );
