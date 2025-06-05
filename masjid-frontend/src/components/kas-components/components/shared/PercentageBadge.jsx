@@ -1,6 +1,16 @@
 import React from 'react';
 
 const PercentageBadge = ({ percentage, periodText = 'period' }) => {
+  // Handle NaN, null, undefined, or invalid percentage values
+  if (isNaN(percentage) || percentage === null || percentage === undefined) {
+    return (
+      <span className="inline-flex items-center gap-1 bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full text-xs font-medium">
+        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+        No data
+      </span>
+    );
+  }
+
   const isPositive = percentage >= 0;
   const absPercentage = Math.abs(percentage);
 
