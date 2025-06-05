@@ -33,6 +33,7 @@ export const PERIOD_OPTIONS = [
 
 export const TABS = {
   overview: { label: 'Ringkasan' },
+  validasi: { label: 'Validasi' },
   pemasukan: { label: 'Pemasukan' },
   pengeluaran: { label: 'Pengeluaran' },
   riwayat: { label: 'Riwayat' },
