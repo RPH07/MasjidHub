@@ -28,6 +28,7 @@ const Kas = () => {
     pendingDataHook.refreshData();
     kasDataHook.refreshData();
   });
+  
   const {
     showModal,
     modalType,
@@ -110,9 +111,9 @@ const Kas = () => {
         {activeTab === 'validasi' && (
           <KasValidation
             pendingData={pendingDataHook.pendingData}
-            loading={pendingDataHook.loading}
-            onApprove={validationOps.approvePayment}
-            onReject={validationOps.rejectPayment}
+            loading={pendingDataHook.loading || validationOps.loading}
+            onApprove={validationOps.approveTransaction}
+            onReject={validationOps.rejectTransaction}
             onOpenBukti={openBuktiModal}
           />
         )}
