@@ -1,5 +1,5 @@
-import React from 'react';
-import { formatCurrency } from '../../utils/formatters';
+import React, { useState } from 'react';
+import { toast } from 'react-hot-toast';
 
 const KasValidation = ({ 
   pendingData, 
@@ -8,190 +8,195 @@ const KasValidation = ({
   onOpenBukti,
   loading 
 }) => {
+  const [rejectModal, setRejectModal] = useState({
+    isOpen: false,
+    transaction: null,
+    reason: ''
+  });
+
+  const handleApprove = async (transaction) => {
+    const result = await onApprove(transaction.type, transaction.id);
+    if (result.success) {
+      toast.success(result.message);
+    } else {
+      toast.error(result.message);
+    }
+  };
+
+  const handleRejectClick = (transaction) => {
+    setRejectModal({
+      isOpen: true,
+      transaction,
+      reason: ''
+    });
+  };
+
+  const handleRejectConfirm = async () => {
+    if (!rejectModal.reason.trim()) {
+      toast.error('Alasan penolakan harus diisi');
+      return;
+    }
+
+    const result = await onReject(
+      rejectModal.transaction.type, 
+      rejectModal.transaction.id, 
+      rejectModal.reason
+    );
+    
+    if (result.success) {
+      toast.success(result.message);
+      setRejectModal({ isOpen: false, transaction: null, reason: '' });
+    } else {
+      toast.error(result.message);
+    }
+  };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR'
+    }).format(amount);
+  };
+
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-32">
+      <div className="flex justify-center items-center py-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <span className="ml-2 text-gray-600">Memuat data validasi...</span>
       </div>
     );
   }
 
   if (pendingData.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-500">
-        <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-        </svg>
-        <p>Tidak ada pembayaran yang perlu divalidasi</p>
+      <div className="text-center py-8">
+        <div className="text-gray-500 text-lg mb-2">✅ Tidak ada transaksi yang perlu divalidasi</div>
+        <div className="text-gray-400">Semua pembayaran sudah diproses</div>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-4 sm:space-y-0">
-        <h3 className="text-lg font-medium">Validasi Pembayaran</h3>
-        <div className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium">
-          {pendingData.length} pending
+      <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+        <div className="flex">
+          <div className="text-yellow-600">
+            ⚠️ <strong>{pendingData.length} transaksi</strong> menunggu validasi
+          </div>
         </div>
       </div>
 
-      {/* Desktop Table View */}
-      <div className="hidden sm:block rounded-lg border bg-white shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[800px]">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Jenis</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Metode</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Jumlah</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bukti</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {pendingData.map((item) => (
-                <tr key={`${item.type}-${item.id}`}>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    {new Date(item.created_at).toLocaleDateString('id-ID')}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                      item.type === 'zakat' 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {item.type === 'zakat' ? `Zakat ${item.jenis_zakat}` : 'Infaq'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">{item.nama}</td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                      item.metode_pembayaran === 'qris'
-                        ? 'bg-purple-100 text-purple-800'
-                        : item.metode_pembayaran === 'cash'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {item.metode_pembayaran === 'qris' ? '📱 QRIS' :
-                        item.metode_pembayaran === 'cash' ? '💵 Tunai' :
-                          '🏦 Transfer'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm font-medium text-green-600">
-                    {formatCurrency(item.nominal)}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    {item.bukti_transfer ? (
-                      <button
-                        onClick={() => onOpenBukti(item.bukti_transfer)}
-                        className="text-blue-600 hover:text-blue-900 text-sm bg-blue-50 px-2 py-1 rounded"
-                      >
-                        Lihat Bukti
-                      </button>
-                    ) : (
-                      <span className="text-gray-400 text-sm">Tidak ada</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => onApprove(item.type, item.id)}
-                        className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
-                      >
-                        Setujui
-                      </button>
-                      <button
-                        onClick={() => onReject(item.type, item.id)}
-                        className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
-                      >
-                        Tolak
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Mobile Card View */}
-      <div className="block sm:hidden space-y-4">
-        {pendingData.map((item) => (
-          <div key={`${item.type}-mobile-${item.id}`} className="bg-white border rounded-lg p-4 shadow-sm">
-            <div className="flex justify-between items-start mb-3">
-              <div className="text-sm text-gray-500">
-                {new Date(item.created_at).toLocaleDateString('id-ID')}
-              </div>
-              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                Pending
-              </span>
-            </div>
-            
-            <div className="mb-2">
-              <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                item.type === 'zakat' 
-                  ? 'bg-green-100 text-green-800' 
-                  : 'bg-blue-100 text-blue-800'
-              }`}>
-                {item.type === 'zakat' ? `Zakat ${item.jenis_zakat}` : 'Infaq'}
-              </span>
-            </div>
-            
-            <div className="text-sm font-medium text-gray-900 mb-2">{item.nama}</div>
-            
-            <div className="flex justify-between items-center mb-3">
-              <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                item.metode_pembayaran === 'qris'
-                  ? 'bg-purple-100 text-purple-800'
-                  : item.metode_pembayaran === 'cash'
-                    ? 'bg-green-100 text-green-800'
+      {pendingData.map((transaction) => (
+        <div key={`${transaction.type}-${transaction.id}`} className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+          <div className="flex justify-between items-start">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-3">
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  transaction.type === 'zakat' 
+                    ? 'bg-green-100 text-green-800' 
                     : 'bg-blue-100 text-blue-800'
-              }`}>
-                {item.metode_pembayaran === 'qris' ? '📱 QRIS' :
-                  item.metode_pembayaran === 'cash' ? '💵 Tunai' :
-                    '🏦 Transfer'}
-              </span>
-              <div className="text-lg font-medium text-green-600">
-                {formatCurrency(item.nominal)}
+                }`}>
+                  {transaction.type === 'zakat' ? '🕌 Zakat' : '💰 Infaq'}
+                </span>
+                <span className="text-sm text-gray-500">
+                  {new Date(transaction.created_at).toLocaleDateString('id-ID')}
+                </span>
               </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <p className="text-sm text-gray-600">Nama Pemberi</p>
+                  <p className="font-medium">{transaction.nama_pemberi}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Jumlah</p>
+                  <p className="font-bold text-lg text-green-600">
+                    {formatCurrency(transaction.jumlah)}
+                  </p>
+                </div>
+                {transaction.type === 'zakat' && transaction.jenis_zakat && (
+                  <div>
+                    <p className="text-sm text-gray-600">Jenis Zakat</p>
+                    <p className="font-medium capitalize">{transaction.jenis_zakat}</p>
+                  </div>
+                )}
+                {transaction.type === 'infaq' && transaction.kategori_infaq && (
+                  <div>
+                    <p className="text-sm text-gray-600">Kategori</p>
+                    <p className="font-medium capitalize">{transaction.kategori_infaq}</p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-sm text-gray-600">Metode Pembayaran</p>
+                  <p className="font-medium capitalize">{transaction.metode_pembayaran}</p>
+                </div>
+              </div>
+
+              {transaction.bukti_transfer && (
+                <div className="mb-4">
+                  <button
+                    onClick={() => onOpenBukti(transaction.bukti_transfer)}
+                    className="text-blue-600 hover:text-blue-800 underline text-sm"
+                  >
+                    📎 Lihat Bukti Transfer
+                  </button>
+                </div>
+              )}
             </div>
 
-            <div className="flex justify-between items-center">
-              <div>
-                {item.bukti_transfer ? (
-                  <button
-                    onClick={() => onOpenBukti(item.bukti_transfer)}
-                    className="text-blue-600 hover:text-blue-900 text-sm bg-blue-50 px-2 py-1 rounded"
-                  >
-                    Lihat Bukti
-                  </button>
-                ) : (
-                  <span className="text-gray-400 text-sm">Tidak ada bukti</span>
-                )}
-              </div>
-              
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => onApprove(item.type, item.id)}
-                  className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
-                >
-                  Setujui
-                </button>
-                <button
-                  onClick={() => onReject(item.type, item.id)}
-                  className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
-                >
-                  Tolak
-                </button>
-              </div>
+            <div className="flex gap-2 ml-4">
+              <button
+                onClick={() => handleApprove(transaction)}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                ✅ Approve
+              </button>
+              <button
+                onClick={() => handleRejectClick(transaction)}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                ❌ Tolak
+              </button>
             </div>
           </div>
-        ))}
-      </div>
+        </div>
+      ))}
+
+      {/* Reject Modal */}
+      {rejectModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold mb-4">Tolak Pembayaran</h3>
+            <p className="text-gray-600 mb-4">
+              Berikan alasan penolakan untuk pembayaran dari{' '}
+              <strong>{rejectModal.transaction?.nama_pemberi}</strong>
+            </p>
+            
+            <textarea
+              value={rejectModal.reason}
+              onChange={(e) => setRejectModal(prev => ({ ...prev, reason: e.target.value }))}
+              placeholder="Masukkan alasan penolakan..."
+              className="w-full p-3 border border-gray-300 rounded-lg resize-none h-24 mb-4"
+              required
+            />
+            
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setRejectModal({ isOpen: false, transaction: null, reason: '' })}
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleRejectConfirm}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              >
+                Tolak Pembayaran
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
