@@ -1,54 +1,71 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import axios from 'axios';
 
-export const useValidationOps = (onRefresh) => {
+export const useValidationOps = (refreshCallback) => {
   const [loading, setLoading] = useState(false);
 
-  const validatePayment = useCallback(async (type, id, action) => {
-    setLoading(true);
+  const approveTransaction = async (type, id) => {
     try {
+      setLoading(true);
       const token = localStorage.getItem('token');
-      const config = {
-        headers: { Authorization: `Bearer ${token}` }
-      };
-
+      
       const response = await axios.put(
-        `http://localhost:5000/api/kas/validate/${type}/${id}`,
-        { action },
-        config
+        `http://localhost:5000/api/${type}/${id}/validate`,
+        { action: 'approve' },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
       if (response.data.success) {
-        alert(response.data.message);
-        onRefresh?.();
-        return true;
+        if (refreshCallback) refreshCallback();
+        return { success: true, message: response.data.message };
       }
+      
+      return { success: false, message: response.data.message };
     } catch (error) {
-      console.error('Error validating payment:', error);
-      alert(error.response?.data?.message || 'Terjadi kesalahan saat validasi');
-      return false;
+      console.error('Error approving transaction:', error);
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'Terjadi kesalahan saat approve' 
+      };
     } finally {
       setLoading(false);
     }
-  }, [onRefresh]);
+  };
 
-  const approvePayment = useCallback((type, id) => {
-    if (window.confirm('Apakah Anda yakin ingin menyetujui pembayaran ini?')) {
-      return validatePayment(type, id, 'approve');
-    }
-    return Promise.resolve(false);
-  }, [validatePayment]);
+  const rejectTransaction = async (type, id, reason) => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      
+      const response = await axios.put(
+        `http://localhost:5000/api/${type}/${id}/validate`,
+        { 
+          action: 'reject', 
+          reason: reason || 'Tidak ada alasan yang diberikan' 
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
-  const rejectPayment = useCallback((type, id) => {
-    if (window.confirm('Apakah Anda yakin ingin menolak pembayaran ini?')) {
-      return validatePayment(type, id, 'reject');
+      if (response.data.success) {
+        if (refreshCallback) refreshCallback();
+        return { success: true, message: response.data.message };
+      }
+      
+      return { success: false, message: response.data.message };
+    } catch (error) {
+      console.error('Error rejecting transaction:', error);
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'Terjadi kesalahan saat reject' 
+      };
+    } finally {
+      setLoading(false);
     }
-    return Promise.resolve(false);
-  }, [validatePayment]);
+  };
 
   return {
-    loading,
-    approvePayment,
-    rejectPayment
+    approveTransaction,
+    rejectTransaction,
+    loading
   };
 };
