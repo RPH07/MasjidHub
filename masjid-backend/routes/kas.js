@@ -163,15 +163,15 @@ router.get('/summary', async (req, res) => {
     // const totalPengeluaran = pemasukanResult[0].kas_keluar;
     // const saldoBersih = totalPemasukan - totalPengeluaran;
     
-        console.log('Final summary:', {
-      totalPemasukan,
-      breakdown: {
-        kasManual: pemasukanResult[0].kas_masuk,
-        zakat: zakatResult[0].total_zakat,
-        infaq: infaqResult[0].total_infaq,
-        lelang: 0
-      }
-    });
+    //     console.log('Final summary:', {
+    //   totalPemasukan,
+    //   breakdown: {
+    //     kasManual: pemasukanResult[0].kas_masuk,
+    //     zakat: zakatResult[0].total_zakat,
+    //     infaq: infaqResult[0].total_infaq,
+    //     lelang: 0
+    //   }
+    // });
     res.json({
       success: true,
       data: {
@@ -394,32 +394,75 @@ router.delete('/:id', async (req, res) => {
 // ===== GET pembayaran pending untuk validasi admin =====
 router.get('/pending', async (req, res) => {
   try {
-    // Ambil zakat pending
-    const [zakatPending] = await db.query(`
-      SELECT 
-        id, nama, jumlah as nominal, jenis_zakat, bukti_transfer, 
-        metode_pembayaran, created_at, 'zakat' as type
+    // Get pending zakat
+    const [zakatRows] = await db.query(`
+      SELECT id, nama as nama_pemberi, jumlah, jenis_zakat, bukti_transfer, 
+             metode_pembayaran, created_at, 'zakat' as type
       FROM zakat 
       WHERE status = 'pending'
       ORDER BY created_at DESC
     `);
 
-    // Ambil infaq pending (jika ada tabel infaq dengan sistem serupa)
-    const [infaqPending] = await db.query(`
-      SELECT 
-        id, nama_pemberi as nama, jumlah as nominal, kategori_infaq as jenis_zakat, 
-        bukti_transfer, metode_pembayaran, tanggal as created_at, 'infaq' as type
+    // Get pending infaq
+    const [infaqRows] = await db.query(`
+      SELECT id, nama_pemberi, jumlah, kategori_infaq, bukti_transfer, 
+             metode_pembayaran, tanggal as created_at, 'infaq' as type
       FROM infaq 
       WHERE status = 'pending'
       ORDER BY tanggal DESC
-    `).catch(() => [[]]);
+    `);
 
-    const allPending = [...zakatPending, ...infaqPending];
-    
-    res.json(allPending);
-  } catch (err) {
-    console.error('Gagal mengambil data pending:', err);
-    res.status(500).json({ message: 'Terjadi kesalahan saat mengambil data pending' });
+    // Combine and sort by date
+    const allPending = [...zakatRows, ...infaqRows].sort((a, b) => 
+      new Date(b.created_at) - new Date(a.created_at)
+    );
+
+    res.json({
+      success: true,
+      data: allPending
+    });
+
+  } catch (error) {
+    console.error('Error fetching pending transactions:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Terjadi kesalahan server'
+    });
+  }
+});
+
+// Endpoint untuk validate transaction (unified)
+router.put('/validate/:type/:id', async (req, res) => {
+  try {
+    const { type, id } = req.params;
+    const { action, reason } = req.body;
+
+    if (!['zakat', 'infaq'].includes(type)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Type harus zakat atau infaq' 
+      });
+    }
+
+    // Forward to appropriate route
+    if (type === 'zakat') {
+      // Forward to zakat validation
+      const zakatRoute = require('./zakat');
+      req.params.id = id;
+      return zakatRoute.handle(req, res);
+    } else {
+      // Forward to infaq validation  
+      const infaqRoute = require('./infaq');
+      req.params.id = id;
+      return infaqRoute.handle(req, res);
+    }
+
+  } catch (error) {
+    console.error('Error in validation router:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Terjadi kesalahan server'
+    });
   }
 });
 
@@ -504,6 +547,309 @@ router.put('/validate/:type/:id', async (req, res) => {
     console.error('Error validating payment:', err);
     res.status(500).json({ message: 'Terjadi kesalahan saat validasi pembayaran' });
       console.error('Error validating payment:', err.message || err.sqlMessage || err);
+  }
+});
+
+// GET - History endpoint dengan filtering
+router.get('/history', async (req, res) => {
+  try {
+    const { 
+      period = 'bulan-ini',
+      startDate,
+      endDate,
+      type = 'all', // 'zakat', 'infaq', 'kas', 'all'
+      status = 'all' // 'approved', 'rejected', 'pending', 'all'
+    } = req.query;
+
+    // Get date filter
+    let dateFilter;
+    if (startDate && endDate) {
+      dateFilter = { startDate, endDate };
+    } else {
+      dateFilter = getPeriodFilter(period);
+    }
+
+    console.log('History filter:', { period, type, status, dateFilter });
+
+    let transactions = [];
+
+    // 1. Fetch Zakat data
+    if (type === 'all' || type === 'zakat') {
+      let zakatQuery = `
+        SELECT 
+          id,
+          nama as nama_pemberi,
+          jumlah,
+          jenis_zakat,
+          bukti_transfer,
+          metode_pembayaran,
+          status,
+          reject_reason,
+          validated_at,
+          created_at,
+          'zakat' as type,
+          'Zakat' as type_label
+        FROM zakat 
+        WHERE DATE(created_at) >= ? AND DATE(created_at) <= ?
+      `;
+      
+      const zakatParams = [dateFilter.startDate, dateFilter.endDate];
+      
+      if (status !== 'all') {
+        zakatQuery += ' AND status = ?';
+        zakatParams.push(status);
+      }
+      
+      zakatQuery += ' ORDER BY created_at DESC';
+      
+      const [zakatRows] = await db.query(zakatQuery, zakatParams);
+      transactions.push(...zakatRows);
+    }
+
+    // 2. Fetch Infaq data
+    if (type === 'all' || type === 'infaq') {
+      let infaqQuery = `
+        SELECT 
+          id,
+          nama_pemberi,
+          jumlah,
+          kategori_infaq,
+          keterangan,
+          bukti_transfer,
+          metode_pembayaran,
+          status,
+          reject_reason,
+          validated_at,
+          tanggal as created_at,
+          'infaq' as type,
+          'Infaq' as type_label
+        FROM infaq 
+        WHERE DATE(tanggal) >= ? AND DATE(tanggal) <= ?
+      `;
+      
+      const infaqParams = [dateFilter.startDate, dateFilter.endDate];
+      
+      if (status !== 'all') {
+        infaqQuery += ' AND status = ?';
+        infaqParams.push(status);
+      }
+      
+      infaqQuery += ' ORDER BY tanggal DESC';
+      
+      const [infaqRows] = await db.query(infaqQuery, infaqParams);
+      transactions.push(...infaqRows);
+    }
+
+    // 3. Fetch Kas Manual data (always approved)
+    if (type === 'all' || type === 'kas') {
+      const kasQuery = `
+        SELECT 
+          id,
+          keterangan as nama_pemberi,
+          jumlah,
+          jenis as kas_jenis,
+          kategori,
+          NULL as bukti_transfer,
+          'manual' as metode_pembayaran,
+          'approved' as status,
+          NULL as reject_reason,
+          created_at as validated_at,
+          tanggal as created_at,
+          'kas' as type,
+          CONCAT('Kas ', UPPER(jenis)) as type_label
+        FROM kas_buku_besar 
+        WHERE tanggal >= ? AND tanggal <= ?
+        AND (source_table IS NULL OR source_table NOT IN ('zakat', 'infaq'))
+      `;
+      
+      const kasParams = [dateFilter.startDate, dateFilter.endDate];
+      
+      // Filter kas by status if needed (only show if status is 'all' or 'approved')
+      if (status === 'approved' || status === 'all') {
+        const [kasRows] = await db.query(kasQuery + ' ORDER BY tanggal DESC', kasParams);
+        transactions.push(...kasRows);
+      }
+    }
+
+    // Sort all transactions by date (newest first)
+    transactions.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    // Calculate summary stats
+    const summary = {
+      total: transactions.length,
+      approved: transactions.filter(t => t.status === 'approved').length,
+      rejected: transactions.filter(t => t.status === 'rejected').length,
+      pending: transactions.filter(t => t.status === 'pending').length,
+      totalAmount: {
+        approved: transactions
+          .filter(t => t.status === 'approved')
+          .reduce((sum, t) => sum + Number(t.jumlah || 0), 0),
+        rejected: transactions
+          .filter(t => t.status === 'rejected')
+          .reduce((sum, t) => sum + Number(t.jumlah || 0), 0),
+        pending: transactions
+          .filter(t => t.status === 'pending')
+          .reduce((sum, t) => sum + Number(t.jumlah || 0), 0)
+      }
+    };
+
+    res.json({
+      success: true,
+      data: {
+        transactions,
+        summary,
+        filters: {
+          period,
+          startDate: dateFilter.startDate,
+          endDate: dateFilter.endDate,
+          type,
+          status
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching transaction history:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Terjadi kesalahan saat mengambil riwayat transaksi'
+    });
+  }
+});
+
+// GET - Export history to Excel/CSV
+router.get('/history/export', async (req, res) => {
+  try {
+    const { 
+      period = 'bulan-ini',
+      startDate,
+      endDate,
+      type = 'all',
+      status = 'all',
+      format = 'csv' // 'csv' or 'excel'
+    } = req.query;
+
+    // Reuse history logic to get data
+    const historyReq = {
+      query: { period, startDate, endDate, type, status }
+    };
+    
+    // Get the same data as history endpoint
+    // (We can refactor this to a shared function later)
+    let dateFilter;
+    if (startDate && endDate) {
+      dateFilter = { startDate, endDate };
+    } else {
+      dateFilter = getPeriodFilter(period);
+    }
+
+    let transactions = [];
+
+    // Same logic as history endpoint...
+    if (type === 'all' || type === 'zakat') {
+      let zakatQuery = `
+        SELECT 
+          id,
+          nama as nama_pemberi,
+          jumlah,
+          jenis_zakat,
+          bukti_transfer,
+          metode_pembayaran,
+          status,
+          reject_reason,
+          validated_at,
+          created_at,
+          'zakat' as type
+        FROM zakat 
+        WHERE DATE(created_at) >= ? AND DATE(created_at) <= ?
+      `;
+      
+      const zakatParams = [dateFilter.startDate, dateFilter.endDate];
+      if (status !== 'all') {
+        zakatQuery += ' AND status = ?';
+        zakatParams.push(status);
+      }
+      
+      const [zakatRows] = await db.query(zakatQuery, zakatParams);
+      transactions.push(...zakatRows);
+    }
+
+    if (type === 'all' || type === 'infaq') {
+      let infaqQuery = `
+        SELECT 
+          id,
+          nama_pemberi,
+          jumlah,
+          kategori_infaq,
+          keterangan,
+          bukti_transfer,
+          metode_pembayaran,
+          status,
+          reject_reason,
+          validated_at,
+          tanggal as created_at,
+          'infaq' as type
+        FROM infaq 
+        WHERE DATE(tanggal) >= ? AND DATE(tanggal) <= ?
+      `;
+      
+      const infaqParams = [dateFilter.startDate, dateFilter.endDate];
+      if (status !== 'all') {
+        infaqQuery += ' AND status = ?';
+        infaqParams.push(status);
+      }
+      
+      const [infaqRows] = await db.query(infaqQuery, infaqParams);
+      transactions.push(...infaqRows);
+    }
+
+    if (type === 'all' || type === 'kas') {
+      if (status === 'approved' || status === 'all') {
+        const [kasRows] = await db.query(`
+          SELECT 
+            id,
+            keterangan as nama_pemberi,
+            jumlah,
+            kategori,
+            tanggal as created_at,
+            'kas' as type,
+            'approved' as status
+          FROM kas_buku_besar 
+          WHERE tanggal >= ? AND tanggal <= ?
+          AND (source_table IS NULL OR source_table NOT IN ('zakat', 'infaq'))
+        `, [dateFilter.startDate, dateFilter.endDate]);
+        transactions.push(...kasRows);
+      }
+    }
+
+    // Sort by date
+    transactions.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    if (format === 'csv') {
+      // Generate CSV
+      const csvHeader = 'Tanggal,Type,Nama,Jumlah,Status,Metode Pembayaran,Alasan Tolak\n';
+      const csvData = transactions.map(t => 
+        `${new Date(t.created_at).toLocaleDateString('id-ID')},${t.type},${t.nama_pemberi},"${t.jumlah}",${t.status},${t.metode_pembayaran || 'manual'},"${t.reject_reason || ''}"`
+      ).join('\n');
+      
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="transaction-history-${Date.now()}.csv"`);
+      res.send(csvHeader + csvData);
+    } else {
+      // For Excel, return JSON for now (frontend can convert)
+      res.json({
+        success: true,
+        data: transactions,
+        filename: `transaction-history-${Date.now()}.xlsx`
+      });
+    }
+
+  } catch (error) {
+    console.error('Error exporting transaction history:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Terjadi kesalahan saat export data'
+    });
   }
 });
 
