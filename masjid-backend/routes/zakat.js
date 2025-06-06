@@ -75,7 +75,7 @@ router.post('/', upload.single('bukti'), async (req, res) => {
 router.put('/:id/validate', async (req, res) => {
   try {
     const { id } = req.params;
-    const { action } = req.body; // 'approve' or 'reject'
+    const { action, reason } = req.body; // Tambah reason parameter
 
     if (!['approve', 'reject'].includes(action)) {
       return res.status(400).json({ 
@@ -105,27 +105,34 @@ router.put('/:id/validate', async (req, res) => {
 
     if (action === 'approve') {
       // Update status ke approved
-      await db.execute('UPDATE zakat SET status = ?, validated_at = NOW() WHERE id = ?', ['approved', id]);
+      await db.execute(
+        'UPDATE zakat SET status = ?, validated_at = NOW() WHERE id = ?', 
+        ['approved', id]
+      );
       
-      // Insert ke kas_buku_besar
+      // Insert ke kas_buku_besar untuk audit trail
       const kategori = `zakat_${zakatData.jenis_zakat}`;
+      const keterangan = `Zakat ${zakatData.jenis_zakat} dari ${zakatData.nama}`;
+      
       await db.execute(`
-        INSERT INTO kas_buku_besar (tanggal, keterangan, jenis, jumlah, kategori, source_table, source_id, created_at)
+        INSERT INTO kas_buku_besar 
+        (tanggal, keterangan, jenis, jumlah, kategori, source_table, source_id, created_at)
         VALUES (CURDATE(), ?, 'masuk', ?, ?, 'zakat', ?, NOW())
-      `, [
-        `Zakat ${zakatData.jenis_zakat} dari ${zakatData.nama}`,
-        zakatData.jumlah,
-        kategori,
-        id
-      ]);
+      `, [keterangan, zakatData.jumlah, kategori, id]);
 
       res.json({
         success: true,
-        message: 'Pembayaran zakat berhasil diapprove'
+        message: 'Pembayaran zakat berhasil diapprove dan dicatat ke kas'
       });
+
     } else {
-      // Update status ke rejected
-      await db.execute('UPDATE zakat SET status = ?, validated_at = NOW() WHERE id = ?', ['rejected', id]);
+      // Reject dengan reason
+      const rejectReason = reason || 'Tidak ada alasan yang diberikan';
+      
+      await db.execute(
+        'UPDATE zakat SET status = ?, reject_reason = ?, validated_at = NOW() WHERE id = ?', 
+        ['rejected', rejectReason, id]
+      );
       
       res.json({
         success: true,
