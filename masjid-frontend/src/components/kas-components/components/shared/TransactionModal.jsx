@@ -9,7 +9,7 @@ const TransactionModal = ({
   onSuccess 
 }) => {
   const { saveTransaction, loading, kategoriPemasukan } = useTransactionOps(onSuccess);
-  
+  // console.log('TransactionModal props:', { type, data, isOpen });
   const [formData, setFormData] = useState({
     tanggal: '',
     keterangan: '',
@@ -22,10 +22,10 @@ const TransactionModal = ({
   useEffect(() => {
     if (data) {
       setFormData({
-        tanggal: data.tanggal,
-        keterangan: data.keterangan,
-        jenis: data.jenis,
-        jumlah: data.jumlah,
+        tanggal: data.tanggal || '',
+        keterangan: data.keterangan || data.deskripsi || '',
+        jenis: data.jenis || (type === 'edit-pemasukan' ? 'masuk' : 'keluar'),
+        jumlah: data.jumlah || '',
         kategori: data.kategori || 'operasional',
         kategori_pemasukan: data.kategori_pemasukan || 'donasi_umum'
       });
@@ -33,13 +33,23 @@ const TransactionModal = ({
       setFormData({
         tanggal: new Date().toISOString().split('T')[0],
         keterangan: '',
-        jenis: type === 'add-pemasukan' ? 'masuk' : 'keluar',
+        jenis: type === 'add-pemasukan' || type === 'edit-pemasukan' ? 'masuk' : 'keluar',
         jumlah: '',
         kategori: 'operasional',
         kategori_pemasukan: 'donasi_umum'
       });
     }
   }, [data, type]);
+
+  // safeForm data
+  const safeFormData =  {
+    tanggal: formData.tanggal || '',
+    keterangan: formData.keterangan || '',
+    jenis: formData.jenis || 'masuk',
+    jumlah: formData.jumlah || '',
+    kategori: formData.kategori || 'operasional',
+    kategori_pemasukan: formData.kategori_pemasukan || 'donasi_umum'
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -51,8 +61,19 @@ const TransactionModal = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+const payload = {
+      ...formData,
+      jumlah: parseInt(formData.jumlah, 10)
+    };
+
+    // Pastikan parsing berhasil
+    if (isNaN(payload.jumlah)) {
+      alert('Jumlah tidak valid.');
+      return;
+    }
+
     try {
-      await saveTransaction(formData, data?.id);
+      await saveTransaction(payload, data?.id);
       onClose();
     } catch (error) {
       alert(error.message);
@@ -67,7 +88,7 @@ const TransactionModal = ({
         <div className="mt-3">
           <h3 className="text-lg font-medium text-gray-900 mb-4">
             {type === 'edit' ? 'Edit Transaksi' :
-             type === 'add-pemasukan' ? 'Tambah Pemasukan' : 'Tambah Pengeluaran'}
+            type === 'add-pemasukan' ? 'Tambah Pemasukan' : 'Tambah Pengeluaran'}
           </h3>
           
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -76,19 +97,19 @@ const TransactionModal = ({
               <input
                 type="date"
                 name="tanggal"
-                value={formData.tanggal}
+                value={safeFormData.tanggal}
                 onChange={handleInputChange}
                 className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
                 required
               />
             </div>
 
-            {formData.jenis === 'masuk' && (
+            {safeFormData.jenis === 'masuk' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700">Kategori Pemasukan</label>
                 <select
                   name="kategori_pemasukan"
-                  value={formData.kategori_pemasukan}
+                  value={safeFormData.kategori_pemasukan}
                   onChange={handleInputChange}
                   className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
                   required
@@ -105,7 +126,7 @@ const TransactionModal = ({
               <input
                 type="text"
                 name="keterangan"
-                value={formData.keterangan}
+                value={safeFormData.keterangan}
                 onChange={handleInputChange}
                 className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
                 placeholder="Deskripsi transaksi"
@@ -118,7 +139,7 @@ const TransactionModal = ({
               <input
                 type="number"
                 name="jumlah"
-                value={formData.jumlah}
+                value={safeFormData.jumlah}
                 onChange={handleInputChange}
                 className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
                 placeholder="0"
@@ -126,12 +147,12 @@ const TransactionModal = ({
               />
             </div>
 
-            {formData.jenis === 'keluar' && (
+            {safeFormData.jenis === 'keluar' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700">Kategori Pengeluaran</label>
                 <select
                   name="kategori"
-                  value={formData.kategori}
+                  value={safeFormData.kategori}
                   onChange={handleInputChange}
                   className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
                 >
