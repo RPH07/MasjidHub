@@ -6,6 +6,13 @@ export const useTransactionOps = (onSuccess) => {
   const [loading, setLoading] = useState(false);
 
   const saveTransaction = async (formData, editId = null) => {
+    //  console.log('saveTransaction called:', { 
+    //   formData, 
+    //   editId, 
+    //   editIdType: typeof editId,
+    //   editIdValue: editId 
+    // }); // Debug log
+
     if (!formData.tanggal || !formData.keterangan || !formData.jenis || !formData.jumlah) {
       throw new Error('Semua field wajib diisi');
     }
@@ -17,26 +24,27 @@ export const useTransactionOps = (onSuccess) => {
         headers: { Authorization: `Bearer ${token}` }
       };
 
-      if (editId) {
-        await axios.put(`http://localhost:5000/api/kas/${editId}`, formData, config);
+      let response;
+      if (editId && editId !== null) {
+        // console.log('Updating transaction:', editId);
+        response = await axios.put(`http://localhost:5000/api/kas/${editId}`, formData, config);
       } else {
-        await axios.post('http://localhost:5000/api/kas', formData, config);
+        // console.log('Creating new transaction');
+        response = await axios.post('http://localhost:5000/api/kas', formData, config);
       }
-
+      // console.log('Save response:', response.data);
       if (onSuccess) onSuccess();
+      return response.data;
     } catch (error) {
-      console.error('Error saving data:', error);
-      throw new Error('Terjadi kesalahan saat menyimpan data');
+      console.error('Error saving data:', error.response?.data || error);
+      throw new Error(error.response?.data?.message || 'Terjadi kesalahan saat menyimpan data');
     } finally {
       setLoading(false);
     }
   };
 
   const deleteTransaction = async (id) => {
-    if (!window.confirm('Apakah Anda yakin ingin menghapus transaksi ini?')) {
-      return false;
-    }
-
+    // console.log('deleteTransaction called with ID:', id); // Debug log
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
@@ -44,12 +52,16 @@ export const useTransactionOps = (onSuccess) => {
         headers: { Authorization: `Bearer ${token}` }
       };
 
-      await axios.delete(`http://localhost:5000/api/kas/${id}`, config);
+      // console.log('Sending DELETE request to:', `http://localhost:5000/api/kas/${id}`);
+      const response = await axios.delete(`http://localhost:5000/api/kas/${id}`, config);
+      
+      console.log('Delete response:', response.data);
+
       if (onSuccess) onSuccess();
       return true;
     } catch (error) {
-      console.error('Error deleting data:', error);
-      throw new Error('Terjadi kesalahan saat menghapus data');
+      console.error('Error deleting data:', error.response?.data || error);
+      throw new Error(error.response?.data?.message || 'Terjadi kesalahan saat menghapus data');
     } finally {
       setLoading(false);
     }
