@@ -3,6 +3,11 @@ import { formatCurrency } from '../../utils/formatters';
 import PercentageBadge from '../shared/PercentageBadge';
 
 const KasOverview = ({ summary, kategoriPemasukan }) => {
+  // debug presentase
+  // console.log('KasOverview summary:', summary);
+  // console.log('presentase changes:', summary?.percentageChanges);
+  const safePercentageChanges = summary?.percentageChanges || { saldo: 0, pemasukan: 0, pengeluaran: 0 };
+  
   return (
     <div className="space-y-6">
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
@@ -10,7 +15,7 @@ const KasOverview = ({ summary, kategoriPemasukan }) => {
           <div className="text-sm opacity-90">Saldo Saat Ini</div>
           <div className="mt-2 text-2xl sm:text-3xl font-bold">{formatCurrency(summary.totalSaldo)}</div>
           <div className="mt-2">
-            {summary.percentageChanges && <PercentageBadge percentage={summary.percentageChanges.saldo} />}
+            {safePercentageChanges && <PercentageBadge percentage={safePercentageChanges?.saldo} />}
           </div>
         </div>
 
@@ -18,7 +23,7 @@ const KasOverview = ({ summary, kategoriPemasukan }) => {
           <div className="text-sm text-blue-600">Total Pemasukan</div>
           <div className="mt-2 text-xl sm:text-2xl font-bold text-blue-700">{formatCurrency(summary.totalPemasukan)}</div>
           <div className="mt-2">
-            {summary.percentageChanges && <PercentageBadge percentage={summary.percentageChanges.pemasukan} />}
+            {safePercentageChanges && <PercentageBadge percentage={safePercentageChanges?.pemasukan} />}
           </div>
         </div>
 
@@ -26,7 +31,7 @@ const KasOverview = ({ summary, kategoriPemasukan }) => {
           <div className="text-sm text-red-600">Total Pengeluaran</div>
           <div className="mt-2 text-xl sm:text-2xl font-bold text-red-700">{formatCurrency(summary.totalPengeluaran)}</div>
           <div className="mt-2">
-            {summary.percentageChanges && <PercentageBadge percentage={summary.percentageChanges.pengeluaran} />}
+            {safePercentageChanges && <PercentageBadge percentage={safePercentageChanges?.pengeluaran} />}
           </div>
         </div>
       </div>
@@ -48,7 +53,6 @@ const KasOverview = ({ summary, kategoriPemasukan }) => {
               <span className="font-medium text-green-600 text-sm sm:text-base">{formatCurrency(summary.pemasukanKategori.lelang)}</span>
             </div>
             
-            {/* UI ADJUSTMENT: Ensured proper hierarchical display for "Donasi Lainnya" aggregate and its corresponding detailed manual entries. */}
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-sm sm:text-base">Donasi Lainnya</span>
