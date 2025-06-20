@@ -67,15 +67,16 @@ router.get('/', async (req, res) => {
     const { period = 'bulan-ini' } = req.query;
     const { startDate, endDate } = getPeriodFilter(period);
 
-    // 1. Kas manual saja (EXCLUDE yang dari zakat/infaq untuk avoid double)
+    // 1. Kas manual
     const [kasRows] = await db.query(`
       SELECT * FROM kas_buku_besar 
       WHERE tanggal >= ? AND tanggal <= ?
       AND (source_table IS NULL OR source_table NOT IN ('zakat', 'infaq'))
+      AND deleted_at IS NULL
       ORDER BY tanggal DESC, created_at DESC
     `, [startDate, endDate]);
 
-    // 2. Zakat - HANYA APPROVED, langsung dari table zakat
+    // 2. Zakat
     const [zakatRows] = await db.query(`
       SELECT id, nama, jenis_zakat, jumlah, bukti_transfer, created_at, metode_pembayaran
       FROM zakat 
@@ -84,7 +85,7 @@ router.get('/', async (req, res) => {
       ORDER BY created_at DESC
     `, [startDate, endDate]);
 
-    // 3. Infaq - HANYA APPROVED, langsung dari table infaq
+    // 3. Infaq 
     const [infaqRows] = await db.query(`
       SELECT id, nama_pemberi, jumlah, keterangan, kategori_infaq, tanggal
       FROM infaq 
@@ -93,7 +94,7 @@ router.get('/', async (req, res) => {
       ORDER BY tanggal DESC
     `, [startDate, endDate]);
 
-    const lelangRows = []; // Kosongkan sementara
+    const lelangRows = []; // Kosong sementara
 
     res.json({
       success: true,
@@ -114,11 +115,20 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Update summary juga
+// endpoint summary
 router.get('/summary', async (req, res) => {
   try {
-    const { period = 'bulan-ini' } = req.query;
-    const { startDate, endDate } = getPeriodFilter(period);
+    const { period = 'bulan-ini', startDate, endDate } = req.query;
+    
+    let dateFilter;
+    if (startDate && endDate) {
+      dateFilter = { startDate, endDate };
+      // console.log('Using custom date range:', dateFilter); // Debug log
+    } else {
+      // Fallback ke period filter
+      dateFilter = getPeriodFilter(period);
+      //console.log('Using period filter for:', period, dateFilter); // Debug log
+    }
 
     // Kas manual saja (EXCLUDE zakat/infaq untuk avoid double counting)
     const [pemasukanResult] = await db.query(`
@@ -128,7 +138,7 @@ router.get('/summary', async (req, res) => {
       FROM kas_buku_besar 
       WHERE tanggal >= ? AND tanggal <= ?
       AND (source_table IS NULL OR source_table NOT IN ('zakat', 'infaq'))
-    `, [startDate, endDate]);
+    `, [dateFilter.startDate, dateFilter.endDate]);
 
     // Zakat - HANYA APPROVED
     const [zakatResult] = await db.query(`
@@ -136,7 +146,7 @@ router.get('/summary', async (req, res) => {
       FROM zakat 
       WHERE status = 'approved'
       AND DATE(created_at) >= ? AND DATE(created_at) <= ?
-    `, [startDate, endDate]);
+    `, [dateFilter.startDate, dateFilter.endDate]); 
 
     // Infaq - HANYA APPROVED
     const [infaqResult] = await db.query(`
@@ -144,7 +154,7 @@ router.get('/summary', async (req, res) => {
       FROM infaq 
       WHERE status = 'approved'
       AND DATE(tanggal) >= ? AND DATE(tanggal) <= ?
-    `, [startDate, endDate]);
+    `, [dateFilter.startDate, dateFilter.endDate]); 
 
     const kasManual = Number(pemasukanResult[0].kas_masuk) || 0;
     const totalZakat = Number(zakatResult[0].total_zakat) || 0;
@@ -154,36 +164,50 @@ router.get('/summary', async (req, res) => {
     // Mathematical addition
     const totalPemasukan = kasManual + totalZakat + totalInfaq;
     const saldoBersih = totalPemasukan - totalPengeluaran;
-
-    // const totalPemasukan = 
-    //   pemasukanResult[0].kas_masuk + 
-    //   zakatResult[0].total_zakat + 
-    //   infaqResult[0].total_infaq;
-
-    // const totalPengeluaran = pemasukanResult[0].kas_keluar;
-    // const saldoBersih = totalPemasukan - totalPengeluaran;
     
-    //     console.log('Final summary:', {
+    const [pengeluaranKategoriRows] = await db.query(`
+      SELECT kategori, COALESCE(SUM(jumlah), 0) as total
+      FROM kas_buku_besar
+      WHERE jenis = 'keluar'
+        AND tanggal >= ? AND tanggal <= ?
+        AND (source_table IS NULL OR source_table NOT IN ('zakat', 'infaq'))
+      GROUP BY kategori
+    `, [dateFilter.startDate, dateFilter.endDate]);
+
+    // Map hasil ke object
+    const pengeluaranKategori = {
+      operasional: 0,
+      kegiatan: 0,
+      pemeliharaan: 0,
+      bantuan: 0
+    };
+    pengeluaranKategoriRows.forEach(row => {
+      if (pengeluaranKategori[row.kategori] !== undefined) {
+        pengeluaranKategori[row.kategori] = Number(row.total);
+      }
+    });
+
+    //  Debug log hasil
+    // console.log('Summary calculated for date range:', dateFilter, {
     //   totalPemasukan,
-    //   breakdown: {
-    //     kasManual: pemasukanResult[0].kas_masuk,
-    //     zakat: zakatResult[0].total_zakat,
-    //     infaq: infaqResult[0].total_infaq,
-    //     lelang: 0
-    //   }
+    //   totalPengeluaran,
+    //   saldoBersih
     // });
+
     res.json({
       success: true,
       data: {
         totalPemasukan,
         totalPengeluaran,
         saldoBersih,
+        totalSaldo: saldoBersih,
         breakdown: {
           kasManual: pemasukanResult[0].kas_masuk,
           zakat: zakatResult[0].total_zakat,
           infaq: infaqResult[0].total_infaq,
           lelang: 0
-        }
+        },
+        pengeluaranKategori
       }
     });
 
@@ -329,10 +353,11 @@ router.post('/', async (req, res) => {
   }
 
   try {
+    const jumlahInt = parseInt(jumlah, 10);
     // Insert ke kas_manual, trigger akan otomatis insert ke kas_buku_besar
     const [result] = await db.query(
       'INSERT INTO kas_manual (tanggal, keterangan, jenis, jumlah, kategori, kategori_pemasukan) VALUES (?, ?, ?, ?, ?, ?)',
-      [tanggal, keterangan, jenis, jumlah, kategori || 'operasional', kategori_pemasukan || null]
+      [tanggal, keterangan, jenis, jumlahInt, kategori || 'operasional', kategori_pemasukan || null]
     );
     
     res.status(201).json({ 
@@ -347,47 +372,105 @@ router.post('/', async (req, res) => {
 
 // PUT update transaksi kas manual
 router.put('/:id', async (req, res) => {
-  const { id } = req.params;
-  const { tanggal, keterangan, jenis, jumlah, kategori, kategori_pemasukan } = req.body;
-
-  if (!tanggal || !keterangan || !jenis || !jumlah) {
-    return res.status(400).json({ message: 'Semua field wajib diisi' });
-  }
-
   try {
-    // Update kas_manual, trigger akan otomatis update kas_buku_besar
+    const { id } = req.params;
+    const { tanggal, keterangan, jenis, jumlah, kategori, kategori_pemasukan } = req.body;
+
+
+    const[kbbResult] = await db.query(`
+      SELECT source_id FROM kas_buku_besar
+      WHERE id = ? AND source_table = 'manual'
+      `, [id]);
+    
+    if (kbbResult.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Transaksi tidak ditemukan'
+      });
+    }
+    const jumlahInt = parseInt(jumlah, 10);
+    // debug source_id
+    const manualId = kbbResult[0].source_id;
+    // console.log('Found kas_manual ID:', manualId);
+    // Update ke kas_manual
     const [result] = await db.query(
-      'UPDATE kas_manual SET tanggal = ?, keterangan = ?, jenis = ?, jumlah = ?, kategori = ?, kategori_pemasukan = ? WHERE id = ?',
-      [tanggal, keterangan, jenis, jumlah, kategori || 'operasional', kategori_pemasukan || null, id]
+      `UPDATE kas_manual SET 
+      tanggal = ?, keterangan = ?, jenis = ?, 
+      jumlah = ?, kategori = ?, kategori_pemasukan = ?
+      WHERE id = ?`,
+      [tanggal, keterangan, jenis, jumlahInt, kategori, kategori_pemasukan, manualId]
     );
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({ message: 'Transaksi kas tidak ditemukan' });
+      return res.status(404).json({ message: 'Transaksi tidak ditemukan' });
     }
 
-    res.json({ message: 'Transaksi kas berhasil diupdate' });
+    res.json({ 
+      success: true, 
+      message: 'Transaksi berhasil diperbarui' 
+    });
   } catch (err) {
-    console.error('Gagal mengupdate transaksi kas:', err);
-    res.status(500).json({ message: 'Terjadi kesalahan saat mengupdate transaksi kas' });
+    console.error('Error updating transaction:', err);
+    res.status(500).json({ message: 'Terjadi kesalahan saat memperbarui transaksi' });
   }
 });
 
-// DELETE transaksi kas manual
+// DELETE transaksi kas manual (SOFT DELETE)
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;
 
   try {
-    // Delete dari kas_manual, trigger akan otomatis delete dari kas_buku_besar
-    const [result] = await db.query('DELETE FROM kas_manual WHERE id = ?', [id]);
+    // console.log('Soft deleting kas transaction with kas_buku_besar ID:', id);
 
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: 'Transaksi kas tidak ditemukan' });
+    //Cek di kas_buku_besar untuk dapat source_id
+    const [kbbResult] = await db.query(`
+      SELECT * FROM kas_buku_besar 
+      WHERE id = ? AND source_table = 'manual' AND deleted_at IS NULL
+    `, [id]);
+    
+    if (kbbResult.length === 0) {
+      // console.log('Transaction not found or already deleted:', id);
+      return res.status(404).json({ 
+        success: false,
+        message: 'Transaksi kas tidak ditemukan' 
+      });
     }
 
-    res.json({ message: 'Transaksi kas berhasil dihapus' });
+    const manualId = kbbResult[0].source_id;
+    // console.log('Found manual transaction ID:', manualId);
+
+    // Soft delete kas_manual
+    const [result] = await db.query(
+      'UPDATE kas_manual SET deleted_at = NOW() WHERE id = ? AND deleted_at IS NULL', 
+      [manualId]
+    );
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Transaksi kas manual tidak ditemukan atau sudah dihapus' 
+      });
+    }
+
+    // Soft delete kas_buku_besar (jika trigger tidak jalan)
+    await db.query(
+      'UPDATE kas_buku_besar SET deleted_at = NOW() WHERE source_table = ? AND source_id = ? AND deleted_at IS NULL', 
+      ['manual', manualId]
+    );
+
+    // console.log('Soft delete completed for manual ID:', manualId);
+
+    res.json({ 
+      success: true,
+      message: 'Transaksi kas berhasil dihapus' 
+    });
+
   } catch (err) {
     console.error('Gagal menghapus transaksi kas:', err);
-    res.status(500).json({ message: 'Terjadi kesalahan saat menghapus transaksi kas' });
+    res.status(500).json({ 
+      success: false,
+      message: 'Terjadi kesalahan saat menghapus transaksi kas' 
+    });
   }
 });
 
@@ -397,7 +480,7 @@ router.get('/pending', async (req, res) => {
     // Get pending zakat
     const [zakatRows] = await db.query(`
       SELECT id, nama as nama_pemberi, jumlah, jenis_zakat, bukti_transfer, 
-             metode_pembayaran, created_at, 'zakat' as type
+      metode_pembayaran, created_at, 'zakat' as type
       FROM zakat 
       WHERE status = 'pending'
       ORDER BY created_at DESC
@@ -406,7 +489,7 @@ router.get('/pending', async (req, res) => {
     // Get pending infaq
     const [infaqRows] = await db.query(`
       SELECT id, nama_pemberi, jumlah, kategori_infaq, bukti_transfer, 
-             metode_pembayaran, tanggal as created_at, 'infaq' as type
+      metode_pembayaran, tanggal as created_at, 'infaq' as type
       FROM infaq 
       WHERE status = 'pending'
       ORDER BY tanggal DESC
@@ -569,7 +652,7 @@ router.get('/history', async (req, res) => {
       dateFilter = getPeriodFilter(period);
     }
 
-    console.log('History filter:', { period, type, status, dateFilter });
+    // console.log('History filter:', { period, type, status, dateFilter });
 
     let transactions = [];
 
