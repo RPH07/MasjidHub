@@ -100,7 +100,8 @@ const Kas = () => {
           ))}
         </nav>
       </div>      {/* Tab Content */}
-      <div>        {activeTab === 'overview' && (
+      <div>        
+        {activeTab === 'overview' && (
           <KasOverview
             summary={kasDataHook.summary}
             periodLabel={getPeriodLabel()}
@@ -128,6 +129,7 @@ const Kas = () => {
             onDelete={handleDelete}
             onOpenBukti={openBuktiModal}
             onOpenModal={openTransactionModal}
+            onAddTransaction={() => openTransactionModal('add-pemasukan')}
           />
         )}
 
@@ -137,6 +139,7 @@ const Kas = () => {
             onEdit={handleEdit}
             onDelete={handleDelete}
             onOpenBukti={openBuktiModal}
+            onOpenModal={openTransactionModal}
             onAddTransaction={() => openTransactionModal('add-pengeluaran')}
           />
         )}
@@ -156,7 +159,7 @@ const Kas = () => {
         isOpen={showModal}
         onClose={closeTransactionModal}
         type={modalType}
-        editData={editData}
+        data={editData}
         onSuccess={kasDataHook.refreshData}
       />
 
