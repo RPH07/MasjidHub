@@ -5,37 +5,48 @@ const XLSX = require('xlsx')
 
 // Helper function untuk filter berdasarkan periode
 const getPeriodFilter = (period) => {
-  const today = new Date();
+  // timezone Indonesia (UTC+7)
+  const now = new Date();
+  const indonesiaOffset = 7 * 60; // UTC+7 dalam menit
+  const indonesiaTime = new Date(now.getTime() + (indonesiaOffset * 60 * 1000));
+  
   let startDate, endDate;
 
   switch (period) {
     case 'hari-ini':
-      startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-      endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+      startDate = new Date(Date.UTC(indonesiaTime.getUTCFullYear(), indonesiaTime.getUTCMonth(), indonesiaTime.getUTCDate()));
+      endDate = new Date(Date.UTC(indonesiaTime.getUTCFullYear(), indonesiaTime.getUTCMonth(), indonesiaTime.getUTCDate() + 1));
       break;
+      
     case 'minggu-ini':
-      const startOfWeek = new Date(today);
-      startOfWeek.setDate(today.getDate() - today.getDay());
-      startDate = new Date(startOfWeek.getFullYear(), startOfWeek.getMonth(), startOfWeek.getDate());
-      endDate = new Date(startDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+      const dayOfWeek = indonesiaTime.getUTCDay();
+      const startOfWeek = new Date(Date.UTC(indonesiaTime.getUTCFullYear(), indonesiaTime.getUTCMonth(), indonesiaTime.getUTCDate() - dayOfWeek));
+      startDate = startOfWeek;
+      endDate = new Date(Date.UTC(startOfWeek.getUTCFullYear(), startOfWeek.getUTCMonth(), startOfWeek.getUTCDate() + 7));
       break;
+      
     case 'bulan-ini':
-      startDate = new Date(today.getFullYear(), today.getMonth(), 1);
-      endDate = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+      startDate = new Date(Date.UTC(indonesiaTime.getUTCFullYear(), indonesiaTime.getUTCMonth(), 1));
+      endDate = new Date(Date.UTC(indonesiaTime.getUTCFullYear(), indonesiaTime.getUTCMonth() + 1, 1));
       break;
+      
     case 'tahun-ini':
-      startDate = new Date(today.getFullYear(), 0, 1);
-      endDate = new Date(today.getFullYear() + 1, 0, 1);
+      startDate = new Date(Date.UTC(indonesiaTime.getUTCFullYear(), 0, 1));
+      endDate = new Date(Date.UTC(indonesiaTime.getUTCFullYear() + 1, 0, 1));
       break;
+      
     default:
-      startDate = new Date(today.getFullYear(), today.getMonth(), 1);
-      endDate = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+      startDate = new Date(Date.UTC(indonesiaTime.getUTCFullYear(), indonesiaTime.getUTCMonth(), 1));
+      endDate = new Date(Date.UTC(indonesiaTime.getUTCFullYear(), indonesiaTime.getUTCMonth() + 1, 1));
   }
 
-  return {
+  const result = {
     startDate: startDate.toISOString().split('T')[0],
     endDate: endDate.toISOString().split('T')[0]
   };
+  
+  console.log('Filter result:', result);
+  return result;
 };
 
 router.get('/', async (req, res) => {
@@ -43,34 +54,63 @@ router.get('/', async (req, res) => {
     const { period = 'bulan-ini' } = req.query;
     const { startDate, endDate } = getPeriodFilter(period);
 
-    // 1. Kas manual
-    const [kasRows] = await db.query(`
-      SELECT * FROM kas_buku_besar 
-      WHERE tanggal >= ? AND tanggal <= ?
-      AND (source_table IS NULL OR source_table NOT IN ('zakat', 'infaq'))
-      AND deleted_at IS NULL
-      ORDER BY tanggal DESC, created_at DESC
+    //Kas manual + Zakat + Infaq + Lelang
+    const [allRows] = await db.query(`
+      SELECT 
+        kb.*,
+        DATE_FORMAT(kb.tanggal, '%Y-%m-%d') AS tanggal,
+        -- Zakat fields
+        z.nama as zakat_nama,
+        z.jenis_zakat,
+        z.status as zakat_status,
+        z.created_at as zakat_created_at,
+        -- Infaq fields  
+        i.nama_pemberi as infaq_nama_pemberi,
+        i.keterangan as infaq_keterangan,
+        i.kategori_infaq,
+        i.status as infaq_status,
+        i.tanggal as infaq_tanggal
+      FROM kas_buku_besar kb
+      LEFT JOIN zakat z ON kb.source_table = 'zakat' AND kb.source_id = z.id
+      LEFT JOIN infaq i ON kb.source_table = 'infaq' AND kb.source_id = i.id
+      WHERE kb.tanggal >= ? AND kb.tanggal < ?
+        AND kb.deleted_at IS NULL
+        AND (
+          (kb.source_table = 'zakat' AND z.status = 'approved') OR
+          (kb.source_table = 'infaq' AND i.status = 'approved') OR
+          (kb.source_table = 'manual') OR
+          (kb.source_table = 'lelang')
+        )
+      ORDER BY kb.tanggal DESC, kb.created_at DESC
     `, [startDate, endDate]);
 
-    // 2. Zakat
-    const [zakatRows] = await db.query(`
-      SELECT id, nama, jenis_zakat, jumlah, bukti_transfer, created_at, metode_pembayaran
-      FROM zakat 
-      WHERE status = 'approved' 
-      AND DATE(created_at) >= ? AND DATE(created_at) <= ?
-      ORDER BY created_at DESC
-    `, [startDate, endDate]);
+    // GROUP data by source
+    const kasRows = allRows.filter(row => row.source_table === 'manual' || !row.source_table);
+    
+    const zakatRows = allRows
+      .filter(row => row.source_table === 'zakat')
+      .map(row => ({
+        id: row.source_id,
+        nama: row.zakat_nama,
+        jenis_zakat: row.jenis_zakat,
+        jumlah: row.jumlah,
+        bukti_transfer: row.bukti_transfer,
+        created_at: row.zakat_created_at,
+        metode_pembayaran: row.metode_pembayaran
+      }));
 
-    // 3. Infaq 
-    const [infaqRows] = await db.query(`
-      SELECT id, nama_pemberi, jumlah, keterangan, kategori_infaq, tanggal
-      FROM infaq 
-      WHERE status = 'approved'
-      AND DATE(tanggal) >= ? AND DATE(tanggal) <= ?
-      ORDER BY tanggal DESC
-    `, [startDate, endDate]);
+    const infaqRows = allRows
+      .filter(row => row.source_table === 'infaq')
+      .map(row => ({
+        id: row.source_id,
+        nama_pemberi: row.infaq_nama_pemberi,
+        jumlah: row.jumlah,
+        keterangan: row.infaq_keterangan,
+        kategori_infaq: row.kategori_infaq,
+        tanggal: row.infaq_tanggal
+      }));
 
-    const lelangRows = []; // Kosong sementara
+    const lelangRows = allRows.filter(row => row.source_table === 'lelang');
 
     res.json({
       success: true,
@@ -113,6 +153,7 @@ router.get('/summary', async (req, res) => {
       FROM kas_buku_besar
       WHERE deleted_at IS NULL
     `);
+    
 
     const totalMasuk = Number(totalSaldoRows[0].total_masuk);
     const totalKeluar = Number(totalSaldoRows[0].total_keluar);
@@ -134,36 +175,41 @@ router.get('/summary', async (req, res) => {
 
     // 3. HITUNG PERIODE SEBELUMNYA
     const getPreviousPeriod = (period) => {
+      // Gunakan timezone Indonesia (UTC+7)
       const today = new Date();
+      const jakartaOffset = 7 * 60;
+      const localOffset = today.getTimezoneOffset();
+      const jakartaTime = new Date(today.getTime() + (localOffset + jakartaOffset) * 60000);
+      
       let prevStartDate, prevEndDate;
 
       switch (period) {
         case 'hari-ini':
-          const yesterday = new Date(today);
-          yesterday.setDate(today.getDate() - 1);
+          const yesterday = new Date(jakartaTime);
+          yesterday.setDate(jakartaTime.getDate() - 1);
           prevStartDate = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
           prevEndDate = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate() + 1);
           break;
         case 'minggu-ini':
-          const prevWeekStart = new Date(today);
-          prevWeekStart.setDate(today.getDate() - today.getDay() - 7);
+          const prevWeekStart = new Date(jakartaTime);
+          prevWeekStart.setDate(jakartaTime.getDate() - jakartaTime.getDay() - 7);
           prevStartDate = new Date(prevWeekStart.getFullYear(), prevWeekStart.getMonth(), prevWeekStart.getDate());
           prevEndDate = new Date(prevStartDate.getTime() + 7 * 24 * 60 * 60 * 1000);
           break;
         case 'bulan-ini':
-          const prevMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+          const prevMonth = new Date(jakartaTime.getFullYear(), jakartaTime.getMonth() - 1, 1);
           prevStartDate = prevMonth;
-          prevEndDate = new Date(today.getFullYear(), today.getMonth(), 1);
+          prevEndDate = new Date(jakartaTime.getFullYear(), jakartaTime.getMonth(), 1);
           break;
         case 'tahun-ini':
-          const prevYear = new Date(today.getFullYear() - 1, 0, 1);
+          const prevYear = new Date(jakartaTime.getFullYear() - 1, 0, 1);
           prevStartDate = prevYear;
-          prevEndDate = new Date(today.getFullYear(), 0, 1);
+          prevEndDate = new Date(jakartaTime.getFullYear(), 0, 1);
           break;
         default:
-          const prevMonthDefault = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+          const prevMonthDefault = new Date(jakartaTime.getFullYear(), jakartaTime.getMonth() - 1, 1);
           prevStartDate = prevMonthDefault;
-          prevEndDate = new Date(today.getFullYear(), today.getMonth(), 1);
+          prevEndDate = new Date(jakartaTime.getFullYear(), jakartaTime.getMonth(), 1);
       }
 
       return {
@@ -204,9 +250,24 @@ router.get('/summary', async (req, res) => {
 
     // 5. HITUNG PERSENTASE PERUBAHAN
     const calculatePercentageChange = (current, previous) => {
-      if (previous === 0 && current === 0) return 0;
-      if (previous === 0) return current > 0 ? 100 : -100;
-      return ((current - previous) / Math.abs(previous)) * 100;
+      const curr = parseFloat(current) || 0;
+      const prev = parseFloat(previous) || 0;
+
+      // No change scenario
+      if (curr === prev) return 0;
+      
+      // Handle zero previous value
+      if (prev === 0) {
+        if (curr === 0) return 0;
+        return curr > 0 ? 100 : -100;
+      }
+
+      // Calculate percentage
+      let percentage = ((curr - prev) / Math.abs(prev)) * 100;
+      // Clamp percentage to -100% to 100%
+      percentage = Math.max(-100, Math.min(100, percentage));
+      
+      return Math.round(percentage * 10) / 10;
     };
 
     const percentageChanges = {
@@ -548,8 +609,8 @@ router.get('/history', async (req, res) => {
       period = 'bulan-ini',
       startDate,
       endDate,
-      type = 'all', // 'zakat', 'infaq', 'kas', 'all'
-      status = 'all' // 'approved', 'rejected', 'pending', 'all'
+      type = 'all',
+      status = 'all'
     } = req.query;
 
     // Get date filter
@@ -560,11 +621,9 @@ router.get('/history', async (req, res) => {
       dateFilter = getPeriodFilter(period);
     }
 
-    // console.log('History filter:', { period, type, status, dateFilter });
-
     let transactions = [];
 
-    // 1. Fetch Zakat data
+    // 1. Fetch Zakat data ✅ FIX
     if (type === 'all' || type === 'zakat') {
       let zakatQuery = `
         SELECT 
@@ -581,7 +640,7 @@ router.get('/history', async (req, res) => {
           'zakat' as type,
           'Zakat' as type_label
         FROM zakat 
-        WHERE DATE(created_at) >= ? AND DATE(created_at) <= ?
+        WHERE DATE(created_at) >= ? AND DATE(created_at) < ?  -- ✅ FIX: Ganti <= jadi <
       `;
       
       const zakatParams = [dateFilter.startDate, dateFilter.endDate];
@@ -597,7 +656,7 @@ router.get('/history', async (req, res) => {
       transactions.push(...zakatRows);
     }
 
-    // 2. Fetch Infaq data
+    // 2. Fetch Infaq data ✅ FIX
     if (type === 'all' || type === 'infaq') {
       let infaqQuery = `
         SELECT 
@@ -615,7 +674,7 @@ router.get('/history', async (req, res) => {
           'infaq' as type,
           'Infaq' as type_label
         FROM infaq 
-        WHERE DATE(tanggal) >= ? AND DATE(tanggal) <= ?
+        WHERE DATE(tanggal) >= ? AND DATE(tanggal) < ?  -- ✅ FIX: Ganti <= jadi <
       `;
       
       const infaqParams = [dateFilter.startDate, dateFilter.endDate];
@@ -631,12 +690,12 @@ router.get('/history', async (req, res) => {
       transactions.push(...infaqRows);
     }
 
-    // 3. Fetch Kas Manual data (always approved)
+    // 3. Fetch Kas Manual data ✅ FIX
     if (type === 'all' || type === 'kas') {
       const kasQuery = `
         SELECT 
           id,
-          keterangan as nama_pemberi,
+          deskripsi as nama_pemberi,  -- ✅ FIX: Pakai deskripsi bukan keterangan
           jumlah,
           jenis as kas_jenis,
           kategori,
@@ -649,8 +708,9 @@ router.get('/history', async (req, res) => {
           'kas' as type,
           CONCAT('Kas ', UPPER(jenis)) as type_label
         FROM kas_buku_besar 
-        WHERE tanggal >= ? AND tanggal <= ?
+        WHERE tanggal >= ? AND tanggal < ?  -- ✅ FIX: Ganti <= jadi <
         AND (source_table IS NULL OR source_table NOT IN ('zakat', 'infaq'))
+        AND deleted_at IS NULL
       `;
       
       const kasParams = [dateFilter.startDate, dateFilter.endDate];
@@ -752,7 +812,7 @@ router.get('/history/export', async (req, res) => {
           created_at,
           'zakat' as type
         FROM zakat 
-        WHERE DATE(created_at) >= ? AND DATE(created_at) <= ?
+        WHERE DATE(created_at) >= ? AND DATE(created_at) < ?
       `;
       
       const zakatParams = [dateFilter.startDate, dateFilter.endDate];
@@ -781,7 +841,7 @@ router.get('/history/export', async (req, res) => {
           tanggal as created_at,
           'infaq' as type
         FROM infaq 
-        WHERE DATE(tanggal) >= ? AND DATE(tanggal) <= ?
+        WHERE DATE(tanggal) >= ? AND DATE(tanggal) < ?
       `;
       
       const infaqParams = [dateFilter.startDate, dateFilter.endDate];
@@ -813,7 +873,7 @@ router.get('/history/export', async (req, res) => {
             NULL as jenis_zakat,
             NULL as keterangan
           FROM kas_buku_besar 
-          WHERE tanggal >= ? AND tanggal <= ?
+          WHERE tanggal >= ? AND tanggal < ?
           AND (source_table IS NULL OR source_table NOT IN ('zakat', 'infaq'))
           AND deleted_at IS NULL
         `, [dateFilter.startDate, dateFilter.endDate]);
