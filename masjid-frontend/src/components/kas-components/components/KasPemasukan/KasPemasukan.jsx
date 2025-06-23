@@ -25,8 +25,8 @@ const KasPemasukan = ({
 
       {/* Desktop Table View - Ditampilkan pada layar besar (sm dan ke atas) */}
       <div className="hidden sm:block rounded-lg border bg-white shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[700px]">
+        <div className="overflow-x-auto no-scrollbar">
+          <table className="w-full min-w-[800px]">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
@@ -36,7 +36,10 @@ const KasPemasukan = ({
                   Kategori
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Nama/Deskripsi
+                  Nama Jamaah
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Deskripsi
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Metode
@@ -54,51 +57,51 @@ const KasPemasukan = ({
             </thead>
             <tbody className="divide-y divide-gray-200">
               {/* Data Zakat */}
-            {zakatData.map((item) => (
-              <tr key={`zakat-${item.id}`}>
-                <td className="px-6 py-4 text-sm text-gray-900">
-                  {new Date(item.created_at).toLocaleDateString('id-ID')}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-900">Zakat {item.jenis_zakat}</td>
-                <td className="px-6 py-4 text-sm text-gray-900">{item.nama}</td>
-                <td className="px-6 py-4 text-sm text-gray-900">
-                  <span
-                    className={`px-2 py-1 text-xs font-medium rounded-full ${
-                      item.metode_pembayaran === 'qris'
-                        ? 'bg-purple-100 text-purple-800'
-                        : item.metode_pembayaran === 'cash'
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-blue-100 text-blue-800'
-                    }`}
-                  >
-                    {item.metode_pembayaran === 'qris'
-                      ? '📱 QRIS'
-                      : item.metode_pembayaran === 'cash'
-                      ? '💵 Tunai'
-                      : '🏦 Transfer Bank'}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-sm font-medium text-green-600">
-                  {formatCurrency(item.jumlah)}
-                </td>
-                <td className="px-6 py-4">
-                  {item.bukti_transfer ? (
-                    <button
-                      onClick={() => onOpenBukti(item.bukti_transfer)}
-                      className="text-blue-600 hover:text-blue-900 text-sm bg-blue-50 px-2 py-1 rounded"
+              {zakatData.map((item) => (
+                <tr key={`zakat-${item.id}`}>
+                  <td className="px-6 py-4 text-sm text-gray-900">
+                    {new Date(item.created_at).toLocaleDateString('id-ID')}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-900">Zakat {item.jenis_zakat}</td>
+                  <td className="px-6 py-4 text-sm text-gray-900">{item.nama}</td>
+                  <td className="px-6 py-4 text-sm text-gray-500">-</td>
+                  <td className="px-6 py-4 text-sm text-gray-900">
+                    <span
+                      className={`px-2 py-1 text-xs font-medium rounded-full ${
+                        item.metode_pembayaran === 'qris'
+                          ? 'bg-purple-100 text-purple-800'
+                          : item.metode_pembayaran === 'cash'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-blue-100 text-blue-800'
+                      }`}
                     >
-                      Lihat Bukti
-                    </button>
-                  ) : (
-                    <span className="text-gray-400 text-sm">Tidak ada</span>
-                  )}
-                </td>
-                <td className="px-6 py-4">
-                  <span className="text-green-600 text-sm font-medium">✓ Approved</span>
-                </td>
-              </tr>
-            ))}
-
+                      {item.metode_pembayaran === 'qris'
+                        ? '📱 QRIS'
+                        : item.metode_pembayaran === 'cash'
+                        ? '💵 Tunai'
+                        : '🏦 Transfer Bank'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm font-medium text-green-600">
+                    {formatCurrency(item.jumlah)}
+                  </td>
+                  <td className="px-6 py-4">
+                    {item.bukti_transfer ? (
+                      <button
+                        onClick={() => onOpenBukti(item.bukti_transfer)}
+                        className="text-blue-600 hover:text-blue-900 text-sm bg-blue-50 px-2 py-1 rounded"
+                      >
+                        Lihat Bukti
+                      </button>
+                    ) : (
+                      <span className="text-gray-400 text-sm">Tidak ada</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-green-600 text-sm font-medium">✓ Approved</span>
+                  </td>
+                </tr>
+              ))}
 
               {/* Data Infaq */}
               {infaqData.map((item) => (
@@ -108,7 +111,10 @@ const KasPemasukan = ({
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">Infaq</td>
                   <td className="px-6 py-4 text-sm text-gray-900">
-                    {item.keterangan || item.nama_pemberi}
+                    {item.nama_pemberi || '-'}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-900">
+                    {item.keterangan || '-'}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
                     <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
@@ -117,7 +123,7 @@ const KasPemasukan = ({
                   </td>
                   <td className="px-6 py-4 text-sm font-medium text-green-600">
                     {formatCurrency(item.jumlah)}
-                  </td>{" "}
+                  </td>
                   <td className="px-6 py-4">
                     <span className="text-gray-400 text-sm">Tidak ada</span>
                   </td>
@@ -131,8 +137,10 @@ const KasPemasukan = ({
 
               {/* Data Kas Masuk (Manual) */}
               {kasData
-                .filter((item) => item.jenis === "masuk")
-                .map((item) => (
+              .filter((item) => item.jenis === "masuk")
+              .map((item) => {
+                
+                return (
                   <tr key={`kas-${item.id}`}>
                     <td className="px-6 py-4 text-sm text-gray-900">
                       {new Date(item.tanggal).toLocaleDateString("id-ID")}
@@ -142,7 +150,10 @@ const KasPemasukan = ({
                         "Donasi Manual"}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
-                      {item.keterangan}
+                      {item.nama_donatur || item.nama || item.nama_pemberi || 'Hamba Allah'}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      {item.keterangan || item.deskripsi || item.description || 'Tidak ada deskripsi'}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
                       <span className="px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-800">
@@ -173,13 +184,14 @@ const KasPemasukan = ({
                       </div>
                     </td>
                   </tr>
-                ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Mobile Card View - Ditampilkan pada layar kecil (di bawah sm) */}
+      {/* Mobile Card View - Update juga untuk mobile */}
       <div className="block sm:hidden space-y-4">
         {/* Data Zakat */}
         {zakatData.map((item) => (
@@ -198,7 +210,9 @@ const KasPemasukan = ({
             <div className="text-sm font-medium text-gray-900 mb-1">
               Zakat {item.jenis_zakat}
             </div>
-            <div className="text-sm text-gray-600 mb-2">{item.nama}</div>
+            <div className="text-sm text-gray-600 mb-1">
+              <span className="font-medium">Nama:</span> {item.nama}
+            </div>
             <div className="flex justify-between items-center mb-2">
               <span
                 className={`px-2 py-1 text-xs font-medium rounded-full ${
@@ -249,9 +263,16 @@ const KasPemasukan = ({
               </span>
             </div>
             <div className="text-sm font-medium text-gray-900 mb-1">Infaq</div>
-            <div className="text-sm text-gray-600 mb-2">
-              {item.keterangan || item.nama_pemberi}
-            </div>
+            {item.nama_pemberi && (
+              <div className="text-sm text-gray-600 mb-1">
+                <span className="font-medium">Nama:</span> {item.nama_pemberi}
+              </div>
+            )}
+            {item.keterangan && (
+              <div className="text-sm text-gray-600 mb-2">
+                <span className="font-medium">Deskripsi:</span> {item.keterangan}
+              </div>
+            )}
             <div className="flex justify-between items-center mb-2">
               <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
                 📝 Form Online
@@ -267,51 +288,57 @@ const KasPemasukan = ({
         ))}
 
         {/* Data Kas Masuk (Manual) */}
-        {kasData
-          .filter((item) => item.jenis === "masuk")
-          .map((item) => (
-            <div
-              key={`kas-mobile-${item.id}`}
-              className="bg-white border rounded-lg p-4 shadow-sm"
-            >
-              <div className="flex justify-between items-start mb-2">
-                <div className="text-sm text-gray-500">
-                  {new Date(item.tanggal).toLocaleDateString("id-ID")}
-                </div>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => onEdit(item)}
-                    className="text-blue-600 hover:text-blue-900 text-sm"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => onDelete(item.id)}
-                    className="text-red-600 hover:text-red-900 text-sm"
-                  >
-                    Hapus
-                  </button>
-                </div>
+      {kasData
+        .filter((item) => item.jenis === "masuk")
+        .map((item) => (
+          <div
+            key={`kas-mobile-${item.id}`}
+            className="bg-white border rounded-lg p-4 shadow-sm"
+          >
+            <div className="flex justify-between items-start mb-2">
+              <div className="text-sm text-gray-500">
+                {new Date(item.tanggal).toLocaleDateString("id-ID")}
               </div>
-              <div className="text-sm font-medium text-gray-900 mb-1">
-                {kategoriPemasukan[item.kategori_pemasukan] || "Donasi Manual"}
-              </div>
-              <div className="text-sm text-gray-600 mb-2">
-                {item.keterangan}
-              </div>
-              <div className="flex justify-between items-center mb-2">
-                <span className="px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-800">
-                  ✏️ Input Manual
-                </span>
-                <div className="text-lg font-medium text-green-600">
-                  {formatCurrency(item.jumlah)}
-                </div>
-              </div>
-              <div className="flex justify-end">
-                <span className="text-gray-400 text-sm">Manual</span>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => onEdit(item)}
+                  className="text-blue-600 hover:text-blue-900 text-sm"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => onDelete(item.id)}
+                  className="text-red-600 hover:text-red-900 text-sm"
+                >
+                  Hapus
+                </button>
               </div>
             </div>
-          ))}
+            <div className="text-sm font-medium text-gray-900 mb-1">
+              {kategoriPemasukan[item.kategori_pemasukan] || "Donasi Manual"}
+            </div>
+            {/* Tambah nama donatur di mobile view juga */}
+            {item.nama_donatur && (
+              <div className="text-sm text-gray-600 mb-1">
+                <span className="font-medium">Nama:</span> {item.nama_donatur}
+              </div>
+            )}
+            <div className="text-sm text-gray-600 mb-2">
+              <span className="font-medium">Deskripsi:</span> {item.keterangan}
+            </div>
+            <div className="flex justify-between items-center mb-2">
+              <span className="px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-800">
+                ✏️ Input Manual
+              </span>
+              <div className="text-lg font-medium text-green-600">
+                {formatCurrency(item.jumlah)}
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <span className="text-gray-400 text-sm">Manual</span>
+            </div>
+          </div>
+      ))}
       </div>
     </div>
   );
