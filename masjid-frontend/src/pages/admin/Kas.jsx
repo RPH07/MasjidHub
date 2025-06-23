@@ -152,6 +152,7 @@ const Kas = () => {
             infaqData={kasDataHook.infaqData}
             onOpenBukti={openBuktiModal}
             kategoriPemasukan={kategoriPemasukan}
+            currentPeriod={selectedPeriod}
           />
         )}
       </div>
