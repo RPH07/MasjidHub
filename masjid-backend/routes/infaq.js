@@ -71,7 +71,7 @@ router.put('/:id/validate', async (req, res) => {
       
       await db.execute(`
         INSERT INTO kas_buku_besar 
-        (tanggal, keterangan, jenis, jumlah, kategori, source_table, source_id, created_at)
+        (tanggal, deskripsi, jenis, jumlah, kategori, source_table, source_id, created_at)
         VALUES (?, ?, 'masuk', ?, ?, 'infaq', ?, NOW())
       `, [infaqData.tanggal, keterangan, infaqData.jumlah, kategori, id]);
 
