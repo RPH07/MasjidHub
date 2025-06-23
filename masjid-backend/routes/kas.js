@@ -37,31 +37,6 @@ const getPeriodFilter = (period) => {
   };
 };
 
-// ===== MAIN ENDPOINT: GET kas buku besar berdasarkan periode =====
-// router.get('/', async (req, res) => {
-//   try {
-//     const { period = 'bulan-ini', startDate, endDate } = req.query;
-    
-//     let dateFilter;
-//     if (startDate && endDate) {
-//       dateFilter = { startDate, endDate };
-//     } else {
-//       dateFilter = getPeriodFilter(period);
-//     }
-
-//     // Ambil dari kas_buku_besar
-//     const [rows] = await db.query(
-//       'SELECT * FROM kas_buku_besar WHERE tanggal >= ? AND tanggal < ? ORDER BY tanggal DESC, id DESC',
-//       [dateFilter.startDate, dateFilter.endDate]
-//     );
-    
-//     res.json(rows);
-//   } catch (err) {
-//     console.error('Gagal mengambil data kas buku besar:', err);
-//     res.status(500).json({ message: 'Terjadi kesalahan saat mengambil data kas' });
-//   }
-// });
-
 router.get('/', async (req, res) => {
   try {
     const { period = 'bulan-ini' } = req.query;
@@ -296,10 +271,8 @@ router.get('/summary', async (req, res) => {
   }
 });
 
-
-
-// ===== GET kas manual only (untuk CRUD admin) =====
-router.get('/manual', async (req, res) => {
+// GET zakat berdasarkan periode
+router.get('/zakat', async (req, res) => {
   try {
     const { period = 'bulan-ini', startDate, endDate } = req.query;
     
@@ -310,31 +283,7 @@ router.get('/manual', async (req, res) => {
       dateFilter = getPeriodFilter(period);
     }
 
-    // Ambil hanya data manual dari kas_manual
-    const [rows] = await db.query(
-      'SELECT * FROM kas_manual WHERE tanggal >= ? AND tanggal < ? ORDER BY tanggal DESC',
-      [dateFilter.startDate, dateFilter.endDate]
-    );
-    
-    res.json(rows);
-  } catch (err) {
-    console.error('Gagal mengambil data kas manual:', err);
-    res.status(500).json({ message: 'Terjadi kesalahan saat mengambil data kas manual' });
-  }
-});
-
-
-// GET zakat berdasarkan periode (untuk compatibility)
-router.get('/zakat', async (req, res) => {
-  try {
-    const { period = 'bulan-ini', startDate, endDate } = req.query;
-    
-    let dateFilter;
-    if (startDate && endDate) {
-      dateFilter = { startDate, endDate };
-    } else {
-      dateFilter = getPeriodFilter(period);
-    }    // Ambil dari kas_buku_besar dengan filter source_table = 'zakat' dan status approved
+    // Ambil dari kas_buku_besar dengan filter source_table = 'zakat' dan status approved
     const [rows] = await db.query(`
       SELECT 
         kb.*,
@@ -354,7 +303,7 @@ router.get('/zakat', async (req, res) => {
   }
 });
 
-// GET infaq berdasarkan periode (untuk compatibility)
+// GET infaq berdasarkan periode
 router.get('/infaq', async (req, res) => {
   try {
     const { period = 'bulan-ini', startDate, endDate } = req.query;
@@ -386,7 +335,7 @@ router.get('/infaq', async (req, res) => {
   }
 });
 
-// GET lelang berdasarkan periode (untuk compatibility)
+// GET lelang berdasarkan periode
 router.get('/lelang', async (req, res) => {
   try {
     const { period = 'bulan-ini', startDate, endDate } = req.query;
@@ -448,7 +397,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PUT update transaksi kas manual (line ~445)
+// PUT update transaksi kas manual
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -476,51 +425,6 @@ router.put('/:id', async (req, res) => {
       jumlah = ?, kategori = ?, kategori_pemasukan = ?, nama_pemberi = ?
       WHERE id = ?`,
       [tanggal, keterangan, jenis, jumlahInt, kategori, kategori_pemasukan, nama_pemberi || null, manualId] // Tambah nama_pemberi
-    );
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: 'Transaksi tidak ditemukan' });
-    }
-
-    res.json({ 
-      success: true, 
-      message: 'Transaksi berhasil diperbarui' 
-    });
-  } catch (err) {
-    console.error('Error updating transaction:', err);
-    res.status(500).json({ message: 'Terjadi kesalahan saat memperbarui transaksi' });
-  }
-});
-
-// PUT update transaksi kas manual
-router.put('/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { tanggal, keterangan, jenis, jumlah, kategori, kategori_pemasukan } = req.body;
-
-
-    const[kbbResult] = await db.query(`
-      SELECT source_id FROM kas_buku_besar
-      WHERE id = ? AND source_table = 'manual'
-      `, [id]);
-    
-    if (kbbResult.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Transaksi tidak ditemukan'
-      });
-    }
-    const jumlahInt = parseInt(jumlah, 10);
-    // debug source_id
-    const manualId = kbbResult[0].source_id;
-    // console.log('Found kas_manual ID:', manualId);
-    // Update ke kas_manual
-    const [result] = await db.query(
-      `UPDATE kas_manual SET 
-      tanggal = ?, keterangan = ?, jenis = ?, 
-      jumlah = ?, kategori = ?, kategori_pemasukan = ?
-      WHERE id = ?`,
-      [tanggal, keterangan, jenis, jumlahInt, kategori, kategori_pemasukan, manualId]
     );
 
     if (result.affectedRows === 0) {
@@ -633,125 +537,6 @@ router.get('/pending', async (req, res) => {
       success: false,
       message: 'Terjadi kesalahan server'
     });
-  }
-});
-
-// Endpoint untuk validate transaction (unified)
-router.put('/validate/:type/:id', async (req, res) => {
-  try {
-    const { type, id } = req.params;
-    const { action, reason } = req.body;
-
-    if (!['zakat', 'infaq'].includes(type)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Type harus zakat atau infaq' 
-      });
-    }
-
-    // Forward to appropriate route
-    if (type === 'zakat') {
-      // Forward to zakat validation
-      const zakatRoute = require('./zakat');
-      req.params.id = id;
-      return zakatRoute.handle(req, res);
-    } else {
-      // Forward to infaq validation  
-      const infaqRoute = require('./infaq');
-      req.params.id = id;
-      return infaqRoute.handle(req, res);
-    }
-
-  } catch (error) {
-    console.error('Error in validation router:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Terjadi kesalahan server'
-    });
-  }
-});
-
-// ===== PUT approve/reject pembayaran =====
-router.put('/validate/:type/:id', async (req, res) => {
-  try {
-    const { type, id } = req.params;
-    const { action } = req.body; // 'approve' or 'reject'
-
-    if (!['approve', 'reject'].includes(action)) {
-      return res.status(400).json({ message: 'Action harus approve atau reject' });
-    }
-
-    if (!['zakat', 'infaq'].includes(type)) {
-      return res.status(400).json({ message: 'Type harus zakat atau infaq' });
-    }
-
-    let tableName = type;
-    let dataQuery = '';
-    let updateQuery = '';
-
-    if (type === 'zakat') {
-      dataQuery = 'SELECT * FROM zakat WHERE id = ?';
-      updateQuery = 'UPDATE zakat SET status = ?, validated_at = NOW() WHERE id = ?';
-    } else {
-      dataQuery = 'SELECT * FROM infaq WHERE id = ?';
-      updateQuery = 'UPDATE infaq SET status = ?, validated_at = NOW() WHERE id = ?';
-    }
-
-    // Get data first
-    const [dataRows] = await db.query(dataQuery, [id]);
-    
-    if (dataRows.length === 0) {
-      return res.status(404).json({ message: `Data ${type} tidak ditemukan` });
-    }
-
-    const itemData = dataRows[0];
-
-    if (itemData.status !== 'pending') {
-      return res.status(400).json({ message: 'Data sudah divalidasi sebelumnya' });
-    }
-
-    if (action === 'approve') {
-      // Update status ke approved
-      await db.query(updateQuery, ['approved', id]);
-      
-      // Insert ke kas_buku_besar
-      let kategori, keterangan, jumlah, tanggal;
-      
-      if (type === 'zakat') {
-        kategori = `zakat_${itemData.jenis_zakat}`;
-        keterangan = `Zakat ${itemData.jenis_zakat} dari ${itemData.nama}`;
-        jumlah = itemData.nominal || itemData.jumlah;
-        tanggal = new Date().toISOString().split('T')[0];
-      } else {
-        kategori = `infaq_${itemData.kategori_infaq || 'umum'}`;
-        keterangan = `Infaq dari ${itemData.nama_pemberi} - ${itemData.infaq_keterangan || ''}`;
-        jumlah = itemData.nominal || itemData.jumlah;
-        tanggal = itemData.tanggal;
-      }
-
-      await db.query(`
-        INSERT INTO kas_buku_besar (tanggal, deskripsi, jenis, jumlah, kategori, source_table, source_id, created_at)
-        VALUES (?, ?, 'masuk', ?, ?, ?, ?, NOW())
-      `, [tanggal, keterangan, jumlah, kategori, type, id]);
-
-      res.json({
-        success: true,
-        message: `Pembayaran ${type} berhasil diapprove`
-      });
-    } else {
-      // Update status ke rejected
-      await db.query(updateQuery, ['rejected', id]);
-      
-      res.json({
-        success: true,
-        message: `Pembayaran ${type} telah ditolak`
-      });
-    }
-
-  } catch (err) {
-    console.error('Error validating payment:', err);
-    res.status(500).json({ message: 'Terjadi kesalahan saat validasi pembayaran' });
-      console.error('Error validating payment:', err.message || err.sqlMessage || err);
   }
 });
 
