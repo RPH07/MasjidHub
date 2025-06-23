@@ -119,106 +119,184 @@ router.get('/', async (req, res) => {
 router.get('/summary', async (req, res) => {
   try {
     const { period = 'bulan-ini', startDate, endDate } = req.query;
-    
+
     let dateFilter;
     if (startDate && endDate) {
       dateFilter = { startDate, endDate };
-      // console.log('Using custom date range:', dateFilter); // Debug log
     } else {
-      // Fallback ke period filter
       dateFilter = getPeriodFilter(period);
-      //console.log('Using period filter for:', period, dateFilter); // Debug log
     }
 
-    // Kas manual saja (EXCLUDE zakat/infaq untuk avoid double counting)
-    const [pemasukanResult] = await db.query(`
+    const { startDate: sDate, endDate: eDate } = dateFilter;
+
+    // 1. HITUNG SALDO TOTAL (dari awal sampai sekarang)
+    const [totalSaldoRows] = await db.query(`
       SELECT 
-        COALESCE(SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END), 0) as kas_masuk,
-        COALESCE(SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END), 0) as kas_keluar
-      FROM kas_buku_besar 
-      WHERE tanggal >= ? AND tanggal <= ?
-      AND (source_table IS NULL OR source_table NOT IN ('zakat', 'infaq'))
-    `, [dateFilter.startDate, dateFilter.endDate]);
-
-    // Zakat - HANYA APPROVED
-    const [zakatResult] = await db.query(`
-      SELECT COALESCE(SUM(jumlah), 0) as total_zakat
-      FROM zakat 
-      WHERE status = 'approved'
-      AND DATE(created_at) >= ? AND DATE(created_at) <= ?
-    `, [dateFilter.startDate, dateFilter.endDate]); 
-
-    // Infaq - HANYA APPROVED
-    const [infaqResult] = await db.query(`
-      SELECT COALESCE(SUM(jumlah), 0) as total_infaq
-      FROM infaq 
-      WHERE status = 'approved'
-      AND DATE(tanggal) >= ? AND DATE(tanggal) <= ?
-    `, [dateFilter.startDate, dateFilter.endDate]); 
-
-    const kasManual = Number(pemasukanResult[0].kas_masuk) || 0;
-    const totalZakat = Number(zakatResult[0].total_zakat) || 0;
-    const totalInfaq = Number(infaqResult[0].total_infaq) || 0;
-    const totalPengeluaran = Number(pemasukanResult[0].kas_keluar) || 0;
-
-    // Mathematical addition
-    const totalPemasukan = kasManual + totalZakat + totalInfaq;
-    const saldoBersih = totalPemasukan - totalPengeluaran;
-    
-    const [pengeluaranKategoriRows] = await db.query(`
-      SELECT kategori, COALESCE(SUM(jumlah), 0) as total
+        COALESCE(SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END), 0) as total_masuk,
+        COALESCE(SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END), 0) as total_keluar
       FROM kas_buku_besar
-      WHERE jenis = 'keluar'
-        AND tanggal >= ? AND tanggal <= ?
-        AND (source_table IS NULL OR source_table NOT IN ('zakat', 'infaq'))
-      GROUP BY kategori
-    `, [dateFilter.startDate, dateFilter.endDate]);
+      WHERE deleted_at IS NULL
+    `);
 
-    // Map hasil ke object
-    const pengeluaranKategori = {
-      operasional: 0,
-      kegiatan: 0,
-      pemeliharaan: 0,
-      bantuan: 0
-    };
-    pengeluaranKategoriRows.forEach(row => {
-      if (pengeluaranKategori[row.kategori] !== undefined) {
-        pengeluaranKategori[row.kategori] = Number(row.total);
+    const totalMasuk = Number(totalSaldoRows[0].total_masuk);
+    const totalKeluar = Number(totalSaldoRows[0].total_keluar);
+    const totalSaldo = totalMasuk - totalKeluar;
+
+    // 2. HITUNG TRANSAKSI PERIODE SAAT INI
+    const [periodRows] = await db.query(`
+      SELECT 
+        COALESCE(SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END), 0) as period_masuk,
+        COALESCE(SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END), 0) as period_keluar
+      FROM kas_buku_besar
+      WHERE tanggal >= ? AND tanggal < ?
+        AND deleted_at IS NULL
+    `, [sDate, eDate]);
+
+    const periodMasuk = Number(periodRows[0].period_masuk);
+    const periodKeluar = Number(periodRows[0].period_keluar);
+    const periodSaldo = periodMasuk - periodKeluar;
+
+    // 3. HITUNG PERIODE SEBELUMNYA
+    const getPreviousPeriod = (period) => {
+      const today = new Date();
+      let prevStartDate, prevEndDate;
+
+      switch (period) {
+        case 'hari-ini':
+          const yesterday = new Date(today);
+          yesterday.setDate(today.getDate() - 1);
+          prevStartDate = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
+          prevEndDate = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate() + 1);
+          break;
+        case 'minggu-ini':
+          const prevWeekStart = new Date(today);
+          prevWeekStart.setDate(today.getDate() - today.getDay() - 7);
+          prevStartDate = new Date(prevWeekStart.getFullYear(), prevWeekStart.getMonth(), prevWeekStart.getDate());
+          prevEndDate = new Date(prevStartDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+          break;
+        case 'bulan-ini':
+          const prevMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+          prevStartDate = prevMonth;
+          prevEndDate = new Date(today.getFullYear(), today.getMonth(), 1);
+          break;
+        case 'tahun-ini':
+          const prevYear = new Date(today.getFullYear() - 1, 0, 1);
+          prevStartDate = prevYear;
+          prevEndDate = new Date(today.getFullYear(), 0, 1);
+          break;
+        default:
+          const prevMonthDefault = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+          prevStartDate = prevMonthDefault;
+          prevEndDate = new Date(today.getFullYear(), today.getMonth(), 1);
       }
+
+      return {
+        startDate: prevStartDate.toISOString().split('T')[0],
+        endDate: prevEndDate.toISOString().split('T')[0]
+      };
+    };
+
+    // 4. HITUNG SALDO PERIODE SEBELUMNYA
+    const prevPeriod = getPreviousPeriod(period);
+    
+    // Saldo sampai akhir periode sebelumnya
+    const [prevTotalSaldoRows] = await db.query(`
+      SELECT 
+        COALESCE(SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END), 0) as prev_total_masuk,
+        COALESCE(SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END), 0) as prev_total_keluar
+      FROM kas_buku_besar
+      WHERE tanggal < ?
+        AND deleted_at IS NULL
+    `, [sDate]);
+
+    const prevTotalMasuk = Number(prevTotalSaldoRows[0].prev_total_masuk);
+    const prevTotalKeluar = Number(prevTotalSaldoRows[0].prev_total_keluar);
+    const prevTotalSaldo = prevTotalMasuk - prevTotalKeluar;
+
+    // Transaksi pada periode sebelumnya
+    const [prevPeriodRows] = await db.query(`
+      SELECT 
+        COALESCE(SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END), 0) as prev_period_masuk,
+        COALESCE(SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END), 0) as prev_period_keluar
+      FROM kas_buku_besar
+      WHERE tanggal >= ? AND tanggal < ?
+        AND deleted_at IS NULL
+    `, [prevPeriod.startDate, prevPeriod.endDate]);
+
+    const prevPeriodMasuk = Number(prevPeriodRows[0].prev_period_masuk);
+    const prevPeriodKeluar = Number(prevPeriodRows[0].prev_period_keluar);
+
+    // 5. HITUNG PERSENTASE PERUBAHAN
+    const calculatePercentageChange = (current, previous) => {
+      if (previous === 0 && current === 0) return 0;
+      if (previous === 0) return current > 0 ? 100 : -100;
+      return ((current - previous) / Math.abs(previous)) * 100;
+    };
+
+    const percentageChanges = {
+      saldo: calculatePercentageChange(totalSaldo, prevTotalSaldo),
+      pemasukan: calculatePercentageChange(periodMasuk, prevPeriodMasuk),
+      pengeluaran: calculatePercentageChange(periodKeluar, prevPeriodKeluar)
+    };
+
+    // 6. BREAKDOWN KATEGORI UNTUK PERIODE SAAT INI
+    const [pemasukanKategoriRows] = await db.query(`
+      SELECT 
+        kategori,
+        COALESCE(SUM(jumlah), 0) as total
+      FROM kas_buku_besar
+      WHERE jenis = 'masuk'
+        AND tanggal >= ? AND tanggal < ?
+        AND deleted_at IS NULL
+        AND kategori IS NOT NULL
+      GROUP BY kategori
+    `, [sDate, eDate]);
+
+    const pemasukanKategori = {};
+    pemasukanKategoriRows.forEach(row => {
+      pemasukanKategori[row.kategori] = Number(row.total);
     });
 
-    //  Debug log hasil
-    // console.log('Summary calculated for date range:', dateFilter, {
-    //   totalPemasukan,
-    //   totalPengeluaran,
-    //   saldoBersih
-    // });
+    const [pengeluaranKategoriRows] = await db.query(`
+      SELECT 
+        kategori,
+        COALESCE(SUM(jumlah), 0) as total
+      FROM kas_buku_besar
+      WHERE jenis = 'keluar'
+        AND tanggal >= ? AND tanggal < ?
+        AND deleted_at IS NULL
+        AND kategori IS NOT NULL
+      GROUP BY kategori
+    `, [sDate, eDate]);
+
+    const pengeluaranKategori = {};
+    pengeluaranKategoriRows.forEach(row => {
+      pengeluaranKategori[row.kategori] = Number(row.total);
+    });
 
     res.json({
       success: true,
       data: {
-        totalPemasukan,
-        totalPengeluaran,
-        saldoBersih,
-        totalSaldo: saldoBersih,
-        breakdown: {
-          kasManual: pemasukanResult[0].kas_masuk,
-          zakat: zakatResult[0].total_zakat,
-          infaq: infaqResult[0].total_infaq,
-          lelang: 0
-        },
-        pengeluaranKategori
+        totalPemasukan: periodMasuk,
+        totalPengeluaran: periodKeluar,
+        saldoBersih: periodSaldo,
+        totalSaldo: totalSaldo,
+        pemasukanKategori,
+        pengeluaranKategori,
+        percentageChanges
       }
     });
 
   } catch (err) {
     console.error('Error fetching kas summary:', err);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Terjadi kesalahan saat mengambil ringkasan kas' 
+    res.status(500).json({
+      success: false,
+      message: 'Terjadi kesalahan saat mengambil ringkasan kas'
     });
   }
 });
+
+
 
 // ===== GET kas manual only (untuk CRUD admin) =====
 router.get('/manual', async (req, res) => {
@@ -342,7 +420,7 @@ router.get('/lelang', async (req, res) => {
 // ===== CRUD OPERATIONS untuk kas manual =====
 // POST tambah transaksi kas manual
 router.post('/', async (req, res) => {
-  const { tanggal, keterangan, jenis, jumlah, kategori, kategori_pemasukan } = req.body;
+  const { tanggal, keterangan, jenis, jumlah, kategori, kategori_pemasukan, nama_pemberi } = req.body; // Tambah nama_pemberi
 
   if (!tanggal || !keterangan || !jenis || !jumlah) {
     return res.status(400).json({ message: 'Semua field wajib diisi' });
@@ -356,8 +434,8 @@ router.post('/', async (req, res) => {
     const jumlahInt = parseInt(jumlah, 10);
     // Insert ke kas_manual, trigger akan otomatis insert ke kas_buku_besar
     const [result] = await db.query(
-      'INSERT INTO kas_manual (tanggal, keterangan, jenis, jumlah, kategori, kategori_pemasukan) VALUES (?, ?, ?, ?, ?, ?)',
-      [tanggal, keterangan, jenis, jumlahInt, kategori || 'operasional', kategori_pemasukan || null]
+      'INSERT INTO kas_manual (tanggal, keterangan, jenis, jumlah, kategori, kategori_pemasukan, nama_pemberi) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [tanggal, keterangan, jenis, jumlahInt, kategori || 'operasional', kategori_pemasukan || null, nama_pemberi || null] // Tambah nama_pemberi
     );
     
     res.status(201).json({ 
@@ -367,6 +445,50 @@ router.post('/', async (req, res) => {
   } catch (err) {
     console.error('Gagal menambahkan transaksi kas:', err);
     res.status(500).json({ message: 'Terjadi kesalahan saat menyimpan transaksi kas' });
+  }
+});
+
+// PUT update transaksi kas manual (line ~445)
+router.put('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { tanggal, keterangan, jenis, jumlah, kategori, kategori_pemasukan, nama_pemberi } = req.body; // Tambah nama_pemberi
+
+    const[kbbResult] = await db.query(`
+      SELECT source_id FROM kas_buku_besar
+      WHERE id = ? AND source_table = 'manual'
+      `, [id]);
+    
+    if (kbbResult.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Transaksi tidak ditemukan'
+      });
+    }
+
+    const jumlahInt = parseInt(jumlah, 10);
+    const manualId = kbbResult[0].source_id;
+    
+    // Update ke kas_manual
+    const [result] = await db.query(
+      `UPDATE kas_manual SET 
+      tanggal = ?, keterangan = ?, jenis = ?, 
+      jumlah = ?, kategori = ?, kategori_pemasukan = ?, nama_pemberi = ?
+      WHERE id = ?`,
+      [tanggal, keterangan, jenis, jumlahInt, kategori, kategori_pemasukan, nama_pemberi || null, manualId] // Tambah nama_pemberi
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Transaksi tidak ditemukan' });
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'Transaksi berhasil diperbarui' 
+    });
+  } catch (err) {
+    console.error('Error updating transaction:', err);
+    res.status(500).json({ message: 'Terjadi kesalahan saat memperbarui transaksi' });
   }
 });
 
@@ -919,7 +1041,7 @@ router.get('/history/export', async (req, res) => {
       res.setHeader('Content-Disposition', `attachment; filename="transaction-history-${Date.now()}.csv"`);
       res.send(csvHeader + csvData);
     } else {
-      // For Excel, return JSON for now (frontend can convert)
+      // For Excel
       res.json({
         success: true,
         data: transactions,
