@@ -4,8 +4,8 @@ const BuktiModal = ({ isOpen, buktiTransfer, onClose }) => {
   if (!isOpen || !buktiTransfer) return null;
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 p-4">
-      <div className="relative top-4 sm:top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+    <div className="fixed inset-0 bg-black/45 z-50 flex items-center justify-center p-4">
+      <div className="relative w-full max-w-2xl p-5 border shadow-lg rounded-md bg-white">
         <div className="mt-3">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-medium text-gray-900">Bukti Transfer</h3>
