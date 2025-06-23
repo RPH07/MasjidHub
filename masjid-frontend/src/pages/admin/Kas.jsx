@@ -83,8 +83,8 @@ const Kas = () => {
       </div>
 
       {/* Tab Navigation */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
+      <div className="border-b border-gray-200 overflow-x-auto no-scrollbar">
+        <nav className="-mb-px flex space-x-8 whitespace-nowrap">
           {Object.entries(TABS).map(([key, tab]) => (
             <button
               key={key}
@@ -99,7 +99,8 @@ const Kas = () => {
             </button>
           ))}
         </nav>
-      </div>      {/* Tab Content */}
+      </div>     
+       {/* Tab Content */}
       <div>        
         {activeTab === 'overview' && (
           <KasOverview
@@ -150,6 +151,7 @@ const Kas = () => {
             zakatData={kasDataHook.zakatData}
             infaqData={kasDataHook.infaqData}
             onOpenBukti={openBuktiModal}
+            kategoriPemasukan={kategoriPemasukan}
           />
         )}
       </div>
