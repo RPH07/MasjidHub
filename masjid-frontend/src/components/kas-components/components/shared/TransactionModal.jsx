@@ -1,6 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useTransactionOps } from '../../hooks/useTransactionOps';
 
+// Default kategori pengeluaran
+const defaultKategoriPengeluaran = [
+  { value: 'operasional', label: 'Operasional' },
+  { value: 'kegiatan', label: 'Kegiatan' },
+  { value: 'pemeliharaan', label: 'Pemeliharaan' },
+  { value: 'bantuan', label: 'Bantuan Sosial' },
+  { value: 'custom', label: '+ Kategori Lainnya' }
+];
+
 const TransactionModal = ({ 
   type, 
   data, 
@@ -9,26 +18,58 @@ const TransactionModal = ({
   onSuccess 
 }) => {
   const { saveTransaction, loading, kategoriPemasukan } = useTransactionOps(onSuccess);
-  // console.log('TransactionModal props:', { type, data, isOpen });
+  
   const [formData, setFormData] = useState({
     tanggal: '',
     keterangan: '',
     jenis: 'masuk',
     jumlah: '',
     kategori: 'operasional',
-    kategori_pemasukan: 'donasi_umum'
+    kategori_pemasukan: 'donasi_umum',
+    nama_pemberi: ''
   });
+
+  // format angka untuk input jumlah
+  const [formattedJumlah, setFormattedJumlah] = useState('');
+
+  // State untuk kategori custom
+  const [showCustomKategori, setShowCustomKategori] = useState(false);
+  const [showCustomPemasukan, setShowCustomPemasukan] = useState(false);
+  const [customKategori, setCustomKategori] = useState('');
+  const [customPemasukan, setCustomPemasukan] = useState('');
+
+  // Enhanced kategori pemasukan dengan option custom
+  const enhancedKategoriPemasukan = {
+    ...kategoriPemasukan,
+    custom: '+ Kategori Lainnya'
+  };
 
   useEffect(() => {
     if (data) {
+      const isCustomKategori = !defaultKategoriPengeluaran.some(k => k.value === data.kategori);
+      const isCustomPemasukan = !kategoriPemasukan[data.kategori_pemasukan];
+      
       setFormData({
         tanggal: data.tanggal || '',
         keterangan: data.keterangan || data.deskripsi || '',
         jenis: data.jenis || (type === 'edit-pemasukan' ? 'masuk' : 'keluar'),
         jumlah: data.jumlah || '',
-        kategori: data.kategori || 'operasional',
-        kategori_pemasukan: data.kategori_pemasukan || 'donasi_umum'
+        kategori: isCustomKategori ? 'custom' : (data.kategori || 'operasional'),
+        kategori_pemasukan: isCustomPemasukan ? 'custom' : (data.kategori_pemasukan || 'donasi_umum'),
+        nama_pemberi: data.nama_pemberi || data.nama_donatur || ''
       });
+
+      setFormattedJumlah(data.jumlah ? formatNumber(data.jumlah.toString()) : '');
+
+      if (isCustomKategori) {
+        setShowCustomKategori(true);
+        setCustomKategori(data.kategori);
+      }
+      
+      if (isCustomPemasukan) {
+        setShowCustomPemasukan(true);
+        setCustomPemasukan(data.kategori_pemasukan);
+      }
     } else {
       setFormData({
         tanggal: new Date().toISOString().split('T')[0],
@@ -38,11 +79,15 @@ const TransactionModal = ({
         kategori: 'operasional',
         kategori_pemasukan: 'donasi_umum'
       });
+      setFormattedJumlah('');
+      setShowCustomKategori(false);
+      setShowCustomPemasukan(false);
+      setCustomKategori('');
+      setCustomPemasukan('');
     }
-  }, [data, type]);
+  }, [data, type, kategoriPemasukan]);
 
-  // safeForm data
-  const safeFormData =  {
+  const safeFormData = {
     tanggal: formData.tanggal || '',
     keterangan: formData.keterangan || '',
     jenis: formData.jenis || 'masuk',
@@ -51,8 +96,49 @@ const TransactionModal = ({
     kategori_pemasukan: formData.kategori_pemasukan || 'donasi_umum'
   };
 
+  // fungsi untuk format angka dengan titik
+  const formatNumber = (num) => {
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  };
+
+  // fungsi untuk menghapus format titik
+  const unformatNumber = (str) => {
+    return str.replace(/\./g, '');
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+
+    if (name === 'jumlah'){
+      const unformattedValue = unformatNumber(value);
+      if (unformattedValue === '' || /^\d+$/.test(unformattedValue)){
+        setFormData(prev => ({
+          ...prev,
+          [name]: unformattedValue
+        }));
+        setFormattedJumlah(unformattedValue ? formatNumber(unformattedValue) : '');
+      }
+      return;
+    }
+    
+    if (name === 'kategori') {
+      if (value === 'custom') {
+        setShowCustomKategori(true);
+      } else {
+        setShowCustomKategori(false);
+        setCustomKategori('');
+      }
+    }
+    
+    if (name === 'kategori_pemasukan') {
+      if (value === 'custom') {
+        setShowCustomPemasukan(true);
+      } else {
+        setShowCustomPemasukan(false);
+        setCustomPemasukan('');
+      }
+    }
+
     setFormData(prev => ({
       ...prev,
       [name]: value
@@ -61,12 +147,26 @@ const TransactionModal = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-const payload = {
+
+    // Validasi custom kategori
+    if (safeFormData.kategori === 'custom' && !customKategori.trim()) {
+      alert('Mohon isi kategori pengeluaran');
+      return;
+    }
+
+    if (safeFormData.kategori_pemasukan === 'custom' && !customPemasukan.trim()) {
+      alert('Mohon isi kategori pemasukan');
+      return;
+    }
+
+    const payload = {
       ...formData,
-      jumlah: parseInt(formData.jumlah, 10)
+      jumlah: parseInt(formData.jumlah, 10),
+      // Gunakan custom kategori jika dipilih
+      kategori: safeFormData.kategori === 'custom' ? customKategori.trim() : safeFormData.kategori,
+      kategori_pemasukan: safeFormData.kategori_pemasukan === 'custom' ? customPemasukan.trim() : safeFormData.kategori_pemasukan
     };
 
-    // Pastikan parsing berhasil
     if (isNaN(payload.jumlah)) {
       alert('Jumlah tidak valid.');
       return;
@@ -82,9 +182,11 @@ const payload = {
 
   if (!isOpen) return null;
 
+  
+
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+    <div className="fixed inset-0 bg-black/45 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+      <div className="relative mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
         <div className="mt-3">
           <h3 className="text-lg font-medium text-gray-900 mb-4">
             {type === 'edit' ? 'Edit Transaksi' :
@@ -114,10 +216,36 @@ const payload = {
                   className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
                   required
                 >
-                  {Object.entries(kategoriPemasukan).map(([key, label]) => (
+                  {Object.entries(enhancedKategoriPemasukan).map(([key, label]) => (
                     <option key={key} value={key}>{label}</option>
                   ))}
                 </select>
+                
+                {showCustomPemasukan && (
+                  <div className="mt-2">
+                    <input
+                      type="text"
+                      value={customPemasukan}
+                      onChange={(e) => setCustomPemasukan(e.target.value)}
+                      placeholder="Masukkan kategori pemasukan"
+                      className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                      required
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+            {safeFormData.jenis === 'masuk' &&(
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Nama Donatur (Opsional)</label>
+                <input
+                  type="text"
+                  name="nama_pemberi"
+                  value={formData.nama_pemberi || ''}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                  placeholder="kosongkan jika tidak ada"
+                />
               </div>
             )}
 
@@ -137,9 +265,9 @@ const payload = {
             <div>
               <label className="block text-sm font-medium text-gray-700">Jumlah (Rp)</label>
               <input
-                type="number"
+                type="text"
                 name="jumlah"
-                value={safeFormData.jumlah}
+                value={formattedJumlah}
                 onChange={handleInputChange}
                 className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
                 placeholder="0"
@@ -156,11 +284,23 @@ const payload = {
                   onChange={handleInputChange}
                   className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
                 >
-                  <option value="operasional">Operasional</option>
-                  <option value="kegiatan">Kegiatan</option>
-                  <option value="pemeliharaan">Pemeliharaan</option>
-                  <option value="bantuan">Bantuan Sosial</option>
+                  {defaultKategoriPengeluaran.map(({ value, label }) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
                 </select>
+                
+                {showCustomKategori && (
+                  <div className="mt-2">
+                    <input
+                      type="text"
+                      value={customKategori}
+                      onChange={(e) => setCustomKategori(e.target.value)}
+                      placeholder="Masukkan kategori pengeluaran"
+                      className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                      required
+                    />
+                  </div>
+                )}
               </div>
             )}
 
