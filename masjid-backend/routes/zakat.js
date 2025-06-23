@@ -29,7 +29,7 @@ const upload = multer({
   }
 });
 
-// POST - Submit pembayaran zakat (sekarang dengan status pending)
+// POST - Submit pembayaran zakat
 router.post('/', upload.single('bukti'), async (req, res) => {
   try {
     const { nama, nominal, jenisZakat, metodePembayaran } = req.body;
@@ -75,21 +75,21 @@ router.post('/', upload.single('bukti'), async (req, res) => {
 router.put('/:id/validate', async (req, res) => {
   try {
     const { id } = req.params;
-    const { action, reason } = req.body; // Tambah reason parameter
+    const { action, reason } = req.body;
 
     if (!['approve', 'reject'].includes(action)) {
       return res.status(400).json({ 
-        success: false, 
+        success: false,
         message: 'Action harus approve atau reject' 
       });
     }
 
-    // Get zakat data first
-    const [zakatRows] = await db.execute('SELECT * FROM zakat WHERE id = ?', [id]);
+    // Get zakat data
+    const [zakatRows] = await db.query('SELECT * FROM zakat WHERE id = ?', [id]);
     
     if (zakatRows.length === 0) {
       return res.status(404).json({ 
-        success: false, 
+        success: false,
         message: 'Data zakat tidak ditemukan' 
       });
     }
@@ -98,53 +98,55 @@ router.put('/:id/validate', async (req, res) => {
 
     if (zakatData.status !== 'pending') {
       return res.status(400).json({ 
-        success: false, 
-        message: 'Data sudah divalidasi sebelumnya' 
+        success: false,
+        message: 'Zakat sudah divalidasi sebelumnya' 
       });
     }
 
     if (action === 'approve') {
       // Update status ke approved
-      await db.execute(
-        'UPDATE zakat SET status = ?, validated_at = NOW() WHERE id = ?', 
+      await db.query(
+        'UPDATE zakat SET status = ?, validated_at = NOW() WHERE id = ?',
         ['approved', id]
       );
       
-      // Insert ke kas_buku_besar untuk audit trail
-      const kategori = `zakat_${zakatData.jenis_zakat}`;
-      const keterangan = `Zakat ${zakatData.jenis_zakat} dari ${zakatData.nama}`;
-      
-      await db.execute(`
+      // Insert ke kas_buku_besar - perbaiki kolom dan SQL
+      await db.query(`
         INSERT INTO kas_buku_besar 
-        (tanggal, keterangan, jenis, jumlah, kategori, source_table, source_id, created_at)
-        VALUES (CURDATE(), ?, 'masuk', ?, ?, 'zakat', ?, NOW())
-      `, [keterangan, zakatData.jumlah, kategori, id]);
+        (tanggal, deskripsi, jenis, jumlah, kategori, source_table, source_id, metode_input, metode_pembayaran, bukti_transfer, nama_pemberi, created_at)
+        VALUES (CURDATE(), ?, 'masuk', ?, ?, 'zakat', ?, 'online', ?, ?, ?, NOW())
+      `, [
+        `Zakat ${zakatData.jenis_zakat} dari ${zakatData.nama}`,
+        zakatData.jumlah,
+        `zakat_${zakatData.jenis_zakat}`,
+        id,
+        zakatData.metode_pembayaran,
+        zakatData.bukti_transfer,
+        zakatData.nama
+      ]);
 
       res.json({
         success: true,
-        message: 'Pembayaran zakat berhasil diapprove dan dicatat ke kas'
+        message: 'Zakat berhasil diapprove'
       });
-
     } else {
-      // Reject dengan reason
-      const rejectReason = reason || 'Tidak ada alasan yang diberikan';
-      
-      await db.execute(
-        'UPDATE zakat SET status = ?, reject_reason = ?, validated_at = NOW() WHERE id = ?', 
-        ['rejected', rejectReason, id]
+      // Update status ke rejected
+      await db.query(
+        'UPDATE zakat SET status = ?, reject_reason = ?, validated_at = NOW() WHERE id = ?',
+        ['rejected', reason || 'Tidak ada alasan yang diberikan', id]
       );
       
       res.json({
         success: true,
-        message: 'Pembayaran zakat telah ditolak'
+        message: 'Zakat telah ditolak'
       });
     }
 
-  } catch (error) {
-    console.error('Error validating zakat:', error);
-    res.status(500).json({
+  } catch (err) {
+    console.error('Error validating zakat:', err);
+    res.status(500).json({ 
       success: false,
-      message: 'Terjadi kesalahan server'
+      message: 'Terjadi kesalahan saat validasi zakat' 
     });
   }
 });
