@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
+const XLSX = require('xlsx')
 
 // Helper function untuk filter berdasarkan periode
 const getPeriodFilter = (period) => {
@@ -798,15 +799,23 @@ router.get('/history/export', async (req, res) => {
         const [kasRows] = await db.query(`
           SELECT 
             id,
-            keterangan as nama_pemberi,
+            nama_pemberi,
+            deskripsi,
             jumlah,
             kategori,
             tanggal as created_at,
             'kas' as type,
-            'approved' as status
+            'approved' as status,
+            NULL as bukti_transfer,
+            'manual' as metode_pembayaran,
+            NULL as reject_reason,
+            NULL as kategori_infaq,
+            NULL as jenis_zakat,
+            NULL as keterangan
           FROM kas_buku_besar 
           WHERE tanggal >= ? AND tanggal <= ?
           AND (source_table IS NULL OR source_table NOT IN ('zakat', 'infaq'))
+          AND deleted_at IS NULL
         `, [dateFilter.startDate, dateFilter.endDate]);
         transactions.push(...kasRows);
       }
@@ -825,12 +834,56 @@ router.get('/history/export', async (req, res) => {
       res.setHeader('Content-Type', 'text/csv');
       res.setHeader('Content-Disposition', `attachment; filename="transaction-history-${Date.now()}.csv"`);
       res.send(csvHeader + csvData);
-    } else {
+    } else if(format === 'excel') {
       // For Excel
-      res.json({
-        success: true,
-        data: transactions,
-        filename: `transaction-history-${Date.now()}.xlsx`
+      const excelData = transactions.map(t => ({
+        'Tanggal': new Date(t.created_at).toLocaleDateString('id-ID'),
+        'Type': t.type,
+        'Nama': t.type === 'kas' 
+        ? (t.nama_pemberi || 'Hamba Allah')
+        : (t.nama_pemberi || '-'),
+        'Jumlah': Number(t.jumlah),
+        'Status': t.status,
+        'Metode Pembayaran': t.metode_pembayaran || 'manual',
+        'Kategori': t.kategori_infaq || t.jenis_zakat || t.kategori || '-',
+        'Keterangan': t.type === 'kas' 
+        ? (t.deskripsi || '-')
+        : (t.keterangan || t.reject_reason || '-'),
+        'Bukti Transfer': t.bukti_transfer ? 'Ada' : 'Tidak Ada'
+      }));
+
+      const workbook = XLSX.utils.book_new();
+      const worksheet = XLSX.utils.json_to_sheet(excelData);
+
+      // auto size column
+      const colWidth = [
+        { wch: 12 }, // Tanggal
+        { wch: 10 }, // Type
+        { wch: 20 }, // Nama
+        { wch: 15 }, // Jumlah
+        { wch: 10 }, // Status
+        { wch: 15 }, // Metode Pembayaran
+        { wch: 15 }, // Kategori
+        { wch: 30 }, // Keterangan
+        { wch: 12 }  // Bukti Transfer
+      ];
+      worksheet['!cols'] = colWidth;
+
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Riwayat Transaksi');
+
+      const buffer = XLSX.write(workbook, {
+        type: 'buffer',
+        bookType: 'xlsx'
+      });
+
+      // set header untuk download
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="riwayat-transaksi-${Date.now()}.xlsx"`);
+      res.send(buffer);
+    } else{
+      res.status(400).json({
+        success: false,
+        message: 'Format tidak didukung. Gunakan "csv" atau "excel".'
       });
     }
 
