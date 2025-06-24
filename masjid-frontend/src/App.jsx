@@ -8,7 +8,7 @@ import AdminLayout from './components/layouts/AdminLayout';
 import Dashboard from './pages/admin/Dashboard';
 import KegiatanPage from './pages/admin/Kegiatan';
 import KasPage from './pages/admin/Kas.jsx';
-import ExportPage from './pages/admin/Export';
+import LelangPage from './pages/admin/Lelang';
 import AdminSignup from './auth/AdminSignup';
 import AdminRoute from './components/route-guard/AdminRoute';
 import ProtectedRoute from './components/route-guard/ProtectedRoute';
@@ -62,8 +62,8 @@ const router = createBrowserRouter([
         element: <KasPage />
       },
       {
-        path: "export", // /admin/export
-        element: <ExportPage />
+        path: "lelang", // /admin/export
+        element: <LelangPage />
       }
     ]
   }

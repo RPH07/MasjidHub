@@ -53,8 +53,8 @@ const Sidebar = ({ className, isMobile = false, isCollapsed = false }) => {
     {
       title: "Export",
       icon: <FileDown className="h-5 w-5" />,
-      href: "/admin/export",
-      active: location.pathname === "/admin/export"
+      href: "/admin/lelang",
+      active: location.pathname === "/admin/lelang"
     }
   ];
 
