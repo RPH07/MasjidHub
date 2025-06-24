@@ -44,8 +44,6 @@ const getPeriodFilter = (period) => {
     startDate: startDate.toISOString().split('T')[0],
     endDate: endDate.toISOString().split('T')[0]
   };
-  
-  console.log('Filter result:', result);
   return result;
 };
 

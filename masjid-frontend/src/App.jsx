@@ -13,6 +13,7 @@ import AdminSignup from './auth/AdminSignup';
 import AdminRoute from './components/route-guard/AdminRoute';
 import ProtectedRoute from './components/route-guard/ProtectedRoute';
 import AuthCallback from './auth/AuthCallback';
+import UserDashboard from './pages/user/userDashoard';
 
 const router = createBrowserRouter([
   {
@@ -39,6 +40,19 @@ const router = createBrowserRouter([
   {
     path: "/auth/callback",
     element: <AuthCallback />,
+  },
+  {
+    path: "/dashboard",
+    element: (
+      <ProtectedRoute>
+        <UserDashboard />
+      </ProtectedRoute>
+    )
+  },
+  // ← TAMBAH ROUTE LELANG PUBLIC (opsional, untuk direct access)
+  {
+    path: "/lelang-public",
+    element: <UserDashboard />
   },
   {
     path: "/admin",

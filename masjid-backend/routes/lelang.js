@@ -4,6 +4,16 @@ const db = require('../config/db');
 const multer = require('multer');
 const path = require('path');
 
+// import middleware dan utils
+const { publicAccess, publicRateLimit, bidRateLimit } = require('../middleware')
+const { 
+  calculateTimeLeft, 
+  formatPublicLelang, 
+  formatPublicBids,
+  validateBidAmount,
+  validateBidder 
+} = require('../utils')
+
 // Konfigurasi multer untuk upload foto barang
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -32,43 +42,73 @@ const upload = multer({
 // ===== CRUD BARANG LELANG =====
 
 // GET - Ambil semua barang lelang
-router.get('/', async (req, res) => {
+router.get('/', publicRateLimit, async (req, res) => {
   try {
-    const { status = 'all' } = req.query;
+    const { status, public_view } = req.query
     
-    let query = `
-      SELECT 
-        id, nama_barang, deskripsi, harga_awal, foto_barang,
-        kondisi_barang, status_lelang, harga_tertinggi, pemenang_nama,
-        tanggal_lelang, tanggal_mulai, tanggal_selesai, total_bid,
-        durasi_lelang_jam, created_at
-      FROM barang_lelang 
-      WHERE deleted_at IS NULL
-    `;
+    let whereCondition = 'WHERE deleted_at IS NULL'
+    let params = []
     
-    const params = [];
-    
-    if (status !== 'all') {
-      query += ' AND status_lelang = ?';
-      params.push(status);
+    // Filter by status
+    if (status && status !== 'all') {
+      whereCondition += ' AND status_lelang = ?'
+      params.push(status)
     }
     
-    query += ' ORDER BY created_at DESC';
+    // Untuk public view, hanya tampilkan lelang aktif
+    if (public_view === 'true') {
+      whereCondition += ' AND status_lelang = "aktif"'
+    }
     
-    const [rows] = await db.query(query, params);
+    let selectFields = `
+      id, nama_barang, deskripsi, harga_awal, foto_barang,
+      kondisi_barang, status_lelang, harga_tertinggi, 
+      tanggal_lelang, tanggal_mulai, tanggal_selesai, total_bid,
+      durasi_lelang_jam, created_at
+    `
+    
+    // Untuk public, hide sensitive admin fields
+    if (public_view === 'true') {
+      selectFields = `
+        id, nama_barang, deskripsi, harga_awal, foto_barang,
+        kondisi_barang, status_lelang, harga_tertinggi,
+        tanggal_lelang, tanggal_mulai, total_bid, durasi_lelang_jam
+      `
+    }
+    
+    const query = `
+      SELECT ${selectFields}
+      FROM barang_lelang 
+      ${whereCondition}
+      ORDER BY ${public_view === 'true' ? 'tanggal_mulai DESC' : 'created_at DESC'}
+    `
+    
+    const [rows] = await db.query(query, params)
+    
+    // Format data untuk public view
+    let responseData = rows
+    if (public_view === 'true') {
+      responseData = formatPublicLelang(rows)
+      
+      // Filter out lelang yang sudah berakhir
+      responseData = responseData.filter(item => item.sisa_detik > 0)
+    }
     
     res.json({
       success: true,
-      data: rows
-    });
+      message: 'Data retrieved successfully',
+      data: responseData,
+      total: responseData.length
+    })
   } catch (error) {
-    console.error('Error fetching barang lelang:', error);
+    console.error('Error fetching barang lelang:', error)
     res.status(500).json({
       success: false,
-      message: 'Terjadi kesalahan server'
-    });
+      message: 'Gagal mengambil data barang lelang',
+      error: error.message
+    })
   }
-});
+})
 
 // GET - Ambil barang lelang aktif untuk jamaah
 router.get('/aktif', async (req, res) => {
@@ -149,75 +189,72 @@ router.post('/', upload.single('foto'), async (req, res) => {
 });
 
 // PUT - Update barang lelang
-router.put('/:id', upload.single('foto'), async (req, res) => {
+router.get('/:id', publicRateLimit, async (req, res) => {
   try {
-    const { id } = req.params;
-    const { 
-      nama_barang, 
-      deskripsi, 
-      harga_awal, 
-      kondisi_barang,
-      durasi_lelang_jam 
-    } = req.body;
+    const { id } = req.params
+    const { public_view } = req.query
     
-    // Check if auction exists and not started
-    const [existing] = await db.query(
-      'SELECT status_lelang FROM barang_lelang WHERE id = ? AND deleted_at IS NULL', 
-      [id]
-    );
+    let selectFields = `
+      id, nama_barang, deskripsi, harga_awal, foto_barang,
+      kondisi_barang, status_lelang, harga_tertinggi, pemenang_nama,
+      tanggal_lelang, tanggal_mulai, tanggal_selesai, total_bid,
+      durasi_lelang_jam, pemenang_kontak, alasan_batal, created_at
+    `
     
-    if (existing.length === 0) {
+    // Untuk public, hide sensitive fields
+    if (public_view === 'true') {
+      selectFields = `
+        id, nama_barang, deskripsi, harga_awal, foto_barang,
+        kondisi_barang, status_lelang, harga_tertinggi,
+        tanggal_lelang, tanggal_mulai, total_bid, durasi_lelang_jam
+      `
+    }
+    
+    const query = `
+      SELECT ${selectFields}
+      FROM barang_lelang 
+      WHERE id = ? AND deleted_at IS NULL
+    `
+    
+    const [rows] = await db.query(query, [id])
+    
+    if (rows.length === 0) {
       return res.status(404).json({
         success: false,
         message: 'Barang lelang tidak ditemukan'
-      });
+      })
     }
     
-    if (existing[0].status_lelang === 'aktif') {
-      return res.status(400).json({
-        success: false,
-        message: 'Tidak dapat mengubah lelang yang sedang aktif'
-      });
-    }
-
-    let updateQuery = `
-      UPDATE barang_lelang 
-      SET nama_barang = ?, deskripsi = ?, harga_awal = ?, 
-          kondisi_barang = ?, durasi_lelang_jam = ?, updated_at = NOW()
-    `;
+    let responseData = rows[0]
     
-    const params = [
-      nama_barang, 
-      deskripsi || '', 
-      parseInt(harga_awal), 
-      kondisi_barang,
-      parseInt(durasi_lelang_jam)
-    ];
-    
-    // Update foto jika ada file baru
-    if (req.file) {
-      updateQuery += ', foto_barang = ?';
-      params.push(req.file.filename);
+    // Format untuk public view
+    if (public_view === 'true') {
+      const formatted = formatPublicLelang([responseData])
+      responseData = formatted[0]
+      
+      // Cek apakah lelang masih aktif
+      if (responseData.status_lelang !== 'aktif' || responseData.sisa_detik <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Lelang sudah tidak aktif'
+        })
+      }
     }
     
-    updateQuery += ' WHERE id = ?';
-    params.push(id);
-    
-    await db.query(updateQuery, params);
-
     res.json({
       success: true,
-      message: 'Barang lelang berhasil diperbarui'
-    });
-
+      message: 'Data retrieved successfully',
+      data: responseData
+    })
   } catch (error) {
-    console.error('Error updating barang lelang:', error);
+    console.error('Error fetching lelang detail:', error)
     res.status(500).json({
       success: false,
-      message: 'Terjadi kesalahan server'
-    });
+      message: 'Gagal mengambil detail lelang',
+      error: error.message
+    })
   }
-});
+})
 
 // DELETE - Hapus barang lelang (soft delete)
 router.delete('/:id', async (req, res) => {
@@ -353,103 +390,190 @@ router.post('/:id/cancel', async (req, res) => {
 
 // ===== BIDDING SYSTEM =====
 
-// POST - Submit bid
-router.post('/:id/bid', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { nama_bidder, kontak_bidder, jumlah_bid } = req.body;
-
-    if (!nama_bidder || !jumlah_bid) {
-      return res.status(400).json({
-        success: false,
-        message: 'Nama dan jumlah bid wajib diisi'
-      });
-    }
-
-    // Check auction status
-    const [auction] = await db.query(
-      'SELECT * FROM barang_lelang WHERE id = ? AND status_lelang = "aktif" AND tanggal_selesai > NOW()',
-      [id]
-    );
-
-    if (auction.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Lelang tidak aktif atau sudah berakhir'
-      });
-    }
-
-    const currentAuction = auction[0];
-    const bidAmount = parseInt(jumlah_bid);
-
-    // Validate bid amount
-    if (bidAmount <= currentAuction.harga_tertinggi) {
-      return res.status(400).json({
-        success: false,
-        message: `Bid harus lebih tinggi dari Rp ${currentAuction.harga_tertinggi.toLocaleString()}`
-      });
-    }
-
-    // Insert bid (trigger akan handle auto-extend)
-    await db.query(`
-      INSERT INTO lelang_bids 
-      (barang_lelang_id, nama_bidder, kontak_bidder, jumlah_bid, ip_address)
-      VALUES (?, ?, ?, ?, ?)
-    `, [id, nama_bidder, kontak_bidder, bidAmount, req.ip]);
-
-    // Get updated auction info
-    const [updated] = await db.query(
-      'SELECT harga_tertinggi, total_bid, tanggal_selesai FROM barang_lelang WHERE id = ?',
-      [id]
-    );
-
-    res.json({
-      success: true,
-      message: 'Bid berhasil disubmit',
-      data: {
-        harga_tertinggi: updated[0].harga_tertinggi,
-        total_bid: updated[0].total_bid,
-        tanggal_selesai: updated[0].tanggal_selesai
-      }
-    });
-
-  } catch (error) {
-    console.error('Error submitting bid:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Terjadi kesalahan server'
-    });
-  }
-});
-
 // GET - History bid untuk barang tertentu
-router.get('/:id/bids', async (req, res) => {
+// FIX: Update query di GET /:id/bids
+router.get('/:id/bids', publicRateLimit, async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params
+    const { public_view } = req.query
     
-    const [bids] = await db.query(`
-      SELECT 
-        nama_bidder, jumlah_bid, tanggal_bid,
-        ROW_NUMBER() OVER (ORDER BY tanggal_bid DESC) as urutan
+    // Cek apakah lelang exists dan aktif (untuk public)
+    if (public_view === 'true') {
+      const [lelangRows] = await db.query(
+        'SELECT status_lelang FROM barang_lelang WHERE id = ? AND deleted_at IS NULL',
+        [id]
+      )
+      
+      if (lelangRows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Lelang tidak ditemukan'
+        })
+      }
+      
+      // COMMENT INI - terlalu strict untuk development
+      // if (lelangRows[0].status_lelang !== 'aktif') {
+      //   return res.status(400).json({
+      //     success: false,
+      //     message: 'History bid hanya tersedia untuk lelang aktif'
+      //   })
+      // }
+    }
+    
+    // FIX: Include nama_bidder untuk public view
+    let selectFields = 'nama_bidder, kontak_bidder, jumlah_bid, tanggal_bid, urutan'
+    
+    // Untuk public, include nama_bidder tapi hide kontak
+    if (public_view === 'true') {
+      selectFields = 'nama_bidder, jumlah_bid, tanggal_bid, urutan' // ← ADD nama_bidder
+    }
+    
+    const query = `
+      SELECT ${selectFields}
       FROM lelang_bids 
-      WHERE barang_lelang_id = ?
-      ORDER BY tanggal_bid DESC
-      LIMIT 10
-    `, [id]);
-
+      WHERE barang_lelang_id = ? 
+      ORDER BY jumlah_bid DESC, tanggal_bid DESC
+      LIMIT ${public_view === 'true' ? '20' : '50'}
+    `
+    
+    const [rows] = await db.query(query, [id])
+    
+    let responseData = rows
+    
+    // Format untuk public view
+    if (public_view === 'true') {
+      responseData = formatPublicBids(rows)
+    }
+    
     res.json({
       success: true,
-      data: bids
-    });
-
+      message: 'Bid history retrieved successfully',
+      data: responseData,
+      total: responseData.length
+    })
   } catch (error) {
-    console.error('Error fetching bid history:', error);
+    console.error('Error fetching bid history:', error)
     res.status(500).json({
       success: false,
-      message: 'Terjadi kesalahan server'
-    });
+      message: 'Gagal mengambil history bid',
+      error: error.message
+    })
   }
-});
+})
+
+// FIX: Update POST /:id/bid
+router.post('/:id/bid', bidRateLimit, async (req, res) => {
+  const connection = await db.getConnection()
+  
+  try {
+    await connection.beginTransaction()
+    
+    const { id } = req.params
+    const { nama_bidder, kontak_bidder, jumlah_bid } = req.body
+    
+    // Enhanced validation
+    const bidderValidation = validateBidder(nama_bidder, kontak_bidder)
+    if (!bidderValidation.valid) {
+      await connection.rollback()
+      return res.status(400).json({
+        success: false,
+        message: bidderValidation.message
+      })
+    }
+    
+    // Cek lelang status dengan lock
+    const [lelangRows] = await connection.query(
+      'SELECT status_lelang, harga_tertinggi, harga_awal, tanggal_mulai, durasi_lelang_jam FROM barang_lelang WHERE id = ? FOR UPDATE',
+      [id]
+    )
+    
+    if (lelangRows.length === 0) {
+      await connection.rollback()
+      return res.status(404).json({
+        success: false,
+        message: 'Lelang tidak ditemukan'
+      })
+    }
+    
+    const lelang = lelangRows[0]
+    
+    if (lelang.status_lelang !== 'aktif') {
+      await connection.rollback()
+      return res.status(400).json({
+        success: false,
+        message: 'Lelang sudah tidak aktif'
+      })
+    }
+    
+    // Cek apakah lelang masih berlangsung
+    const sisaDetik = calculateTimeLeft(lelang.tanggal_mulai, lelang.durasi_lelang_jam)
+    if (sisaDetik <= 0) {
+      await connection.rollback()
+      return res.status(400).json({
+        success: false,
+        message: 'Waktu lelang sudah berakhir'
+      })
+    }
+    
+    // Validate bid amount
+    const currentHighest = lelang.harga_tertinggi || lelang.harga_awal
+    const bidValidation = validateBidAmount(jumlah_bid, currentHighest)
+    
+    if (!bidValidation.valid) {
+      await connection.rollback()
+      return res.status(400).json({
+        success: false,
+        message: bidValidation.message
+      })
+    }
+    
+    // Hitung urutan bid
+    const [countRows] = await connection.query(
+      'SELECT COUNT(*) as total FROM lelang_bids WHERE barang_lelang_id = ?', // ← FIX column name
+      [id]
+    )
+    const nextUrutan = countRows[0].total + 1
+    
+    // Insert bid baru
+    const insertQuery = `
+      INSERT INTO lelang_bids (
+        barang_lelang_id, nama_bidder, kontak_bidder, jumlah_bid, urutan
+      ) VALUES (?, ?, ?, ?, ?)
+    `
+    
+    await connection.query(insertQuery, [
+      id, 
+      nama_bidder.trim(), 
+      kontak_bidder ? kontak_bidder.trim() : null, 
+      parseInt(jumlah_bid), 
+      nextUrutan
+    ])
+    
+    await connection.commit()
+    
+    res.json({
+      success: true,
+      message: 'Bid berhasil disubmit!',
+      data: {
+        nama_bidder: nama_bidder.trim(),
+        jumlah_bid: parseInt(jumlah_bid),
+        urutan: nextUrutan,
+        sisa_waktu_detik: sisaDetik
+      }
+    })
+    
+  } catch (error) {
+    await connection.rollback()
+    console.error('Error submitting bid:', error)
+    res.status(500).json({
+      success: false,
+      message: 'Gagal submit bid',
+      error: error.message
+    })
+  } finally {
+    connection.release()
+  }
+})
 
 // ===== SELESAIKAN LELANG MANUAL =====
 
