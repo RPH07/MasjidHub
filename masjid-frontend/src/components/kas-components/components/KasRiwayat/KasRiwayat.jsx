@@ -2,7 +2,15 @@ import React, { useState } from 'react';
 import { formatCurrency } from '../../utils/formatters';
 import axios from 'axios';
 
-const KasRiwayat = ({ kasData, zakatData, infaqData, onOpenBukti, kategoriPemasukan = [], currentPeriod }) => {
+const formatKategori = (kategoriStr) => {
+  if (!kategoriStr) return "Umum";
+  return kategoriStr
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
+
+const KasRiwayat = ({ kasData, zakatData, infaqData, onOpenBukti = [], currentPeriod }) => {
   const [exportLoading, setExportLoading] = useState({
     csv: false,
     excel: false
@@ -187,7 +195,7 @@ const KasRiwayat = ({ kasData, zakatData, infaqData, onOpenBukti, kategoriPemasu
                     <td className="px-6 py-4 text-sm text-gray-900">
                       {item.source === 'zakat' ? `Zakat ${item.jenis_zakat}` :
                         item.source === 'infaq' ? 'Infaq' :
-                        item.type === 'masuk' ? (kategoriPemasukan[item.kategori_pemasukan] || 'Donasi Manual') :
+                        item.type === 'masuk' ? (formatKategori(item.kategori)) :
                         item.kategori || 'Operasional'}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
@@ -244,7 +252,7 @@ const KasRiwayat = ({ kasData, zakatData, infaqData, onOpenBukti, kategoriPemasu
             <div className="text-sm font-medium text-gray-900 mb-1">
               {item.source === 'zakat' ? `Zakat ${item.jenis_zakat}` :
                 item.source === 'infaq' ? 'Infaq' :
-                item.type === 'masuk' ? (kategoriPemasukan[item.kategori_pemasukan] || 'Donasi Manual') :
+                item.type === 'masuk' ? (formatKategori(item.kategori)) :
                 item.kategori || 'Operasional'}
             </div>
             
