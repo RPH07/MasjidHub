@@ -111,19 +111,19 @@ router.put('/:id/validate', async (req, res) => {
       );
       
       // Insert ke kas_buku_besar - perbaiki kolom dan SQL
-      await db.query(`
-        INSERT INTO kas_buku_besar 
-        (tanggal, deskripsi, jenis, jumlah, kategori, source_table, source_id, metode_input, metode_pembayaran, bukti_transfer, nama_pemberi, created_at)
-        VALUES (CURDATE(), ?, 'masuk', ?, ?, 'zakat', ?, 'online', ?, ?, ?, NOW())
-      `, [
-        `Zakat ${zakatData.jenis_zakat} dari ${zakatData.nama}`,
-        zakatData.jumlah,
-        `zakat_${zakatData.jenis_zakat}`,
-        id,
-        zakatData.metode_pembayaran,
-        zakatData.bukti_transfer,
-        zakatData.nama
-      ]);
+      // await db.query(`
+      //   INSERT INTO kas_buku_besar 
+      //   (tanggal, deskripsi, jenis, jumlah, kategori, source_table, source_id, metode_input, metode_pembayaran, bukti_transfer, nama_pemberi, created_at)
+      //   VALUES (CURDATE(), ?, 'masuk', ?, ?, 'zakat', ?, 'online', ?, ?, ?, NOW())
+      // `, [
+      //   `Zakat ${zakatData.jenis_zakat} dari ${zakatData.nama}`,
+      //   zakatData.jumlah,
+      //   `zakat_${zakatData.jenis_zakat}`,
+      //   id,
+      //   zakatData.metode_pembayaran,
+      //   zakatData.bukti_transfer,
+      //   zakatData.nama
+      // ]);
 
       res.json({
         success: true,
