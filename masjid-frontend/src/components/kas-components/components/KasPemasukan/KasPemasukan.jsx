@@ -1,11 +1,18 @@
 import React from "react";
 import { formatCurrency } from "../../utils/formatters";
 
+const formatKategori = (kategoriStr) => {
+  if (!kategoriStr) return "Umum";
+  return kategoriStr
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
+
 const KasPemasukan = ({
   kasData,
   zakatData,
   infaqData,
-  kategoriPemasukan = [],
   onOpenModal,
   onOpenBukti,
   onEdit,
@@ -146,8 +153,7 @@ const KasPemasukan = ({
                       {new Date(item.tanggal).toLocaleDateString("id-ID")}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
-                      {kategoriPemasukan[item.kategori_pemasukan] ||
-                        "Donasi Manual"}
+                      {formatKategori(item.kategori)}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
                       {item.nama_donatur || item.nama || item.nama_pemberi || 'Hamba Allah'}
@@ -315,7 +321,7 @@ const KasPemasukan = ({
               </div>
             </div>
             <div className="text-sm font-medium text-gray-900 mb-1">
-              {kategoriPemasukan[item.kategori_pemasukan] || "Donasi Manual"}
+              {formatKategori(item.kategori)}
             </div>
             {/* Tambah nama donatur di mobile view juga */}
             {item.nama_donatur && (
