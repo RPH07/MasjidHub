@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken')
 
 // Signup admin 
 router.post('/admin/signup', async (req, res) => {
@@ -75,10 +76,19 @@ router.post('/login', async (req, res) => {
 
         // Jangan kirim password dalam respons
         const { password: _, ...userWithoutPassword } = user;
-        
+
+        // === Tambahkan kode berikut untuk membuat token ===
+        const token = jwt.sign(
+            { id: user.id, email: user.email, role: user.role || 'jamaah' },
+            process.env.JWT_SECRET || 'secretkey', // Ganti dengan env JWT_SECRET di production!
+            { expiresIn: '7d' }
+        );
+        // =================================================
+
         res.status(200).json({ 
             message: 'Login berhasil', 
-            user: userWithoutPassword 
+            user: userWithoutPassword,
+            token // ← kirim token ke FE
         });
     } catch (error) {
         return res.status(500).json({ message: 'Terjadi kesalahan server', error: error.message });
