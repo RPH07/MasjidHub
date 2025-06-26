@@ -1,195 +1,94 @@
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { 
-  LelangPublicList,
-  LelangPublicDetail,
-  UserBidHistory
-} from '../../components/lelang-public-components'
+import React, { useState } from 'react';
+import Sidebar from '../../components/partials/Sidebar';
+import { useAuth } from '../../hooks/useAuth';
+import { ChevronRight, Menu } from 'lucide-react';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
+import { cn } from '../../lib/utils';
 
 const UserDashboard = () => {
-  const [activeView, setActiveView] = useState('list') // list, detail, history
-  const [selectedLelangId, setSelectedLelangId] = useState(null)
-  const navigate = useNavigate()
+  const { user, loading } = useAuth();
+  const isMobile = useMediaQuery('(max-width: 768px)');
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
-  // Handle card click dari LelangPublicList
-  const handleCardClick = (lelang) => {
-    setSelectedLelangId(lelang.id)
-    setActiveView('detail')
-  }
+  const toggleSidebar = () => {
+    setIsCollapsed(!isCollapsed);
+  };
 
-  // Handle back dari detail
-  const handleBackToList = () => {
-    setActiveView('list')
-    setSelectedLelangId(null)
-  }
+  console.log('User data:', user); // Debug
 
-  // Handle logout
-  const handleLogout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('userRole')
-    navigate('/login')
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* Logo/Title */}
-            <div className="flex items-center">
-              <h1 className="text-xl font-semibold text-gray-900">
-                🕌 MasjidHub
-              </h1>
+    <div className="flex h-screen w-full bg-gray-50">
+      {/* Sidebar untuk desktop */}
+      {!isMobile && (
+        <div className={cn(
+          "hidden md:block transition-all duration-300 ease-in-out", 
+          isCollapsed ? "w-16" : "w-64"
+        )}>
+          <Sidebar isCollapsed={isCollapsed} role={user?.role || 'jamaah'} />
+        </div>
+      )}
+
+      {/* Main content */}
+      <div className="flex-1 overflow-auto">
+        {/* Header dengan toggle sidebar */}
+        <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-white px-4 md:px-6">
+          {isMobile ? (
+            <Sidebar isMobile={true} role={user?.role || 'jamaah'} />
+          ) : (
+            <button 
+              onClick={toggleSidebar} 
+              className="flex items-center justify-center h-8 w-8 rounded-md hover:bg-gray-100"
+            >
+              {isCollapsed ? (
+                <ChevronRight className="h-5 w-5" />
+              ) : (
+                <Menu className="h-5 w-5" />
+              )}
+            </button>
+          )}
+          <h1 className="text-xl font-bold">Dashboard Jamaah</h1>
+        </header>
+
+        {/* Page content */}
+        <main className="flex-1 p-4 md:p-6">
+          <h1 className="text-2xl font-bold mb-6">
+            Assalamualikum, {user?.nama || 'Jamaah'}!
+          </h1>
+
+          {/* Ringkasan Statis */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-lg border bg-white p-4 shadow-sm">
+              <div className="text-lg font-medium">Total Donasi</div>
+              <div className="mt-2 text-2xl font-bold">Rp 1.500.000</div>
+              <div className="text-sm text-gray-500">Donasi bulan ini</div>
             </div>
 
-            {/* Navigation */}
-            <nav className="hidden md:flex space-x-8">
-              <button
-                onClick={() => setActiveView('list')}
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  activeView === 'list'
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                🔥 Lelang Aktif
-              </button>
-              <button
-                onClick={() => setActiveView('history')}
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  activeView === 'history'
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                📝 History Bid
-              </button>
-            </nav>
+            <div className="rounded-lg border bg-white p-4 shadow-sm">
+              <div className="text-lg font-medium">Total Barang Donasi</div>
+              <div className="mt-2 text-2xl font-bold">3 Barang</div>
+              <div className="text-sm text-gray-500">Barang yang Anda bantu</div>
+            </div>
 
-            {/* User Menu */}
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">
-                Welcome, User!
-              </span>
-              <button
-                onClick={handleLogout}
-                className="text-red-600 hover:text-red-800 text-sm font-medium"
-              >
-                Logout
-              </button>
+            <div className="rounded-lg border bg-white p-4 shadow-sm">
+              <div className="text-lg font-medium">Aktivitas Terbaru</div>
+              <div className="mt-2 text-sm text-gray-500">Donasi untuk Sound System</div>
             </div>
           </div>
-        </div>
-      </header>
-
-      {/* Mobile Navigation */}
-      <div className="md:hidden bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex space-x-4 py-3">
-            <button
-              onClick={() => setActiveView('list')}
-              className={`flex-1 py-2 px-3 rounded-md text-sm font-medium text-center transition-colors ${
-                activeView === 'list'
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              🔥 Lelang
-            </button>
-            <button
-              onClick={() => setActiveView('history')}
-              className={`flex-1 py-2 px-3 rounded-md text-sm font-medium text-center transition-colors ${
-                activeView === 'history'
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              📝 History
-            </button>
-          </div>
-        </div>
+        </main>
       </div>
-
-      {/* Main Content */}
-      <main className="py-8">
-        {/* Lelang List View */}
-        {activeView === 'list' && (
-          <LelangPublicList
-            onCardClick={handleCardClick}
-            autoRefresh={true}
-            showSearch={true}
-            showSort={true}
-            gridColumns={3}
-            cardVariant="default"
-            className="px-4 sm:px-6 lg:px-8"
-          />
-        )}
-
-        {/* Lelang Detail View */}
-        {activeView === 'detail' && selectedLelangId && (
-          <LelangPublicDetail
-            lelangId={selectedLelangId}
-            onBack={handleBackToList}
-            autoRefresh={true}
-            showBidForm={true}
-            className="px-4 sm:px-6 lg:px-8"
-          />
-        )}
-
-        {/* User Bid History View */}
-        {activeView === 'history' && (
-          <div className="px-4 sm:px-6 lg:px-8">
-            <div className="max-w-4xl mx-auto">
-              <div className="mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">
-                  📝 History Bid Saya
-                </h2>
-                <p className="text-gray-600">
-                  Lihat semua bid yang pernah Anda submit
-                </p>
-              </div>
-              
-              {/* Temporary message karena UserBidHistory belum selesai */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
-                <div className="text-4xl mb-4">🚧</div>
-                <h3 className="text-lg font-semibold text-blue-900 mb-2">
-                  Feature Coming Soon
-                </h3>
-                <p className="text-blue-700 mb-4">
-                  Fitur User Bid History sedang dalam pengembangan.
-                </p>
-                <button
-                  onClick={() => setActiveView('list')}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-                >
-                  Lihat Lelang Aktif
-                </button>
-              </div>
-        {/* {activeView === 'history' && (
-        <div className="px-4 sm:px-6 lg:px-8">
-            <div className="max-w-4xl mx-auto">
-            <div className="mb-6">
-                    <UserBidHistory />
-            </div>
-            </div>
-        </div>
-        )} */}
-            </div>
-          </div>
-        )}
-      </main>
-
-      {/* Footer */}
-      <footer className="bg-white border-t mt-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center text-gray-500 text-sm">
-            © 2024 MasjidHub. Sistem Lelang Masjid.
-          </div>
-        </div>
-      </footer>
     </div>
-  )
-}
+  );
+};
 
-export default UserDashboard
+export default UserDashboard;

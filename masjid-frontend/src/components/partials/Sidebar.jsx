@@ -10,7 +10,10 @@ import {
   DollarSign,
   FileDown,
   Menu,
-  Home
+  Home,
+  Heart,
+  History,
+  HandHeart
 } from "lucide-react";
 
 // Komponen shadcn
@@ -28,33 +31,65 @@ import {
   TooltipTrigger,
 } from "../../components/ui/tooltip";
 
-const Sidebar = ({ className, isMobile = false, isCollapsed = false }) => {
+const Sidebar = ({ className, isMobile = false, isCollapsed = false, role = 'admin' }) => {
   const location = useLocation();
-  
-  const menuItems = [
+
+  // Menu berdasarkan role
+  const menuItems = role === 'admin' ? [
     {
       title: "Dashboard",
       icon: <LayoutDashboard className="h-5 w-5" />,
-      href: "/admin",
+      to: "/admin",
       active: location.pathname === "/admin"
     },
     {
       title: "Kegiatan",
       icon: <Calendar className="h-5 w-5" />,
-      href: "/admin/kegiatan",
+      to: "/admin/kegiatan",
       active: location.pathname === "/admin/kegiatan"
     },
     {
       title: "Kas",
       icon: <DollarSign className="h-5 w-5" />,
-      href: "/admin/kas",
+      to: "/admin/kas",
       active: location.pathname === "/admin/kas"
     },
     {
       title: "Export",
       icon: <FileDown className="h-5 w-5" />,
-      href: "/admin/lelang",
+      to: "/admin/lelang",
       active: location.pathname === "/admin/lelang"
+    }
+  ] : [
+    {
+      title: "Dashboard",
+      icon: <LayoutDashboard className="h-5 w-5" />,
+      to: "/dashboard",
+      active: location.pathname === "/dashboard"
+    },
+    {
+      title: "Form Zakat",
+      icon: <HandHeart className="h-5 w-5" />,
+      to: "/zakat",
+      active: location.pathname === "/zakat"
+    },
+    {
+      title: "Crowdfunding",
+      icon: <Heart className="h-5 w-5" />,
+      to: "/crowdfunding",
+      active: location.pathname === "/crowdfunding"
+    },
+    {
+      title: "Kegiatan",
+      icon: <Calendar className="h-5 w-5" />,
+      to: "/kegiatan",
+      active: location.pathname === "/kegiatan"
+    },
+    {
+      title: "History Donasi",
+      icon: <History className="h-5 w-5" />,
+      to: "/history",
+      active: location.pathname === "/history"
     }
   ];
 
@@ -73,7 +108,9 @@ const Sidebar = ({ className, isMobile = false, isCollapsed = false }) => {
             <Home className="h-6 w-6" />
           </div>
         ) : (
-          <h2 className="text-lg font-bold">Admin Panel</h2>
+          <h2 className="text-lg font-bold">
+            {role === 'admin' ? 'Admin Panel' : 'Masjid Hub'}
+          </h2>
         )}
       </div>
 
@@ -88,7 +125,7 @@ const Sidebar = ({ className, isMobile = false, isCollapsed = false }) => {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Link
-                      to={item.href}
+                      to={item.to}
                       className={cn(
                         "flex h-10 w-10 items-center justify-center rounded-lg transition-all hover:bg-gray-100",
                         item.active ? "bg-gray-100 text-black" : "text-gray-500"
@@ -105,7 +142,7 @@ const Sidebar = ({ className, isMobile = false, isCollapsed = false }) => {
             ) : (
               <Link
                 key={index}
-                to={item.href}
+                to={item.to}
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-gray-100",
                   item.active ? "bg-gray-100 text-black font-medium" : "text-gray-500"
@@ -162,7 +199,6 @@ const Sidebar = ({ className, isMobile = false, isCollapsed = false }) => {
         </button>
       </SheetTrigger>
       <SheetContent side="left" className="p-0 w-72">
-        {/* Tambahkan baris ini untuk fix error */}
         <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
         <SidebarContent />
       </SheetContent>

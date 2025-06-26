@@ -7,7 +7,7 @@ const userRoutes = require('./routes/user');
 const kegiatanRoutes = require('./routes/kegiatan');
 const kasRoutes = require('./routes/kas');
 const zakatRoutes = require('./routes/zakat');
-const lelangRoutes = require('./routes/lelang');
+const donasiRoutes = require('./routes/donasi');
 // const { publicAccess } = require('./middleware');
 
 dotenv.config();
@@ -31,8 +31,7 @@ app.use('/api/user', userRoutes);
 app.use('/api/kegiatan', kegiatanRoutes);
 app.use('/api/kas', kasRoutes);
 app.use('/api/zakat', zakatRoutes);
-
-app.use('/api/lelang', lelangRoutes);
+app.use('/api/donasi', donasiRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

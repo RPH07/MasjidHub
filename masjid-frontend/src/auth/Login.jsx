@@ -41,6 +41,7 @@ const LoginPages = () => {
 
             // Simpan token dan role di localStorage
             localStorage.setItem('token', res.data.token);
+            localStorage.setItem('userData', JSON.stringify(res.data.user));
             localStorage.setItem('userRole', res.data.user.role);
 
             const destination = res.data.user.role === 'admin' ? 'halaman admin' : 'dashboard';

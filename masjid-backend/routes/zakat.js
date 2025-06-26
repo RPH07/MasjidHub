@@ -4,6 +4,12 @@ const db = require('../config/db');
 const multer = require('multer');
 const path = require('path');
 
+// Helper function untuk generate kode unik zakat
+const generateKodeUnikZakat = () => {
+  const randomNumber = Math.floor(Math.random() * (99 - 10 + 1)) + 10; // Range 10-99
+  return parseInt('2' + randomNumber); // Prefix '2' untuk zakat
+};
+
 // Konfigurasi multer untuk upload bukti transfer
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -50,6 +56,10 @@ router.post('/', upload.single('bukti'), async (req, res) => {
       });
     }
 
+    // genere kode unik untuk zakat
+    const kode_unik = generateKodeUnikZakat();
+    const total_zakat = parseInt(nominal) + kode_unik;
+
     const query = `
       INSERT INTO zakat (nama, jumlah, jenis_zakat, bukti_transfer, metode_pembayaran, status, created_at) 
       VALUES (?, ?, ?, ?, ?, 'pending', NOW())
@@ -59,7 +69,11 @@ router.post('/', upload.single('bukti'), async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'Pembayaran zakat berhasil dikirim! Menunggu verifikasi admin.'
+      message: 'Pembayaran zakat berhasil dikirim! Menunggu verifikasi admin.',
+      data: {
+        kode_unik,
+        total_zakat
+      }
     });
 
   } catch (error) {

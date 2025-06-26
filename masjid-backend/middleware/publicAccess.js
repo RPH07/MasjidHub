@@ -12,13 +12,13 @@ const publicRateLimit = rateLimit({
   legacyHeaders: false
 })
 
-// Rate limiting khusus untuk bid (lebih ketat)
-const bidRateLimit = rateLimit({
+// Rate limiting khusus untuk permintaan (lebih ketat)
+const permintaanRateLimit = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 menit  
-  max: 5, // max 5 bid per menit per IP
+  max: 5, // max 5 permintaan per menit per IP
   message: {
     success: false,
-    message: 'Terlalu banyak bid. Tunggu 1 menit sebelum bid lagi.'
+    message: 'Terlalu banyak permintaan. Tunggu 1 menit sebelum permintaan lagi.'
   }
 })
 
@@ -41,5 +41,5 @@ const publicAccess = (req, res, next) => {
 module.exports = {
   publicAccess,
   publicRateLimit,
-  bidRateLimit
+  permintaanRateLimit
 }

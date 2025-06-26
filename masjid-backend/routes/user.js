@@ -47,4 +47,27 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// GET user berdasarkan email
+router.get('/by-email/:email', async (req, res) => {
+  try {
+    const { email } = req.params;
+    const [rows] = await db.query('SELECT id, nama, email, role FROM users WHERE email = ?', [email]);
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'User tidak ditemukan' 
+      });
+    }
+    
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('Error fetching user by email:', err);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Terjadi kesalahan server' 
+    });
+  }
+});
+
 module.exports = router;

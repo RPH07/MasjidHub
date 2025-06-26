@@ -4,8 +4,10 @@ import Sidebar from '../partials/Sidebar';
 import { ChevronRight, Menu } from 'lucide-react';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { cn } from '../../lib/utils';
+import { useAuth } from '../../hooks/useAuth';
 
-const AdminLayout = () => {
+const UserLayout = () => {
+  const { user } = useAuth();
   const isMobile = useMediaQuery('(max-width: 768px)');
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -21,7 +23,7 @@ const AdminLayout = () => {
           "hidden md:block transition-all duration-300 ease-in-out", 
           isCollapsed ? "w-16" : "w-64"
         )}>
-          <Sidebar isCollapsed={isCollapsed} />
+          <Sidebar isCollapsed={isCollapsed} role={user?.role || 'jamaah'} />
         </div>
       )}
 
@@ -30,7 +32,7 @@ const AdminLayout = () => {
         {/* Header dengan toggle sidebar */}
         <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-white px-4 md:px-6">
           {isMobile ? (
-            <Sidebar isMobile={true} />
+            <Sidebar isMobile={true} role={user?.role || 'jamaah'} />
           ) : (
             <button 
               onClick={toggleSidebar} 
@@ -43,7 +45,7 @@ const AdminLayout = () => {
               )}
             </button>
           )}
-          <h1 className="text-xl font-bold">Admin Panel</h1>
+          <h1 className="text-xl font-bold">Dashboard Jamaah</h1>
         </header>
 
         {/* Page content */}
@@ -55,4 +57,4 @@ const AdminLayout = () => {
   );
 };
 
-export default AdminLayout;
+export default UserLayout;

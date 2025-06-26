@@ -1,27 +1,27 @@
 import React, { useState } from 'react'
 import{
-  LelangDaftar,
-  LelangTambah,
-  LelangAktif,
-  LelangHistory
-} from '../../components/lelang-components'
+  DonasiDaftar,
+  DonasiTambah,
+  DonasiAktif,
+  DonasiHistory
+} from '../../components/donasi-components'
 
-const Lelang = () => {
+const Donasi = () => {
   const [activeTab, setActiveTab] = useState('daftar')
 
   const tabs = [
     {key: 'daftar', label: 'Daftar Barang', icon: '📋' },
     {key: 'tambah', label: 'Tambah Barang', icon: 'U+2795' },
-    {key: 'aktif', label: 'Lelang Aktif', icon: '⚡' },
-    {key: 'history', label: 'History Lelang', icon: '📚' }
+    {key: 'aktif', label: 'Donasi Aktif', icon: '⚡' },
+    {key: 'history', label: 'History Donasi', icon: '📚' }
   ]
 
   return(
     <div className='p-6'>
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Kelola Lelang Barang Masjid</h1>
-        <p className="text-gray-600">Sistem lelang barang untuk jamaah masjid</p>
+        <h1 className="text-2xl font-bold text-gray-900">Kelola Donasi Barang Masjid</h1>
+        <p className="text-gray-600">Sistem Donasi barang untuk jamaah masjid</p>
       </div>
 
       {/* Tab Navigation */}
@@ -53,12 +53,12 @@ const Lelang = () => {
 
       {/* Tab Content */}
       <div className="min-h-[600px]">
-        {activeTab === 'daftar' && <LelangDaftar />}
-        {activeTab === 'tambah' && <LelangTambah />}
-        {activeTab === 'aktif' && <LelangAktif />}
-        {activeTab === 'history' && <LelangHistory />}
+        {activeTab === 'daftar' && <DonasiDaftar />}
+        {activeTab === 'tambah' && <DonasiTambah />}
+        {activeTab === 'aktif' && <DonasiAktif />}
+        {activeTab === 'history' && <DonasiHistory />}
       </div>
     </div>
   )
 }
-export default Lelang
+export default Donasi

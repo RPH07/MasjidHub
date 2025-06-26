@@ -1,28 +1,63 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../config/supabaseClient';
 
 export const useAuth = () => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Check active sessions
-        const getUser = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            setUser(session?.user ?? null);
-            setLoading(false);
+        // Ambil data user dari localStorage
+        const getUserFromLocalStorage = () => {
+            try {
+                const token = localStorage.getItem('token');
+                const userData = localStorage.getItem('userData');
+                const userRole = localStorage.getItem('userRole');
+
+                if (token && userData) {
+                    const parsedUserData = JSON.parse(userData);
+                    
+                    // Set user dengan data dari localStorage
+                    setUser({
+                        ...parsedUserData,
+                        role: userRole || parsedUserData.role
+                    });
+                } else {
+                    setUser(null);
+                }
+            } catch (error) {
+                console.error('Error parsing user data from localStorage:', error);
+                setUser(null);
+            } finally {
+                setLoading(false);
+            }
         };
-        
-        getUser();
 
-        // Listen for changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            setUser(session?.user ?? null);
-            setLoading(false);
-        });
+        getUserFromLocalStorage();
 
-        return () => subscription.unsubscribe();
+        // Listen for localStorage changes (jika login dari tab lain)
+        const handleStorageChange = (e) => {
+            if (e.key === 'userData' || e.key === 'token') {
+                getUserFromLocalStorage();
+            }
+        };
+
+        window.addEventListener('storage', handleStorageChange);
+
+        return () => {
+            window.removeEventListener('storage', handleStorageChange);
+        };
     }, []);
 
-    return { user, loading };
+    // Function untuk logout
+    const logout = () => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('userData');
+        localStorage.removeItem('userRole');
+        setUser(null);
+    };
+
+    return { 
+        user, 
+        loading,
+        logout 
+    };
 };
