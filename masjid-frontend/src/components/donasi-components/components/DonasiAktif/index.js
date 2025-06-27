@@ -1,1 +1,1 @@
-export { default } from './LelangAktif'
+export { default } from './DonasiAktif'

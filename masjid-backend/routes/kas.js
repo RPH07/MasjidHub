@@ -395,36 +395,6 @@ router.get('/infaq', async (req, res) => {
   }
 });
 
-// GET lelang berdasarkan periode
-router.get('/lelang', async (req, res) => {
-  try {
-    const { period = 'bulan-ini', startDate, endDate } = req.query;
-    
-    let dateFilter;
-    if (startDate && endDate) {
-      dateFilter = { startDate, endDate };
-    } else {
-      dateFilter = getPeriodFilter(period);
-    }
-
-    // Ambil dari kas_buku_besar dengan filter source_table = 'lelang'
-    const [rows] = await db.query(`
-      SELECT 
-        kb.*,
-        bl.nama_barang, bl.deskripsi, bl.harga_awal, bl.tanggal_lelang
-      FROM kas_buku_besar kb
-      LEFT JOIN barang_lelang bl ON kb.source_id = bl.id AND kb.source_table = 'lelang'
-      WHERE kb.source_table = 'lelang' 
-        AND kb.tanggal >= ? AND kb.tanggal < ? 
-      ORDER BY kb.tanggal DESC
-    `, [dateFilter.startDate, dateFilter.endDate]);
-    
-    res.json(rows);
-  } catch (err) {
-    console.error('Gagal mengambil data lelang:', err);
-    res.status(500).json({ message: 'Terjadi kesalahan saat mengambil data lelang' });
-  }
-});
 
 // ===== CRUD OPERATIONS untuk kas manual =====
 // POST tambah transaksi kas manual
@@ -581,10 +551,37 @@ router.get('/pending', async (req, res) => {
       ORDER BY tanggal DESC
     `);
 
+    // Get pending donasi (TAMBAH INI)
+    const [donasiRows] = await db.query(`
+      SELECT 
+        d.id,
+        d.nama_donatur as nama_pemberi,
+        d.nominal as jumlah,
+        d.metode_pembayaran,
+        d.bukti_transfer,
+        d.catatan as keterangan,
+        d.kode_unik,
+        d.total_transfer,
+        d.created_at,
+        p.nama_barang,
+        'donasi' as type
+      FROM donasi_pengadaan d
+      JOIN barang_pengadaan p ON d.barang_id = p.id
+      WHERE d.status = 'pending'
+      ORDER BY d.created_at DESC
+    `);
+
     // Combine and sort by date
-    const allPending = [...zakatRows, ...infaqRows].sort((a, b) => 
+    const allPending = [...zakatRows, ...infaqRows, ...donasiRows].sort((a, b) => 
       new Date(b.created_at) - new Date(a.created_at)
     );
+
+    console.log('Pending transactions found:', {
+      zakat: zakatRows.length,
+      infaq: infaqRows.length,
+      donasi: donasiRows.length,
+      total: allPending.length
+    });
 
     res.json({
       success: true,

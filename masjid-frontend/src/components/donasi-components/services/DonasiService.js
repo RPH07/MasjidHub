@@ -1,58 +1,61 @@
-import axios from 'axios'
-import { API_BASE_URL } from '../utils/constants'
+import axios from 'axios';
+
+const API_BASE_URL = 'http://localhost:5000/api';
 
 const api = axios.create({
-    baseURL: `${API_BASE_URL}/lelang`
-})
+    baseURL: `${API_BASE_URL}/donasi`
+});
 
-export const lelangService = {
-    // CRUD Barang Lelang
-    getAll: (status = 'all') => {
-        const params = status !== 'all' ? { status } : {}
-        return api.get('/', { params })
+export const donasiService = {
+    // CRUD Program Donasi
+    getPrograms: (status) => {
+        const params = status ? { status } : {};
+        return api.get('/program', { params });
     },
 
-    create: (formData) => {
-        return api.post('/', formData, {
+    createProgram: (formData) => {
+        return api.post('/program', formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
-        })
+        });
     },
 
-    update: (id, formData) => {
-        return api.put(`/${id}`, formData, {
+    updateProgram: (id, formData) => {
+        return api.put(`/program/${id}`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
-        })
+        });
     },
 
-    delete: (id) => {
-        return api.delete(`/${id}`)
+    deleteProgram: (id) => {
+        return api.delete(`/program/${id}`);
     },
 
-    // Kelola Status Lelang
-    start: (id) => {
-        return api.post(`/${id}/start`)
+    // Kelola Status Program
+    activateProgram: (id) => {
+        return api.post(`/program/${id}/activate`);
     },
 
-    cancel: (id, alasan = 'Dibatalkan oleh admin') => {
-        return api.post(`/${id}/cancel`, { alasan })
+    deactivateProgram: (id) => {
+        return api.post(`/program/${id}/deactivate`);
     },
 
-    finish: (id) => {
-        return api.post(`/${id}/finish`)
+    completeProgram: (id) => {
+        return api.post(`/program/${id}/complete`);
     },
 
-    // Lelang Aktif & Bidding
-    getActive: () => {
-        return api.get('/aktif')
+    // Donasi Management
+    getActivePrograms: () => {
+        return api.get('/program?status=aktif');
     },
 
-    submitBid: (id, bidData) => {
-        return api.post(`/${id}/bid`, bidData)
+    submitDonation: (programId, donationData) => {
+        return api.post(`/submit/${programId}`, donationData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
     },
 
-    getBidHistory: (id) => {
-        return api.get(`/${id}/bids`)
+    getDonationHistory: (programId) => {
+        return api.get(`/program/${programId}/donations`);
     }
-}
+};
 
-export default lelangService
+export default donasiService;

@@ -1,46 +1,157 @@
 import React from 'react';
 
-const BuktiModal = ({ isOpen, buktiTransfer, onClose }) => {
-  if (!isOpen || !buktiTransfer) return null;
+const BuktiModal = ({ isOpen, onClose, buktiTransfer, transactionInfo }) => {
+  if (!isOpen) return null;
+
+  // UPDATE: Buat URL function yang lebih simple karena URL sudah dibuat di parent
+  const getImageUrl = (urlOrFilename) => {
+    if (!urlOrFilename) return null;
+    
+    // Jika sudah berupa URL lengkap, langsung return
+    if (urlOrFilename.startsWith('http')) {
+      return urlOrFilename;
+    }
+    
+    // Fallback jika masih berupa filename saja
+    return `http://localhost:5000/uploads/bukti-donasi/${urlOrFilename}`;
+  };
+
+  const imageUrl = getImageUrl(buktiTransfer);
 
   return (
-    <div className="fixed inset-0 bg-black/45 z-50 flex items-center justify-center p-4">
-      <div className="relative w-full max-w-2xl p-5 border shadow-lg rounded-md bg-white">
-        <div className="mt-3">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-medium text-gray-900">Bukti Transfer</h3>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          <div className="text-center">
-            <img
-              src={`http://localhost:5000/uploads/${buktiTransfer}`}
-              alt="Bukti Transfer"
-              className="max-w-full max-h-96 mx-auto rounded border"
-              onError={(e) => {
-                e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkdhbWJhciB0aWRhayBkYXBhdCBkaW11YXQ8L3RleHQ+PC9zdmc+';
-              }}
-            />
-            <div className="mt-4">
-              <a
-                href={`http://localhost:5000/uploads/${buktiTransfer}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700"
-              >
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                Download
-              </a>
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto">
+        <div className="p-4 border-b flex justify-between items-center">
+          <h3 className="text-lg font-semibold">
+            Bukti Transfer
+            {transactionInfo && (
+              <span className="text-sm text-gray-600 ml-2">
+                - {transactionInfo.type?.toUpperCase() || 'Unknown'}
+              </span>
+            )}
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700 text-2xl font-bold"
+          >
+            ×
+          </button>
+        </div>
+        
+        <div className="p-6">
+          {transactionInfo && (
+            <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                {transactionInfo.nama_pemberi && (
+                  <div>
+                    <span className="font-medium text-gray-600">Nama:</span>
+                    <p className="text-gray-900">{transactionInfo.nama_pemberi}</p>
+                  </div>
+                )}
+                {transactionInfo.jumlah && (
+                  <div>
+                    <span className="font-medium text-gray-600">Nominal:</span>
+                    <p className="text-gray-900 font-bold">
+                      {new Intl.NumberFormat('id-ID', {
+                        style: 'currency',
+                        currency: 'IDR',
+                        minimumFractionDigits: 0,
+                      }).format(transactionInfo.jumlah)}
+                    </p>
+                  </div>
+                )}
+                {transactionInfo.kode_unik && (
+                  <div>
+                    <span className="font-medium text-gray-600">Kode Unik:</span>
+                    <p className="text-gray-900 font-mono">+{transactionInfo.kode_unik.toLocaleString('id-ID')}</p>
+                  </div>
+                )}
+                {transactionInfo.total_transfer && (
+                  <div>
+                    <span className="font-medium text-gray-600">Total Transfer:</span>
+                    <p className="text-gray-900 font-bold text-purple-600">
+                      {new Intl.NumberFormat('id-ID', {
+                        style: 'currency',
+                        currency: 'IDR',
+                        minimumFractionDigits: 0,
+                      }).format(transactionInfo.total_transfer)}
+                    </p>
+                  </div>
+                )}
+                {transactionInfo.metode_pembayaran && (
+                  <div>
+                    <span className="font-medium text-gray-600">Metode:</span>
+                    <p className="text-gray-900 capitalize">
+                      {transactionInfo.metode_pembayaran.replace('_', ' ')}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
+          )}
+          
+          <div className="text-center">
+            {imageUrl ? (
+              <div>
+                <img
+                  src={imageUrl}
+                  alt="Bukti Transfer"
+                  className="max-w-full h-auto mx-auto rounded-lg shadow-lg"
+                  style={{ maxHeight: '70vh' }}
+                  onError={(e) => {
+                    console.error('Error loading image:', imageUrl);
+                    e.target.src = 'https://via.placeholder.com/400x300?text=Gambar+Tidak+Ditemukan';
+                    e.target.alt = 'Gambar tidak dapat dimuat';
+                    
+                    // Show error details
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'mt-2 p-2 bg-red-100 text-red-700 text-xs rounded';
+                    errorDiv.innerHTML = `
+                      <strong>Error loading image:</strong><br>
+                      URL: ${imageUrl}<br>
+                      Pastikan file ada di folder yang benar
+                    `;
+                    if (!e.target.parentNode.querySelector('.error-detail')) {
+                      errorDiv.classList.add('error-detail');
+                      e.target.parentNode.appendChild(errorDiv);
+                    }
+                  }}
+                  onLoad={() => {
+                    console.log('✅ Image loaded successfully:', imageUrl);
+                  }}
+                />
+                
+                <div className="mt-4 flex justify-center gap-3">
+                  <a
+                    href={imageUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    🔗 Buka di Tab Baru
+                  </a>
+                  
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(imageUrl);
+                      alert('URL gambar disalin ke clipboard!');
+                    }}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                  >
+                    📋 Copy URL
+                  </button>
+                </div>
+                
+                <div className="mt-2 text-xs text-gray-500">
+                  URL: {imageUrl}
+                </div>
+              </div>
+            ) : (
+              <div className="py-12">
+                <div className="text-gray-500 text-lg mb-2">❌ Bukti transfer tidak tersedia</div>
+                <div className="text-gray-400 text-sm">File: {buktiTransfer || 'tidak ada'}</div>
+              </div>
+            )}
           </div>
         </div>
       </div>

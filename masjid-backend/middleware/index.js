@@ -1,4 +1,4 @@
 module.exports = {
   ...require('./publicAccess'),
-  auth: require('./auth')
+  auth: require('./auth').default
 }

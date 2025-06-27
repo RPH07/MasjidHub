@@ -17,7 +17,7 @@ export {
     DonasiAktif,
     DonasiHistory,
     DonasiCard,
-    BidForm,
+    DonasiForm,
 } from "./components";
 
 export { useDonasi, useBidHistory } from "./hooks";

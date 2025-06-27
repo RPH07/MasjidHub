@@ -1,1 +1,1 @@
-export { default } from './LelangTambah'
+export { default } from './DonasiTambah'

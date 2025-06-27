@@ -57,8 +57,8 @@ const Sidebar = ({ className, isMobile = false, isCollapsed = false, role = 'adm
     {
       title: "Export",
       icon: <FileDown className="h-5 w-5" />,
-      to: "/admin/lelang",
-      active: location.pathname === "/admin/lelang"
+      to: "/admin/donasi",
+      active: location.pathname === "/admin/donasi"
     }
   ] : [
     {

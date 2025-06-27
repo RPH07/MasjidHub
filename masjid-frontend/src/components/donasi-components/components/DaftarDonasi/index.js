@@ -1,1 +1,1 @@
-export { default } from './LelangDaftar'
+export { default } from './DaftarDonasi'

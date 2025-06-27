@@ -9,8 +9,24 @@ export const useValidationOps = (refreshCallback) => {
       setLoading(true);
       const token = localStorage.getItem('token');
       
+      // Tentukan endpoint berdasarkan tipe
+      let endpoint;
+      switch (type) {
+        case 'zakat':
+          endpoint = `http://localhost:5000/api/zakat/${id}/validate`;
+          break;
+        case 'infaq':
+          endpoint = `http://localhost:5000/api/infaq/${id}/validate`;
+          break;
+        case 'donasi':
+          endpoint = `http://localhost:5000/api/donasi/${id}/validate`;
+          break;
+        default:
+          throw new Error('Tipe transaksi tidak valid');
+      }
+      
       const response = await axios.put(
-        `http://localhost:5000/api/${type}/${id}/validate`,
+        endpoint,
         { action: 'approve' },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -37,8 +53,24 @@ export const useValidationOps = (refreshCallback) => {
       setLoading(true);
       const token = localStorage.getItem('token');
       
+      // Tentukan endpoint berdasarkan tipe
+      let endpoint;
+      switch (type) {
+        case 'zakat':
+          endpoint = `http://localhost:5000/api/zakat/${id}/validate`;
+          break;
+        case 'infaq':
+          endpoint = `http://localhost:5000/api/infaq/${id}/validate`;
+          break;
+        case 'donasi':
+          endpoint = `http://localhost:5000/api/donasi/${id}/validate`;
+          break;
+        default:
+          throw new Error('Tipe transaksi tidak valid');
+      }
+      
       const response = await axios.put(
-        `http://localhost:5000/api/${type}/${id}/validate`,
+        endpoint,
         { 
           action: 'reject', 
           reason: reason || 'Tidak ada alasan yang diberikan' 
@@ -69,3 +101,5 @@ export const useValidationOps = (refreshCallback) => {
     loading
   };
 };
+
+export default useValidationOps;

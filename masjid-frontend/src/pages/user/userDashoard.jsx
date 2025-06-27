@@ -14,8 +14,6 @@ const UserDashboard = () => {
     setIsCollapsed(!isCollapsed);
   };
 
-  console.log('User data:', user); // Debug
-
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">

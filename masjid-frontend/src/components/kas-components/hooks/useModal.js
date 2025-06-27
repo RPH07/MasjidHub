@@ -1,53 +1,50 @@
 import { useState } from 'react';
 
 export const useModal = () => {
-  const [modalState, setModalState] = useState({
-    showModal: false,
-    modalType: '',
-    editData: null,
-    showBuktiModal: false,
-    selectedBukti: null
-  });
+  const [showModal, setShowModal] = useState(false);
+  const [modalType, setModalType] = useState('');
+  const [editData, setEditData] = useState(null);
+  const [showBuktiModal, setShowBuktiModal] = useState(false);
+  const [selectedBukti, setSelectedBukti] = useState(null);
+  const [buktiTransactionInfo, setBuktiTransactionInfo] = useState(null);
 
   const openTransactionModal = (type, data = null) => {
-    setModalState(prev => ({
-      ...prev,
-      showModal: true,
-      modalType: type,
-      editData: data
-    }));
+    setModalType(type);
+    setEditData(data);
+    setShowModal(true);
   };
 
   const closeTransactionModal = () => {
-    setModalState(prev => ({
-      ...prev,
-      showModal: false,
-      modalType: '',
-      editData: null
-    }));
+    setShowModal(false);
+    setModalType('');
+    setEditData(null);
   };
 
-  const openBuktiModal = (buktiTransfer) => {
-    setModalState(prev => ({
-      ...prev,
-      showBuktiModal: true,
-      selectedBukti: buktiTransfer
-    }));
+  const openBuktiModal = (buktiTransfer, transactionInfo = null) => {
+    console.log('Opening bukti modal:', { buktiTransfer, transactionInfo });
+    setSelectedBukti(buktiTransfer);
+    setBuktiTransactionInfo(transactionInfo);
+    setShowBuktiModal(true);
   };
 
   const closeBuktiModal = () => {
-    setModalState(prev => ({
-      ...prev,
-      showBuktiModal: false,
-      selectedBukti: null
-    }));
+    setShowBuktiModal(false);
+    setSelectedBukti(null);
+    setBuktiTransactionInfo(null);
   };
 
   return {
-    ...modalState,
+    showModal,
+    modalType,
+    editData,
+    showBuktiModal,
+    selectedBukti,
+    buktiTransactionInfo,
     openTransactionModal,
     closeTransactionModal,
     openBuktiModal,
     closeBuktiModal
   };
 };
+
+export default useModal;

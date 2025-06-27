@@ -35,11 +35,44 @@ const Kas = () => {
     editData,
     showBuktiModal,
     selectedBukti,
+    buktiTransactionInfo,
     openTransactionModal,
     closeTransactionModal,
     openBuktiModal,
     closeBuktiModal
   } = useModal();
+
+  const handleOpenBukti = (buktiTransfer, transactionInfo = null) => {
+    if (!buktiTransfer) {
+      alert('Bukti transfer tidak tersedia');
+      return;
+    }
+
+    console.log('Opening bukti with info:', transactionInfo); // Debug log
+
+    // Tentukan folder berdasarkan jenis transaksi
+    let folderPath = '';
+    switch (transactionInfo?.type) {
+      case 'zakat':
+        folderPath = 'bukti-zakat';
+        break;
+      case 'infaq':
+        folderPath = 'infaq';
+        break;
+      case 'donasi':
+        folderPath = 'bukti-donasi';
+        break;
+      default:
+        folderPath = 'bukti-donasi'; // default fallback
+    }
+
+    const imageUrl = `http://localhost:5000/uploads/${folderPath}/${buktiTransfer}`;
+    
+    console.log('Generated image URL:', imageUrl); // Debug log
+
+    // Call modal dengan URL yang sudah dibuat
+    openBuktiModal(imageUrl, transactionInfo);
+  };
 
   // Loading state
   if (kasDataHook.loading) {
@@ -116,7 +149,7 @@ const Kas = () => {
             loading={pendingDataHook.loading || validationOps.loading}
             onApprove={validationOps.approveTransaction}
             onReject={validationOps.rejectTransaction}
-            onOpenBukti={openBuktiModal}
+            onOpenBukti={handleOpenBukti}
           />
         )}
 
@@ -128,7 +161,7 @@ const Kas = () => {
             lelangData={kasDataHook.lelangData}
             onEdit={handleEdit}
             onDelete={handleDelete}
-            onOpenBukti={openBuktiModal}
+            onOpenBukti={handleOpenBukti}
             onOpenModal={openTransactionModal}
             onAddTransaction={() => openTransactionModal('add-pemasukan')}
           />
@@ -139,7 +172,7 @@ const Kas = () => {
             kasData={kasDataHook.kasData}
             onEdit={handleEdit}
             onDelete={handleDelete}
-            onOpenBukti={openBuktiModal}
+            onOpenBukti={handleOpenBukti}
             onOpenModal={openTransactionModal}
             onAddTransaction={() => openTransactionModal('add-pengeluaran')}
           />
@@ -150,7 +183,7 @@ const Kas = () => {
             kasData={kasDataHook.kasData}
             zakatData={kasDataHook.zakatData}
             infaqData={kasDataHook.infaqData}
-            onOpenBukti={openBuktiModal}
+            onOpenBukti={handleOpenBukti}
             kategoriPemasukan={kategoriPemasukan}
             currentPeriod={selectedPeriod}
           />
@@ -171,6 +204,7 @@ const Kas = () => {
         isOpen={showBuktiModal}
         onClose={closeBuktiModal}
         buktiTransfer={selectedBukti}
+        transactionInfo={buktiTransactionInfo}
       />
     </div>
   );

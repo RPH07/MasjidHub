@@ -1,242 +1,186 @@
-import React, { useEffect, useState } from 'react'
-import { useLelang } from '../../hooks'
-import { LelangCard } from '../shared'
-import { LELANG_STATUS } from '../../utils'
+import React, { useState, useEffect } from 'react'
+import { ProgramCard } from '../shared'
+import { useDonasi } from '../../hooks/'
+import { DONASI_STATUS } from '../../utils/'
 
-const LelangDaftar = () => {
+const DaftarDonasi = () => {
     const {
-        barangLelang,
+        programDonasi,
         loading,
         error,
-        fetchBarangLelang,
-        deleteBarangLelang,
-        startLelang,
-        cancelLelang,
-        finishLelang
-    } = useLelang()
+        fetchProgramDonasi,
+        deleteProgramDonasi,
+        activateProgram,
+        deactivateProgram,
+        completeProgram
+    } = useDonasi()
 
     const [filter, setFilter] = useState('all')
-    const [editModal, setEditModal] = useState({ show: false, data: null })
+    const [searchTerm, setSearchTerm] = useState('')
 
-    // Load data saat component mount
     useEffect(() => {
-        fetchBarangLelang(filter)
-    }, [fetchBarangLelang, filter])
+        fetchProgramDonasi()
+    }, [fetchProgramDonasi])
 
-    // Handle actions
-    const handleStartLelang = async (id) => {
-        if (window.confirm('Yakin ingin memulai lelang ini?')) {
-            const result = await startLelang(id)
+    const filteredPrograms = programDonasi.filter(program => {
+        const matchesFilter = filter === 'all' || program.status === filter
+        const matchesSearch = program.nama_barang.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            program.deskripsi?.toLowerCase().includes(searchTerm.toLowerCase())
+        return matchesFilter && matchesSearch
+    })
+
+    const handleEdit = (program) => {
+        // TODO: Implement edit functionality
+        console.log('Edit program:', program)
+    }
+
+    const handleDelete = async (programId) => {
+        if (window.confirm('Apakah Anda yakin ingin menghapus program donasi ini?')) {
+            const result = await deleteProgramDonasi(programId)
             if (result.success) {
-                alert(result.message)
+                alert('Program donasi berhasil dihapus')
             } else {
                 alert(result.message)
             }
         }
     }
 
-    const handleCancelLelang = async (id) => {
-        const alasan = window.prompt('Alasan pembatalan (opsional):')
-        if (alasan !== null) { // User tidak cancel prompt
-            const result = await cancelLelang(id, alasan)
+    const handleActivate = async (programId) => {
+        const result = await activateProgram(programId)
+        if (result.success) {
+            alert('Program donasi berhasil diaktifkan')
+        } else {
+            alert(result.message)
+        }
+    }
+
+    const handleDeactivate = async (programId) => {
+        if (window.confirm('Apakah Anda yakin ingin menonaktifkan program ini?')) {
+            const result = await deactivateProgram(programId)
             if (result.success) {
-                alert(result.message)
+                alert('Program donasi berhasil dinonaktifkan')
             } else {
                 alert(result.message)
             }
         }
     }
 
-    const handleFinishLelang = async (id) => {
-        if (window.confirm('Yakin ingin menyelesaikan lelang ini?')) {
-            const result = await finishLelang(id)
+    const handleComplete = async (programId) => {
+        if (window.confirm('Apakah Anda yakin ingin menyelesaikan program ini?')) {
+            const result = await completeProgram(programId)
             if (result.success) {
-                alert(result.message)
+                alert('Program donasi berhasil diselesaikan')
             } else {
                 alert(result.message)
             }
         }
     }
 
-    const handleDeleteLelang = async (id) => {
-        if (window.confirm('Yakin ingin menghapus barang lelang ini? Aksi ini tidak dapat dibatalkan.')) {
-            const result = await deleteBarangLelang(id)
-            if (result.success) {
-                alert(result.message)
-            } else {
-                alert(result.message)
-            }
-        }
-    }
-
-    const handleEditLelang = (barang) => {
-        setEditModal({ show: true, data: barang })
-    }
-
-    // Filter data
-    const filteredData = filter === 'all'
-        ? barangLelang
-        : barangLelang.filter(item => item.status_lelang === filter)
-
-    // Stats untuk cards
-    const stats = {
-        total: barangLelang.length,
-        draft: barangLelang.filter(item => item.status_lelang === LELANG_STATUS.DRAFT).length,
-        aktif: barangLelang.filter(item => item.status_lelang === LELANG_STATUS.AKTIF).length,
-        selesai: barangLelang.filter(item => item.status_lelang === LELANG_STATUS.SELESAI).length,
-        batal: barangLelang.filter(item => item.status_lelang === LELANG_STATUS.BATAL).length
+    const handleViewDonations = (program) => {
+        // TODO: Navigate to donations detail
+        console.log('View donations for:', program)
     }
 
     if (loading) {
         return (
-            <div className="flex justify-center items-center py-12">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p className="text-gray-600">Memuat data lelang...</p>
-                </div>
+            <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
             </div>
         )
     }
 
     if (error) {
         return (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <div className="flex items-center">
-                    <div className="text-red-600 mr-3">⚠️</div>
-                    <div>
-                        <h3 className="text-red-800 font-medium">Terjadi Kesalahan</h3>
-                        <p className="text-red-600 text-sm">{error}</p>
-                    </div>
-                    <button
-                        onClick={() => fetchBarangLelang(filter)}
-                        className="ml-auto bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
-                    >
-                        Coba Lagi
-                    </button>
-                </div>
+            <div className="text-center py-8">
+                <div className="text-red-600 mb-4">{error}</div>
+                <button
+                    onClick={() => fetchProgramDonasi()}
+                    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+                >
+                    Coba Lagi
+                </button>
             </div>
         )
     }
 
     return (
         <div className="space-y-6">
-            {/* Header & Stats */}
-            <div>
-                <div className="flex justify-between items-center mb-6">
-                    <div>
-                        <h2 className="text-xl font-semibold text-gray-900">Daftar Barang Lelang</h2>
-                        <p className="text-gray-600 text-sm">Kelola semua barang yang akan/sedang/sudah dilelang</p>
-                    </div>
-                    <button
-                        onClick={() => fetchBarangLelang(filter)}
-                        className="bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-lg text-sm flex items-center"
-                    >
-                        🔄 Refresh
-                    </button>
-                </div>
-
-                {/* Stats Cards */}
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-                    {[
-                        { label: 'Total', value: stats.total, color: 'blue' },
-                        { label: 'Draft', value: stats.draft, color: 'gray' },
-                        { label: 'Aktif', value: stats.aktif, color: 'green' },
-                        { label: 'Selesai', value: stats.selesai, color: 'blue' },
-                        { label: 'Dibatalkan', value: stats.batal, color: 'red' }
-                    ].map((stat, index) => (
-                        <div key={index} className="bg-white p-4 rounded-lg shadow border">
-                            <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
-                            <div className="text-sm text-gray-600">{stat.label}</div>
-                        </div>
-                    ))}
+            {/* Header */}
+            <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-gray-900">
+                    Daftar Program Donasi
+                </h2>
+                <div className="text-sm text-gray-600">
+                    Total: {filteredPrograms.length} program
                 </div>
             </div>
 
             {/* Filters */}
             <div className="bg-white p-4 rounded-lg shadow">
-                <div className="flex flex-wrap gap-2">
-                    {[
-                        { key: 'all', label: 'Semua' },
-                        { key: LELANG_STATUS.DRAFT, label: 'Draft' },
-                        { key: LELANG_STATUS.AKTIF, label: 'Aktif' },
-                        { key: LELANG_STATUS.SELESAI, label: 'Selesai' },
-                        { key: LELANG_STATUS.BATAL, label: 'Dibatalkan' }
-                    ].map(filterOption => (
-                        <button
-                            key={filterOption.key}
-                            onClick={() => setFilter(filterOption.key)}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filter === filterOption.key
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                }`}
+                <div className="flex flex-col md:flex-row gap-4">
+                    {/* Search */}
+                    <div className="flex-1">
+                        <input
+                            type="text"
+                            placeholder="Cari program donasi..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                        />
+                    </div>
+
+                    {/* Status Filter */}
+                    <div className="md:w-48">
+                        <select
+                            value={filter}
+                            onChange={(e) => setFilter(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                         >
-                            {filterOption.label}
-                            {filterOption.key !== 'all' && (
-                                <span className="ml-1 text-xs">
-                                    ({filterOption.key === LELANG_STATUS.DRAFT ? stats.draft
-                                        : filterOption.key === LELANG_STATUS.AKTIF ? stats.aktif
-                                            : filterOption.key === LELANG_STATUS.SELESAI ? stats.selesai
-                                                : stats.batal})
-                                </span>
-                            )}
-                        </button>
-                    ))}
+                            <option value="all">Semua Status</option>
+                            <option value={DONASI_STATUS.DRAFT}>Draft</option>
+                            <option value={DONASI_STATUS.AKTIF}>Aktif</option>
+                            <option value={DONASI_STATUS.SELESAI}>Selesai</option>
+                            <option value={DONASI_STATUS.BATAL}>Batal</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
-            {/* Content */}
-            {filteredData.length === 0 ? (
+            {/* Program List */}
+            {filteredPrograms.length === 0 ? (
                 <div className="text-center py-12">
-                    <div className="text-gray-400 text-6xl mb-4">📦</div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">
-                        {filter === 'all' ? 'Belum Ada Barang Lelang' : `Tidak Ada Lelang ${filter.charAt(0).toUpperCase() + filter.slice(1)}`}
-                    </h3>
-                    <p className="text-gray-600 mb-4">
-                        {filter === 'all'
-                            ? 'Mulai dengan menambahkan barang pertama untuk dilelang'
-                            : 'Belum ada lelang dengan status ini'
+                    <div className="text-gray-500 text-lg mb-2">
+                        {searchTerm || filter !== 'all' 
+                            ? 'Tidak ada program yang sesuai dengan filter'
+                            : 'Belum ada program donasi'
                         }
-                    </p>
-                    {filter === 'all' && (
-                        <button className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
-                            + Tambah Barang Lelang
-                        </button>
-                    )}
+                    </div>
+                    <div className="text-gray-400">
+                        {searchTerm || filter !== 'all'
+                            ? 'Coba ubah kata kunci pencarian atau filter'
+                            : 'Mulai dengan menambahkan program donasi baru'
+                        }
+                    </div>
                 </div>
             ) : (
                 <div className="grid gap-6">
-                    {filteredData.map(barang => (
-                        <LelangCard
-                            key={barang.id}
-                            barang={barang}
-                            onStart={handleStartLelang}
-                            onCancel={handleCancelLelang}
-                            onFinish={handleFinishLelang}
-                            onEdit={handleEditLelang}
-                            onDelete={handleDeleteLelang}
+                    {filteredPrograms.map(program => (
+                        <ProgramCard
+                            key={program.id}
+                            program={program}
+                            onEdit={handleEdit}
+                            onDelete={handleDelete}
+                            onActivate={handleActivate}
+                            onDeactivate={handleDeactivate}
+                            onComplete={handleComplete}
+                            onViewDonations={handleViewDonations}
                             showActions={true}
                         />
                     ))}
-                </div>
-            )}
-
-            {/* Edit Modal - TODO: Implement later */}
-            {editModal.show && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white p-6 rounded-lg max-w-md w-full mx-4">
-                        <h3 className="text-lg font-medium mb-4">Edit Barang Lelang</h3>
-                        <p className="text-gray-600 mb-4">Fitur edit akan diimplementasikan di komponen LelangTambah</p>
-                        <button
-                            onClick={() => setEditModal({ show: false, data: null })}
-                            className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
-                        >
-                            Tutup
-                        </button>
-                    </div>
                 </div>
             )}
         </div>
     )
 }
 
-export default LelangDaftar
+export default DaftarDonasi

@@ -1,417 +1,347 @@
-import React, { useEffect, useState } from 'react'
-import { useLelang, useBidHistory } from '../../hooks'
-import { formatRupiah, formatDateTime, formatDate } from '../../utils'
+import React, { useState, useEffect } from 'react'
+import { ProgramCard } from '../shared'
+import { useDonasiHistory } from '../../hooks/useDonasiHistory'
+import { formatRupiah, formatDate } from '../../utils/formatters'
 
-const LelangHistory = () => {
+const DonasiHistory = () => {
     const {
-        lelangHistory,
+        historyDonasi,
+        detailProgram,
+        donatursPerProgram,
         loading,
         error,
-        fetchLelangHistory
-    } = useLelang()
+        fetchHistoryDonasi,
+        fetchDetailProgram,
+        resetDetailProgram,
+        exportLaporanDonasi
+    } = useDonasiHistory()
 
-    const {
-        bidHistory,
-        fetchBidHistory
-    } = useBidHistory()
-
-    const [sortBy, setSortBy] = useState('tanggal_selesai') // tanggal_selesai, harga_terjual, keuntungan
-    const [sortOrder, setSortOrder] = useState('desc') // asc, desc
     const [searchTerm, setSearchTerm] = useState('')
-    const [expandedDetails, setExpandedDetails] = useState({})
+    const [dateFilter, setDateFilter] = useState({
+        from: '',
+        to: ''
+    })
+    const [sortBy, setSortBy] = useState('tanggal_selesai') // tanggal_selesai, dana_terkumpul, nama_barang
+    const [showDetailModal, setShowDetailModal] = useState(false)
 
-    // Load data saat component mount
     useEffect(() => {
-        fetchLelangHistory()
-    }, [fetchLelangHistory])
+        fetchHistoryDonasi()
+    }, [fetchHistoryDonasi])
 
-    // Handle sorting
-    const handleSort = (field) => {
-        if (sortBy === field) {
-            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
-        } else {
-            setSortBy(field)
-            setSortOrder('desc')
-        }
-    }
+    // Pastikan historyDonasi adalah array
+    const safeHistory = Array.isArray(historyDonasi) ? historyDonasi : []
 
-    // Handle search
-    const filteredAndSortedData = React.useMemo(() => {
-        let filtered = lelangHistory.filter(item =>
-            item.nama_barang.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            item.pemenang_nama?.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-
-        // Sort data
-        filtered.sort((a, b) => {
-            let aValue, bValue
-
+    // Filter dan sort history
+    const filteredHistory = safeHistory
+        .filter(program => {
+            const matchesSearch = program.nama_barang?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                program.deskripsi?.toLowerCase().includes(searchTerm.toLowerCase())
+            
+            let matchesDate = true
+            if (dateFilter.from || dateFilter.to) {
+                const programDate = new Date(program.tanggal_selesai || program.created_at)
+                if (dateFilter.from) {
+                    matchesDate = matchesDate && programDate >= new Date(dateFilter.from)
+                }
+                if (dateFilter.to) {
+                    matchesDate = matchesDate && programDate <= new Date(dateFilter.to)
+                }
+            }
+            
+            return matchesSearch && matchesDate
+        })
+        .sort((a, b) => {
             switch (sortBy) {
                 case 'tanggal_selesai':
-                    aValue = new Date(a.tanggal_selesai || a.created_at)
-                    bValue = new Date(b.tanggal_selesai || b.created_at)
-                    break
-                case 'harga_terjual':
-                    aValue = a.harga_terjual || a.harga_tertinggi || 0
-                    bValue = b.harga_terjual || b.harga_tertinggi || 0
-                    break
-                case 'keuntungan':
-                    aValue = (a.harga_terjual || a.harga_tertinggi || 0) - a.harga_awal
-                    bValue = (b.harga_terjual || b.harga_tertinggi || 0) - b.harga_awal
-                    break
+                    return new Date(b.tanggal_selesai || b.created_at) - new Date(a.tanggal_selesai || a.created_at)
+                case 'dana_terkumpul':
+                    return (b.dana_terkumpul || 0) - (a.dana_terkumpul || 0)
+                case 'nama_barang':
+                    return (a.nama_barang || '').localeCompare(b.nama_barang || '')
                 default:
-                    aValue = a[sortBy]
-                    bValue = b[sortBy]
-            }
-
-            if (sortOrder === 'asc') {
-                return aValue > bValue ? 1 : -1
-            } else {
-                return aValue < bValue ? 1 : -1
+                    return 0
             }
         })
 
-        return filtered
-    }, [lelangHistory, searchTerm, sortBy, sortOrder])
+    const handleViewDetail = async (program) => {
+        await fetchDetailProgram(program.id)
+        setShowDetailModal(true)
+    }
 
-    // Handle expand details
-    const handleToggleDetails = async (lelangId) => {
-        if (expandedDetails[lelangId]) {
-            setExpandedDetails(prev => ({
-                ...prev,
-                [lelangId]: false
-            }))
+    const handleCloseDetail = () => {
+        setShowDetailModal(false)
+        resetDetailProgram()
+    }
+
+    const handleExportLaporan = async (programId, format) => {
+        const result = await exportLaporanDonasi(programId, format)
+        if (result.success) {
+            alert('Laporan berhasil diexport')
         } else {
-            await fetchBidHistory(lelangId)
-            setExpandedDetails(prev => ({
-                ...prev,
-                [lelangId]: true
-            }))
+            alert(result.message)
         }
     }
 
-    // Calculate stats
-    const stats = React.useMemo(() => {
-        const totalLelang = lelangHistory.length
-        const totalHargaAwal = lelangHistory.reduce((sum, item) => sum + item.harga_awal, 0)
-        const totalHargaTerjual = lelangHistory.reduce((sum, item) => sum + (item.harga_terjual || item.harga_tertinggi || 0), 0)
-        const totalKeuntungan = totalHargaTerjual - totalHargaAwal
-        const avgKeuntungan = totalLelang > 0 ? totalKeuntungan / totalLelang : 0
-
-        return {
-            totalLelang,
-            totalHargaAwal,
-            totalHargaTerjual,
-            totalKeuntungan,
-            avgKeuntungan
-        }
-    }, [lelangHistory])
-
-    const getSortIcon = (field) => {
-        if (sortBy !== field) return '↕️'
-        return sortOrder === 'asc' ? '↑' : '↓'
-    }
+    // Calculate statistics
+    const totalPrograms = safeHistory.length
+    const totalDanaSelesai = safeHistory.reduce((sum, program) => sum + (program.dana_terkumpul || 0), 0)
+    const avgDanaPerProgram = totalPrograms > 0 ? totalDanaSelesai / totalPrograms : 0
 
     if (loading) {
         return (
-            <div className="flex justify-center items-center py-12">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p className="text-gray-600">Memuat history lelang...</p>
-                </div>
+            <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
             </div>
         )
     }
 
     if (error) {
         return (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <div className="flex items-center">
-                    <div className="text-red-600 mr-3">⚠️</div>
-                    <div>
-                        <h3 className="text-red-800 font-medium">Gagal Memuat History</h3>
-                        <p className="text-red-600 text-sm">{error}</p>
-                    </div>
-                    <button
-                        onClick={fetchLelangHistory}
-                        className="ml-auto bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
-                    >
-                        Coba Lagi
-                    </button>
-                </div>
+            <div className="text-center py-8">
+                <div className="text-red-600 mb-4">{error}</div>
+                <button
+                    onClick={() => fetchHistoryDonasi()}
+                    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+                >
+                    Coba Lagi
+                </button>
             </div>
         )
     }
 
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="flex justify-between items-center">
-                <div>
-                    <h2 className="text-xl font-semibold text-gray-900">History Lelang</h2>
-                    <p className="text-gray-600 text-sm">
-                        Daftar semua lelang yang telah selesai beserta detail pemenang dan keuntungan
-                    </p>
+            {/* Header & Statistics */}
+            <div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                    Riwayat Program Donasi
+                </h2>
+                
+                {/* Stats Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div className="bg-blue-50 p-4 rounded-lg">
+                        <h3 className="text-sm font-medium text-blue-700">Total Program Selesai</h3>
+                        <p className="text-2xl font-bold text-blue-900">{totalPrograms}</p>
+                    </div>
+                    <div className="bg-green-50 p-4 rounded-lg">
+                        <h3 className="text-sm font-medium text-green-700">Total Dana Terkumpul</h3>
+                        <p className="text-2xl font-bold text-green-900">{formatRupiah(totalDanaSelesai)}</p>
+                    </div>
+                    <div className="bg-purple-50 p-4 rounded-lg">
+                        <h3 className="text-sm font-medium text-purple-700">Rata-rata per Program</h3>
+                        <p className="text-2xl font-bold text-purple-900">{formatRupiah(avgDanaPerProgram)}</p>
+                    </div>
                 </div>
-                <button
-                    onClick={fetchLelangHistory}
-                    className="bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-lg text-sm flex items-center"
-                >
-                    🔄 Refresh
-                </button>
             </div>
 
-            {/* Stats Cards */}
-            {lelangHistory.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div className="bg-white p-6 rounded-lg shadow border">
-                        <div className="text-2xl font-bold text-gray-900">{stats.totalLelang}</div>
-                        <div className="text-sm text-gray-600">Total Lelang Selesai</div>
-                    </div>
-
-                    <div className="bg-white p-6 rounded-lg shadow border">
-                        <div className="text-2xl font-bold text-blue-600">{formatRupiah(stats.totalHargaTerjual)}</div>
-                        <div className="text-sm text-gray-600">Total Pendapatan</div>
-                    </div>
-
-                    <div className="bg-white p-6 rounded-lg shadow border">
-                        <div className="text-2xl font-bold text-green-600">{formatRupiah(stats.totalKeuntungan)}</div>
-                        <div className="text-sm text-gray-600">Total Keuntungan</div>
-                    </div>
-
-                    <div className="bg-white p-6 rounded-lg shadow border">
-                        <div className="text-2xl font-bold text-purple-600">{formatRupiah(stats.avgKeuntungan)}</div>
-                        <div className="text-sm text-gray-600">Rata-rata Keuntungan</div>
-                    </div>
-                </div>
-            )}
-
-            {/* Filters & Search */}
+            {/* Filters */}
             <div className="bg-white p-4 rounded-lg shadow">
-                <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-4 md:space-y-0">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     {/* Search */}
-                    <div className="flex-1 max-w-md">
+                    <div className="md:col-span-2">
                         <input
                             type="text"
-                            placeholder="Cari barang atau nama pemenang..."
+                            placeholder="Cari program..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                         />
                     </div>
 
-                    {/* Sort Options */}
-                    <div className="flex space-x-2">
-                        <button
-                            onClick={() => handleSort('tanggal_selesai')}
-                            className={`px-3 py-2 rounded text-sm ${sortBy === 'tanggal_selesai' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'
-                                }`}
-                        >
-                            Tanggal {getSortIcon('tanggal_selesai')}
-                        </button>
-                        <button
-                            onClick={() => handleSort('harga_terjual')}
-                            className={`px-3 py-2 rounded text-sm ${sortBy === 'harga_terjual' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'
-                                }`}
-                        >
-                            Harga {getSortIcon('harga_terjual')}
-                        </button>
-                        <button
-                            onClick={() => handleSort('keuntungan')}
-                            className={`px-3 py-2 rounded text-sm ${sortBy === 'keuntungan' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'
-                                }`}
-                        >
-                            Keuntungan {getSortIcon('keuntungan')}
-                        </button>
+                    {/* Date From */}
+                    <div>
+                        <input
+                            type="date"
+                            value={dateFilter.from}
+                            onChange={(e) => setDateFilter(prev => ({ ...prev, from: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                            placeholder="Dari tanggal"
+                        />
+                    </div>
+
+                    {/* Date To */}
+                    <div>
+                        <input
+                            type="date"
+                            value={dateFilter.to}
+                            onChange={(e) => setDateFilter(prev => ({ ...prev, to: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                            placeholder="Sampai tanggal"
+                        />
+                    </div>
+                </div>
+
+                {/* Sort */}
+                <div className="mt-4 flex justify-between items-center">
+                    <select
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value)}
+                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                    >
+                        <option value="tanggal_selesai">Urutkan: Tanggal Selesai</option>
+                        <option value="dana_terkumpul">Urutkan: Dana Terkumpul</option>
+                        <option value="nama_barang">Urutkan: Nama Program</option>
+                    </select>
+
+                    <div className="text-sm text-gray-600">
+                        Menampilkan {filteredHistory.length} dari {totalPrograms} program
                     </div>
                 </div>
             </div>
 
-            {/* Content */}
-            {filteredAndSortedData.length === 0 ? (
-                <div className="text-center py-16">
-                    <div className="text-gray-400 text-6xl mb-4">📚</div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">
-                        {searchTerm ? 'Tidak Ditemukan' : 'Belum Ada History'}
-                    </h3>
-                    <p className="text-gray-600">
-                        {searchTerm
-                            ? `Tidak ada lelang yang cocok dengan pencarian "${searchTerm}"`
-                            : 'Belum ada lelang yang selesai. History akan muncul setelah ada lelang yang diselesaikan.'
+            {/* History List */}
+            {filteredHistory.length === 0 ? (
+                <div className="text-center py-12">
+                    <div className="text-gray-500 text-lg mb-2">
+                        {totalPrograms === 0 
+                            ? 'Belum ada program donasi yang selesai'
+                            : 'Tidak ada program yang sesuai dengan filter'
                         }
-                    </p>
+                    </div>
+                    <div className="text-gray-400">
+                        {totalPrograms === 0
+                            ? 'Program yang sudah selesai akan muncul di sini'
+                            : 'Coba ubah kata kunci pencarian atau filter tanggal'
+                        }
+                    </div>
                 </div>
             ) : (
-                <div className="bg-white shadow rounded-lg overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Barang
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Harga Awal
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Harga Final
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Keuntungan
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Pemenang
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Tanggal Selesai
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Aksi
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                                {filteredAndSortedData.map(item => {
-                                    const hargaFinal = item.harga_terjual || item.harga_tertinggi || 0
-                                    const keuntungan = hargaFinal - item.harga_awal
-                                    const isExpanded = expandedDetails[item.id]
-                                    const bids = bidHistory[item.id] || []
+                <div className="grid gap-6">
+                    {filteredHistory.map(program => (
+                        <div key={program.id} className="relative">
+                            <ProgramCard
+                                program={program}
+                                onViewDonations={handleViewDetail}
+                                showActions={false}
+                            />
+                            {/* Additional History Info */}
+                            <div className="absolute top-4 right-4">
+                                <div className="flex space-x-2">
+                                    <button
+                                        onClick={() => handleViewDetail(program)}
+                                        className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
+                                    >
+                                        Detail
+                                    </button>
+                                    <button
+                                        onClick={() => handleExportLaporan(program.id, 'csv')}
+                                        className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
+                                    >
+                                        Export
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
 
-                                    return (
-                                        <React.Fragment key={item.id}>
-                                            <tr className="hover:bg-gray-50">
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="flex items-center">
-                                                        {item.foto_barang && (
-                                                            <img
-                                                                src={`http://localhost:5000/uploads/${item.foto_barang}`}
-                                                                alt={item.nama_barang}
-                                                                className="h-10 w-10 rounded-lg object-cover mr-3"
-                                                            />
-                                                        )}
-                                                        <div>
-                                                            <div className="text-sm font-medium text-gray-900">{item.nama_barang}</div>
-                                                            <div className="text-sm text-gray-500 capitalize">{item.kondisi_barang?.replace('_', ' ')}</div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                    {formatRupiah(item.harga_awal)}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="text-sm font-bold text-green-600">
-                                                        {formatRupiah(hargaFinal)}
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className={`text-sm font-bold ${keuntungan >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                        {keuntungan >= 0 ? '+' : ''}{formatRupiah(keuntungan)}
-                                                    </div>
-                                                    <div className="text-xs text-gray-500">
-                                                        {((keuntungan / item.harga_awal) * 100).toFixed(1)}%
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="text-sm font-medium text-gray-900">
-                                                        {item.pemenang_nama || '-'}
-                                                    </div>
-                                                    {item.pemenang_kontak && (
-                                                        <div className="text-sm text-gray-500">{item.pemenang_kontak}</div>
-                                                    )}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                    {item.tanggal_selesai
-                                                        ? formatDateTime(item.tanggal_selesai)
-                                                        : formatDate(item.created_at)
-                                                    }
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                                    <button
-                                                        onClick={() => handleToggleDetails(item.id)}
-                                                        className="text-blue-600 hover:text-blue-800"
-                                                    >
-                                                        {isExpanded ? 'Tutup' : 'Detail'}
-                                                    </button>
-                                                </td>
-                                            </tr>
+            {/* Detail Modal */}
+            {showDetailModal && detailProgram && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg max-w-4xl w-full max-h-[80vh] overflow-y-auto">
+                        <div className="p-6">
+                            <div className="flex justify-between items-start mb-4">
+                                <h3 className="text-xl font-bold text-gray-900">
+                                    Detail Program: {detailProgram.nama_barang}
+                                </h3>
+                                <button
+                                    onClick={handleCloseDetail}
+                                    className="text-gray-500 hover:text-gray-700"
+                                >
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
 
-                                            {/* Expanded Details */}
-                                            {isExpanded && (
+                            {/* Program Summary */}
+                            <div className="bg-gray-50 p-4 rounded-lg mb-6">
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <div>
+                                        <span className="text-sm text-gray-600">Target Dana</span>
+                                        <div className="font-semibold">{formatRupiah(detailProgram.target_dana)}</div>
+                                    </div>
+                                    <div>
+                                        <span className="text-sm text-gray-600">Dana Terkumpul</span>
+                                        <div className="font-semibold text-green-600">{formatRupiah(detailProgram.dana_terkumpul)}</div>
+                                    </div>
+                                    <div>
+                                        <span className="text-sm text-gray-600">Total Donatur</span>
+                                        <div className="font-semibold">{donatursPerProgram.length} orang</div>
+                                    </div>
+                                    <div>
+                                        <span className="text-sm text-gray-600">Tanggal Selesai</span>
+                                        <div className="font-semibold">{formatDate(detailProgram.tanggal_selesai)}</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Donors List */}
+                            <div>
+                                <h4 className="text-lg font-semibold mb-4">Daftar Donatur ({donatursPerProgram.length})</h4>
+                                {donatursPerProgram.length === 0 ? (
+                                    <div className="text-center py-8 text-gray-500">
+                                        Belum ada data donatur
+                                    </div>
+                                ) : (
+                                    <div className="overflow-x-auto">
+                                        <table className="min-w-full divide-y divide-gray-200">
+                                            <thead className="bg-gray-50">
                                                 <tr>
-                                                    <td colSpan="7" className="px-6 py-4 bg-gray-50">
-                                                        <div className="space-y-4">
-                                                            {/* Informasi Detail */}
-                                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                                <div>
-                                                                    <h4 className="font-medium text-gray-900 mb-2">Informasi Lelang</h4>
-                                                                    <div className="text-sm space-y-1">
-                                                                        <div>Total Bid: <span className="font-medium">{item.total_bid}</span></div>
-                                                                        <div>Durasi: <span className="font-medium">{item.durasi_lelang_jam} jam</span></div>
-                                                                        {item.tanggal_mulai && (
-                                                                            <div>Dimulai: <span className="font-medium">{formatDateTime(item.tanggal_mulai)}</span></div>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-
-                                                                <div>
-                                                                    <h4 className="font-medium text-gray-900 mb-2">Deskripsi</h4>
-                                                                    <p className="text-sm text-gray-600">
-                                                                        {item.deskripsi || 'Tidak ada deskripsi'}
-                                                                    </p>
-                                                                </div>
-
-                                                                <div>
-                                                                    <h4 className="font-medium text-gray-900 mb-2">Statistik</h4>
-                                                                    <div className="text-sm space-y-1">
-                                                                        <div>Persentase Keuntungan:
-                                                                            <span className={`font-medium ml-1 ${keuntungan >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                                                {((keuntungan / item.harga_awal) * 100).toFixed(1)}%
-                                                                            </span>
-                                                                        </div>
-                                                                        <div>Kenaikan dari Awal:
-                                                                            <span className="font-medium ml-1 text-blue-600">
-                                                                                {formatRupiah(hargaFinal - item.harga_awal)}
-                                                                            </span>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-
-                                                            {/* History Bidding */}
-                                                            {bids.length > 0 && (
-                                                                <div>
-                                                                    <h4 className="font-medium text-gray-900 mb-3">History Bidding ({bids.length} bid)</h4>
-                                                                    <div className="max-h-40 overflow-y-auto">
-                                                                        <div className="grid gap-2">
-                                                                            {bids.map((bid, index) => (
-                                                                                <div key={index} className="flex justify-between items-center bg-white p-2 rounded border text-sm">
-                                                                                    <div>
-                                                                                        <span className="font-medium">{bid.nama_bidder}</span>
-                                                                                        <span className="text-gray-500 ml-2">#{bid.urutan}</span>
-                                                                                    </div>
-                                                                                    <div className="text-right">
-                                                                                        <div className="font-medium text-green-600">
-                                                                                            {formatRupiah(bid.jumlah_bid)}
-                                                                                        </div>
-                                                                                        <div className="text-xs text-gray-500">
-                                                                                            {formatDateTime(bid.tanggal_bid)}
-                                                                                        </div>
-                                                                                    </div>
-                                                                                </div>
-                                                                            ))}
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </td>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Nama Donatur
+                                                    </th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Nominal
+                                                    </th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Metode
+                                                    </th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Tanggal
+                                                    </th>
                                                 </tr>
-                                            )}
-                                        </React.Fragment>
-                                    )
-                                })}
-                            </tbody>
-                        </table>
+                                            </thead>
+                                            <tbody className="bg-white divide-y divide-gray-200">
+                                                {donatursPerProgram.map((donasi, index) => (
+                                                    <tr key={index}>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                            {donasi.nama_donatur}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                            {formatRupiah(donasi.nominal)}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                            <span className="capitalize">{donasi.metode_pembayaran}</span>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                            {formatDate(donasi.tanggal_donasi)}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Actions */}
+                            <div className="mt-6 pt-4 border-t border-gray-200 flex justify-end space-x-3">
+                                <button
+                                    onClick={() => handleExportLaporan(detailProgram.id, 'csv')}
+                                    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+                                >
+                                    Export CSV
+                                </button>
+                                <button
+                                    onClick={handleCloseDetail}
+                                    className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
+                                >
+                                    Tutup
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
@@ -419,4 +349,4 @@ const LelangHistory = () => {
     )
 }
 
-export default LelangHistory
+export default DonasiHistory

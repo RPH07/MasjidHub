@@ -1,2 +1,2 @@
-export { default as lelangService } from './lelangService'
-export { lelangService as default } from './lelangService'
+export { default as donasiService } from './DonasiService'
+export { donasiService as default } from './DonasiService'

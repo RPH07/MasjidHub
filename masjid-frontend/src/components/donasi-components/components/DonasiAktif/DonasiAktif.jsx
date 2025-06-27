@@ -1,341 +1,175 @@
-import React, { useEffect, useState } from 'react'
-import { useLelang, useBidHistory } from '../../hooks'
-import { formatRupiah, formatCountdown, formatDateTime } from '../../utils'
+import React, { useState, useEffect } from 'react'
+import { ProgramCard } from '../shared'
+import { useDonasi } from '../../hooks/useDonasi'
+import { formatRupiah } from '../../utils'
 
-const LelangAktif = () => {
+const DonasiAktif = () => {
     const {
-        lelangAktif,
+        programAktif,
         loading,
         error,
-        fetchLelangAktif,
-        finishLelang,
-        cancelLelang
-    } = useLelang()
+        fetchProgramAktif,
+        deactivateProgram,
+        completeProgram
+    } = useDonasi()
 
-    const {
-        bidHistory,
-        fetchBidHistory,
-        clearBidHistory
-    } = useBidHistory()
+    const [sortBy, setSortBy] = useState('newest')
 
-    const [expandedBids, setExpandedBids] = useState({})
-    const [autoRefresh, setAutoRefresh] = useState(true)
-
-    // Auto refresh setiap 3 detik
     useEffect(() => {
-        let interval
-        if (autoRefresh) {
-            fetchLelangAktif() // Initial load
-            interval = setInterval(() => {
-                fetchLelangAktif()
-            }, 3000)
-        }
+        fetchProgramAktif()
+    }, [fetchProgramAktif])
 
-        return () => {
-            if (interval) clearInterval(interval)
+    const sortedPrograms = [...programAktif].sort((a, b) => {
+        switch (sortBy) {
+            case 'newest':
+                return new Date(b.tanggal_dibuat) - new Date(a.tanggal_dibuat)
+            case 'oldest':
+                return new Date(a.tanggal_dibuat) - new Date(b.tanggal_dibuat)
+            case 'highest_target':
+                return b.target_dana - a.target_dana
+            case 'highest_collected':
+                return (b.dana_terkumpul || 0) - (a.dana_terkumpul || 0)
+            case 'highest_progress':
+                { const progressA = ((a.dana_terkumpul || 0) / a.target_dana) * 100
+                const progressB = ((b.dana_terkumpul || 0) / b.target_dana) * 100
+                return progressB - progressA }
+            default:
+                return 0
         }
-    }, [fetchLelangAktif, autoRefresh])
+    })
 
-    // Handle actions
-    const handleFinishLelang = async (id) => {
-        if (window.confirm('Yakin ingin menyelesaikan lelang ini sekarang?')) {
-            const result = await finishLelang(id)
+    const handleDeactivate = async (programId) => {
+        if (window.confirm('Apakah Anda yakin ingin menonaktifkan program ini?')) {
+            const result = await deactivateProgram(programId)
             if (result.success) {
-                alert(result.message)
-                clearBidHistory(id) // Clear bid history untuk lelang yang selesai
+                alert('Program donasi berhasil dinonaktifkan')
             } else {
                 alert(result.message)
             }
         }
     }
 
-    const handleCancelLelang = async (id) => {
-        const alasan = window.prompt('Alasan pembatalan lelang:')
-        if (alasan !== null && alasan.trim()) {
-            const result = await cancelLelang(id, alasan)
+    const handleComplete = async (programId) => {
+        if (window.confirm('Apakah Anda yakin ingin menyelesaikan program ini?')) {
+            const result = await completeProgram(programId)
             if (result.success) {
-                alert(result.message)
-                clearBidHistory(id)
+                alert('Program donasi berhasil diselesaikan')
             } else {
                 alert(result.message)
             }
         }
     }
 
-    const handleToggleBidHistory = async (lelangId) => {
-        if (expandedBids[lelangId]) {
-            // Collapse
-            setExpandedBids(prev => ({
-                ...prev,
-                [lelangId]: false
-            }))
-        } else {
-            // Expand and fetch
-            await fetchBidHistory(lelangId)
-            setExpandedBids(prev => ({
-                ...prev,
-                [lelangId]: true
-            }))
-        }
+    const handleViewDonations = (program) => {
+        // TODO: Navigate to donations detail
+        console.log('View donations for:', program)
     }
 
-    const getTimeStatus = (sisaDetik) => {
-        if (sisaDetik <= 0) return { status: 'ended', color: 'text-red-600' }
-        if (sisaDetik <= 120) return { status: 'critical', color: 'text-red-600' } // 2 menit
-        if (sisaDetik <= 600) return { status: 'warning', color: 'text-orange-600' } // 10 menit
-        return { status: 'normal', color: 'text-green-600' }
-    }
+    // Calculate statistics
+    const totalTarget = programAktif.reduce((sum, program) => sum + program.target_dana, 0)
+    const totalCollected = programAktif.reduce((sum, program) => sum + (program.dana_terkumpul || 0), 0)
+    const totalPrograms = programAktif.length
+    const avgProgress = totalPrograms > 0 ? (totalCollected / totalTarget) * 100 : 0
 
-    if (loading && lelangAktif.length === 0) {
+    if (loading) {
         return (
-            <div className="flex justify-center items-center py-12">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p className="text-gray-600">Memuat lelang aktif...</p>
-                </div>
+            <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
             </div>
         )
     }
 
     if (error) {
         return (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <div className="flex items-center">
-                    <div className="text-red-600 mr-3">⚠️</div>
-                    <div>
-                        <h3 className="text-red-800 font-medium">Gagal Memuat Data</h3>
-                        <p className="text-red-600 text-sm">{error}</p>
-                    </div>
-                    <button
-                        onClick={fetchLelangAktif}
-                        className="ml-auto bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
-                    >
-                        Coba Lagi
-                    </button>
-                </div>
+            <div className="text-center py-8">
+                <div className="text-red-600 mb-4">{error}</div>
+                <button
+                    onClick={() => fetchProgramAktif()}
+                    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+                >
+                    Coba Lagi
+                </button>
             </div>
         )
     }
 
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="flex justify-between items-center">
-                <div>
-                    <h2 className="text-xl font-semibold text-gray-900">Monitor Lelang Aktif</h2>
-                    <p className="text-gray-600 text-sm">
-                        Pantau lelang yang sedang berjalan secara real-time
-                        {lelangAktif.length > 0 && (
-                            <span className="ml-2 text-blue-600">
-                                • {lelangAktif.length} lelang aktif
-                            </span>
-                        )}
-                    </p>
-                </div>
-
-                <div className="flex items-center space-x-3">
-                    {/* Auto Refresh Toggle */}
-                    <label className="flex items-center text-sm">
-                        <input
-                            type="checkbox"
-                            checked={autoRefresh}
-                            onChange={(e) => setAutoRefresh(e.target.checked)}
-                            className="mr-2"
-                        />
-                        Auto refresh (3s)
-                    </label>
-
-                    {/* Manual Refresh */}
-                    <button
-                        onClick={fetchLelangAktif}
-                        className="bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-lg text-sm flex items-center"
-                    >
-                        🔄 Refresh
-                    </button>
+            {/* Header & Statistics */}
+            <div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                    Program Donasi Aktif
+                </h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div className="bg-blue-50 p-4 rounded-lg">
+                        <div className="text-blue-600 text-sm font-medium">Total Program</div>
+                        <div className="text-2xl font-bold text-blue-900">{totalPrograms}</div>
+                    </div>
+                    <div className="bg-green-50 p-4 rounded-lg">
+                        <div className="text-green-600 text-sm font-medium">Target Total</div>
+                        <div className="text-2xl font-bold text-green-900">{formatRupiah(totalTarget)}</div>
+                    </div>
+                    <div className="bg-yellow-50 p-4 rounded-lg">
+                        <div className="text-yellow-600 text-sm font-medium">Dana Terkumpul</div>
+                        <div className="text-2xl font-bold text-yellow-900">{formatRupiah(totalCollected)}</div>
+                    </div>
+                    <div className="bg-purple-50 p-4 rounded-lg">
+                        <div className="text-purple-600 text-sm font-medium">Progress Rata-rata</div>
+                        <div className="text-2xl font-bold text-purple-900">{avgProgress.toFixed(1)}%</div>
+                    </div>
                 </div>
             </div>
 
-            {/* Status Indicator */}
-            {autoRefresh && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                    <div className="flex items-center text-sm text-green-800">
-                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2"></div>
-                        Auto refresh aktif - Data diperbarui setiap 3 detik
+            {/* Controls */}
+            <div className="bg-white p-4 rounded-lg shadow">
+                <div className="flex justify-between items-center">
+                    <div className="text-sm text-gray-600">
+                        Menampilkan {sortedPrograms.length} program aktif
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <label className="text-sm text-gray-600">Urutkan:</label>
+                        <select
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value)}
+                            className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                        >
+                            <option value="newest">Terbaru</option>
+                            <option value="oldest">Terlama</option>
+                            <option value="highest_target">Target Tertinggi</option>
+                            <option value="highest_collected">Dana Terkumpul Terbanyak</option>
+                            <option value="highest_progress">Progress Tertinggi</option>
+                        </select>
                     </div>
                 </div>
-            )}
+            </div>
 
-            {/* Content */}
-            {lelangAktif.length === 0 ? (
-                <div className="text-center py-16">
-                    <div className="text-gray-400 text-6xl mb-4">⏰</div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Tidak Ada Lelang Aktif</h3>
-                    <p className="text-gray-600 mb-6">
-                        Saat ini tidak ada lelang yang sedang berjalan. Mulai lelang dari tab "Daftar Barang".
-                    </p>
-                    <div className="text-sm text-gray-500">
-                        💡 Tip: Lelang yang dimulai akan muncul di sini dan dapat dipantau secara real-time
+            {/* Program List */}
+            {sortedPrograms.length === 0 ? (
+                <div className="text-center py-12">
+                    <div className="text-gray-500 text-lg mb-2">
+                        Tidak ada program donasi aktif
+                    </div>
+                    <div className="text-gray-400">
+                        Aktifkan program donasi dari daftar draft
                     </div>
                 </div>
             ) : (
-                <div className="space-y-6">
-                    {lelangAktif.map(lelang => {
-                        const timeStatus = getTimeStatus(lelang.sisa_detik)
-                        const isExpanded = expandedBids[lelang.id]
-                        const bids = bidHistory[lelang.id] || []
-
-                        return (
-                            <div key={lelang.id} className="bg-white shadow rounded-lg overflow-hidden">
-                                <div className="p-6">
-                                    {/* Header Info */}
-                                    <div className="flex justify-between items-start mb-6">
-                                        <div className="flex items-center space-x-4">
-                                            {lelang.foto_barang && (
-                                                <img
-                                                    src={`http://localhost:5000/uploads/${lelang.foto_barang}`}
-                                                    alt={lelang.nama_barang}
-                                                    className="h-20 w-20 rounded-lg object-cover"
-                                                />
-                                            )}
-                                            <div>
-                                                <h3 className="text-lg font-medium text-gray-900">{lelang.nama_barang}</h3>
-                                                <p className="text-gray-600 text-sm mb-1">{lelang.deskripsi}</p>
-                                                <div className="text-xs text-gray-500">
-                                                    Dimulai: {formatDateTime(lelang.tanggal_mulai)}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Status & Time */}
-                                        <div className="text-right">
-                                            <div className={`text-2xl font-bold mb-1 ${timeStatus.color}`}>
-                                                {formatCountdown(lelang.sisa_detik)}
-                                            </div>
-                                            <div className="text-sm text-gray-500">
-                                                {lelang.sisa_detik <= 0 ? 'Berakhir' : 'Sisa waktu'}
-                                            </div>
-                                            {lelang.sisa_detik <= 120 && lelang.sisa_detik > 0 && (
-                                                <div className="text-xs text-red-600 font-medium mt-1 flex items-center">
-                                                    ⚡ Auto-extend aktif
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* Bid Info */}
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                                        <div className="bg-gray-50 p-4 rounded-lg">
-                                            <div className="text-sm text-gray-600">Harga Awal</div>
-                                            <div className="text-lg font-medium text-gray-900">
-                                                {formatRupiah(lelang.harga_awal)}
-                                            </div>
-                                        </div>
-
-                                        <div className="bg-blue-50 p-4 rounded-lg">
-                                            <div className="text-sm text-blue-600">Bid Tertinggi</div>
-                                            <div className="text-lg font-bold text-blue-700">
-                                                {formatRupiah(lelang.harga_tertinggi)}
-                                            </div>
-                                        </div>
-
-                                        <div className="bg-green-50 p-4 rounded-lg">
-                                            <div className="text-sm text-green-600">Total Bid</div>
-                                            <div className="text-lg font-bold text-green-700">
-                                                {lelang.total_bid} bid
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Action Buttons */}
-                                    <div className="flex justify-between items-center pt-4 border-t border-gray-200">
-                                        <div className="flex space-x-3">
-                                            <button
-                                                onClick={() => handleToggleBidHistory(lelang.id)}
-                                                className="text-blue-600 hover:text-blue-800 px-3 py-1 rounded border border-blue-200 text-sm"
-                                            >
-                                                {isExpanded ? 'Sembunyikan' : 'Lihat'} History Bid
-                                                {lelang.total_bid > 0 && (
-                                                    <span className="ml-1">({lelang.total_bid})</span>
-                                                )}
-                                            </button>
-
-                                            <button
-                                                onClick={() => window.open(`/lelang-public/${lelang.id}`, '_blank')}
-                                                className="text-gray-600 hover:text-gray-800 px-3 py-1 rounded border border-gray-200 text-sm"
-                                            >
-                                                🔗 Link Public
-                                            </button>
-                                        </div>
-
-                                        <div className="space-x-2">
-                                            <button
-                                                onClick={() => handleFinishLelang(lelang.id)}
-                                                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm"
-                                            >
-                                                Selesaikan
-                                            </button>
-                                            <button
-                                                onClick={() => handleCancelLelang(lelang.id)}
-                                                className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 text-sm"
-                                            >
-                                                Batalkan
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {/* Bid History Expanded */}
-                                    {isExpanded && (
-                                        <div className="mt-6 pt-6 border-t border-gray-200">
-                                            <div className="bg-gray-50 rounded-lg p-4">
-                                                <div className="flex justify-between items-center mb-4">
-                                                    <h4 className="font-medium text-gray-900">History Bidding</h4>
-                                                    <div className="text-sm text-gray-500">
-                                                        {bids.length} bid tercatat
-                                                    </div>
-                                                </div>
-
-                                                {bids.length === 0 ? (
-                                                    <div className="text-center py-4 text-gray-500">
-                                                        Belum ada bid untuk lelang ini
-                                                    </div>
-                                                ) : (
-                                                    <div className="space-y-3 max-h-60 overflow-y-auto">
-                                                        {bids.map((bid, index) => (
-                                                            <div key={index} className="flex justify-between items-center bg-white p-3 rounded border">
-                                                                <div>
-                                                                    <div className="font-medium text-gray-900">
-                                                                        {bid.nama_bidder}
-                                                                        <span className="ml-2 text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
-                                                                            #{bid.urutan}
-                                                                        </span>
-                                                                    </div>
-                                                                    <div className="text-sm text-gray-500">
-                                                                        {formatDateTime(bid.tanggal_bid)}
-                                                                    </div>
-                                                                </div>
-                                                                <div className="text-right">
-                                                                    <div className="font-bold text-green-600">
-                                                                        {formatRupiah(bid.jumlah_bid)}
-                                                                    </div>
-                                                                    {index === 0 && (
-                                                                        <div className="text-xs text-green-600">Tertinggi</div>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )
-                    })}
+                <div className="grid gap-6">
+                    {sortedPrograms.map(program => (
+                        <ProgramCard
+                            key={program.id}
+                            program={program}
+                            onDeactivate={handleDeactivate}
+                            onComplete={handleComplete}
+                            onViewDonations={handleViewDonations}
+                            showActions={true}
+                        />
+                    ))}
                 </div>
             )}
         </div>
     )
 }
 
-export default LelangAktif
+export default DonasiAktif

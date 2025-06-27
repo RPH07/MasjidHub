@@ -8,12 +8,13 @@ import AdminLayout from './components/layouts/AdminLayout';
 import Dashboard from './pages/admin/Dashboard';
 import KegiatanPage from './pages/admin/Kegiatan';
 import KasPage from './pages/admin/Kas.jsx';
-import LelangPage from './pages/admin/Donasi';
+import DonasiPage from './pages/admin/Donasi'; // Import halaman donasi admin
 import AdminSignup from './auth/AdminSignup';
 import AdminRoute from './components/route-guard/AdminRoute';
 import ProtectedRoute from './components/route-guard/ProtectedRoute';
 import AuthCallback from './auth/AuthCallback';
 import UserDashboard from './pages/user/userDashoard';
+import Crowdfunding from './pages/user/Crowdfunding'
 
 const router = createBrowserRouter([
   {
@@ -49,10 +50,13 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     )
   },
-  // ← TAMBAH ROUTE LELANG PUBLIC (opsional, untuk direct access)
   {
-    path: "/lelang-public",
-    element: <UserDashboard />
+    path: "/crowdfunding",
+    element: (
+      <ProtectedRoute>
+        <Crowdfunding />
+      </ProtectedRoute>
+    )
   },
   {
     path: "/admin",
@@ -76,8 +80,8 @@ const router = createBrowserRouter([
         element: <KasPage />
       },
       {
-        path: "lelang", // /admin/export
-        element: <LelangPage />
+        path: "donasi", // /admin/donasi
+        element: <DonasiPage />
       }
     ]
   }

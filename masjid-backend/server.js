@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -13,6 +14,7 @@ const donasiRoutes = require('./routes/donasi');
 dotenv.config();
 
 const app = express();
+app.use(express.static('public'));
 
 app.use(cors({
   origin: [
@@ -24,6 +26,8 @@ app.use(cors({
 }));
 
 app.use(express.json());  
+app.use('/images', express.static(path.join(__dirname, 'public/images')));
+// Tambahkan static file serving untuk bukti transfer
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use('/api/auth', authRoutes);
