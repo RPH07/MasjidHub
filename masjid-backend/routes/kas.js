@@ -52,7 +52,7 @@ router.get('/', async (req, res) => {
     const { period = 'bulan-ini' } = req.query;
     const { startDate, endDate } = getPeriodFilter(period);
 
-    //Kas manual + Zakat + Infaq + Lelang
+    // ✅ TAMBAH DONASI KE QUERY
     const [allRows] = await db.query(`
       SELECT 
         kb.*,
@@ -67,15 +67,27 @@ router.get('/', async (req, res) => {
         i.keterangan as infaq_keterangan,
         i.kategori_infaq,
         i.status as infaq_status,
-        i.tanggal as infaq_tanggal
+        i.tanggal as infaq_tanggal,
+        -- ✅ TAMBAH DONASI FIELDS
+        d.nama_donatur as donasi_nama_donatur,
+        d.nominal as donasi_nominal,
+        d.kode_unik as donasi_kode_unik,
+        d.total_transfer as donasi_total_transfer,
+        d.metode_pembayaran as donasi_metode,
+        d.bukti_transfer as donasi_bukti,
+        d.status as donasi_status,
+        p.nama_barang as donasi_program
       FROM kas_buku_besar kb
       LEFT JOIN zakat z ON kb.source_table = 'zakat' AND kb.source_id = z.id
       LEFT JOIN infaq i ON kb.source_table = 'infaq' AND kb.source_id = i.id
+      LEFT JOIN donasi_pengadaan d ON kb.source_table = 'donasi_pengadaan' AND kb.source_id = d.id
+      LEFT JOIN barang_pengadaan p ON d.barang_id = p.id
       WHERE kb.tanggal >= ? AND kb.tanggal < ?
         AND kb.deleted_at IS NULL
         AND (
           (kb.source_table = 'zakat' AND z.status = 'approved') OR
           (kb.source_table = 'infaq' AND i.status = 'approved') OR
+          (kb.source_table = 'donasi_pengadaan' AND d.status = 'approved') OR
           (kb.source_table = 'manual') OR
           (kb.source_table = 'lelang')
         )
@@ -108,6 +120,24 @@ router.get('/', async (req, res) => {
         tanggal: row.infaq_tanggal
       }));
 
+    // ✅ TAMBAH DONASI ROWS
+    const donasiRows = allRows
+      .filter(row => row.source_table === 'donasi_pengadaan')
+      .map(row => ({
+        id: row.source_id,
+        nama_donatur: row.donasi_nama_donatur,
+        nama_pemberi: row.donasi_nama_donatur, // Alias untuk konsistensi
+        jumlah: row.jumlah,
+        nominal: row.donasi_nominal,
+        kode_unik: row.donasi_kode_unik,
+        total_transfer: row.donasi_total_transfer,
+        metode_pembayaran: row.donasi_metode,
+        bukti_transfer: row.donasi_bukti,
+        program_donasi: row.donasi_program,
+        tanggal: row.tanggal,
+        created_at: row.created_at
+      }));
+
     const lelangRows = allRows.filter(row => row.source_table === 'lelang');
 
     res.json({
@@ -116,6 +146,7 @@ router.get('/', async (req, res) => {
         kas: kasRows,
         zakat: zakatRows,
         infaq: infaqRows,
+        donasi: donasiRows, // ✅ TAMBAH DONASI
         lelang: lelangRows
       }
     });
@@ -275,22 +306,35 @@ router.get('/summary', async (req, res) => {
     };
 
     // 6. BREAKDOWN KATEGORI UNTUK PERIODE SAAT INI
-    const [pemasukanKategoriRows] = await db.query(`
-      SELECT 
-        kategori,
-        COALESCE(SUM(jumlah), 0) as total
-      FROM kas_buku_besar
-      WHERE jenis = 'masuk'
-        AND tanggal >= ? AND tanggal < ?
-        AND deleted_at IS NULL
-        AND kategori IS NOT NULL
-      GROUP BY kategori
-    `, [sDate, eDate]);
+const [pemasukanKategoriRows] = await db.query(`
+  SELECT 
+    CASE 
+      WHEN kategori = 'zakat' THEN 'zakat'
+      WHEN kategori = 'infaq' THEN 'infaq' 
+      WHEN kategori = 'donasi_pengadaan' THEN 'donasi'
+      WHEN kategori = 'lelang' THEN 'lelang'
+      ELSE 'kas_manual'
+    END as kategori_grouped,
+    COALESCE(SUM(jumlah), 0) as total
+  FROM kas_buku_besar
+  WHERE jenis = 'masuk'
+    AND tanggal >= ? AND tanggal < ?
+    AND deleted_at IS NULL
+    AND kategori IS NOT NULL
+  GROUP BY kategori_grouped
+`, [sDate, eDate]);
 
-    const pemasukanKategori = {};
-    pemasukanKategoriRows.forEach(row => {
-      pemasukanKategori[row.kategori] = Number(row.total);
-    });
+const pemasukanKategori = {
+  zakat: 0,
+  infaq: 0,
+  donasi: 0,
+  lelang: 0,
+  kas_manual: 0
+};
+
+pemasukanKategoriRows.forEach(row => {
+  pemasukanKategori[row.kategori_grouped] = Number(row.total);
+});
 
     const [pengeluaranKategoriRows] = await db.query(`
       SELECT 
