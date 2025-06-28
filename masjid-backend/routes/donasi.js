@@ -1,4 +1,6 @@
 const express = require('express');
+const {jsPDF} = require('jspdf');
+const autoTable = require('jspdf-autotable');
 const router = express.Router();
 const db = require('../config/db');
 const multer = require('multer');
@@ -222,12 +224,12 @@ router.put('/program/:id', uploadProgram.single('foto_barang'), async (req, res)
 });
 
 // PUT: Validasi donasi (Approve/Reject) - FIXED VERSION
-// UPDATE: Standardisasi kategori donasi
-
 router.put('/:id/validate', async (req, res) => {
     try {
         const { id } = req.params;
         const { action, reason } = req.body;
+
+        console.log(`🔍 Validating donasi ${id} with action: ${action}`);
 
         if (!['approve', 'reject'].includes(action)) {
             return res.status(400).json({ 
@@ -255,32 +257,24 @@ router.put('/:id/validate', async (req, res) => {
         }
 
         if (action === 'approve') {
-            await db.query('START TRANSACTION');
+            console.log('✅ Approving donasi - trigger will handle the rest');
+            
+            // ✅ SEDERHANA: HANYA UPDATE STATUS - TRIGGER AKAN HANDLE SISANYA
+            await db.query(
+                'UPDATE donasi_pengadaan SET status = ?, validated_at = NOW() WHERE id = ?',
+                ['approved', id]
+            );
+            
+            console.log('✅ Donasi approved successfully');
+            
+            res.json({
+                success: true,
+                message: 'Donasi berhasil diapprove'
+            });
 
-            try {
-                // HANYA UPDATE STATUS - BIARKAN TRIGGER YANG MENGHANDLE SISANYA
-                await db.query(
-                    'UPDATE donasi_pengadaan SET status = ?, validated_at = NOW() WHERE id = ?',
-                    ['approved', id]
-                );
-
-                // HAPUS SEMUA MANUAL INSERT KE kas_buku_besar
-                // HAPUS JUGA MANUAL UPDATE dana_terkumpul (kalau trigger sudah handle)
-                
-                await db.query('COMMIT');
-                
-                res.json({
-                    success: true,
-                    message: 'Donasi berhasil diapprove'
-                });
-
-            } catch (error) {
-                await db.query('ROLLBACK');
-                console.error('Error in approve transaction:', error);
-                throw error;
-            }
-
-        } else {
+        } else if (action === 'reject') {
+            console.log('❌ Rejecting donasi');
+            
             // Reject donasi
             const rejectReason = reason || 'Tidak ada alasan yang diberikan';
             
@@ -289,6 +283,8 @@ router.put('/:id/validate', async (req, res) => {
                 ['rejected', rejectReason, id]
             );
             
+            console.log('❌ Donasi rejected successfully');
+            
             res.json({
                 success: true,
                 message: 'Donasi telah ditolak'
@@ -296,7 +292,7 @@ router.put('/:id/validate', async (req, res) => {
         }
 
     } catch (error) {
-        console.error('Error validating donasi:', error);
+        console.error('❌ Error validating donasi:', error);
         res.status(500).json({
             success: false,
             message: 'Terjadi kesalahan server',
@@ -460,8 +456,6 @@ router.get('/program/:programId/donations', async (req, res) => {
     }
 });
 
-// Tambahkan di bagian bawah file sebelum module.exports
-
 // POST: Force refresh dana terkumpul untuk semua program
 router.post('/admin/refresh-dana', async (req, res) => {
     try {
@@ -536,6 +530,261 @@ router.get('/admin/check-consistency', async (req, res) => {
             success: false,
             message: 'Gagal memeriksa konsistensi data',
             error: err.message
+        });
+    }
+});
+
+// ======= API untuk export ke pdf
+router.get('/program/:programId/export/pdf', async (req, res) => {
+    console.log('🚀 PDF export started for program:', req.params.programId);
+    
+    try {
+        const { programId } = req.params;
+        
+        // Get program details
+        console.log('📊 Fetching program details...');
+        const [programDetails] = await db.query(`
+            SELECT p.*, 
+                   COALESCE(p.dana_terkumpul, 0) as dana_terkumpul,
+                   COUNT(DISTINCT d.id) as total_donatur,
+                   DATE_FORMAT(p.created_at, '%d %M %Y') as tanggal_dimulai,
+                   DATE_FORMAT(p.tanggal_selesai, '%d %M %Y') as tanggal_selesai_formatted
+            FROM barang_pengadaan p
+            LEFT JOIN donasi_pengadaan d ON p.id = d.barang_id AND d.status = 'approved'
+            WHERE p.id = ?
+            GROUP BY p.id
+        `, [programId]);
+
+        console.log('📋 Program details found:', programDetails.length);
+
+        if (programDetails.length === 0) {
+            console.log('❌ Program not found');
+            return res.status(404).json({ error: 'Program tidak ditemukan' });
+        }
+
+        // Get donation history
+        console.log('💰 Fetching donations...');
+        const [donations] = await db.query(`
+            SELECT d.nama_donatur, d.nominal, d.metode_pembayaran, d.catatan,
+                   d.kode_unik, d.total_transfer,
+                   DATE_FORMAT(d.created_at, '%d %M %Y') as tanggal_donasi
+            FROM donasi_pengadaan d
+            WHERE d.barang_id = ? AND d.status = 'approved'
+            ORDER BY d.created_at DESC
+        `, [programId]);
+
+        console.log('💵 Donations found:', donations.length);
+
+        const program = programDetails[0];
+        console.log('🏗️ Creating PDF for program:', program.nama_barang);
+
+        // ✅ CREATE PDF (TANPA CHECK autoTable dulu)
+        const doc = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: 'a4'
+        });
+
+        const pageWidth = doc.internal.pageSize.width;
+        const margin = 20;
+        let currentY = 20;
+
+        // ✅ HEADER - NAMA PROGRAM
+        doc.setFontSize(18);
+        doc.setTextColor(40, 40, 40);
+        doc.text('LAPORAN DONASI PROGRAM', pageWidth / 2, currentY, { align: 'center' });
+        currentY += 10;
+
+        doc.setFontSize(16);
+        doc.setTextColor(0, 100, 0);
+        const programName = program.nama_barang || 'Program Tidak Diketahui';
+        doc.text(programName.toUpperCase(), pageWidth / 2, currentY, { align: 'center' });
+        currentY += 20;
+
+        // ✅ SECTION 1: DETAIL PROGRAM
+        doc.setDrawColor(200, 200, 200);
+        doc.setFillColor(248, 250, 252);
+        doc.roundedRect(margin, currentY, pageWidth - (margin * 2), 60, 3, 3, 'FD');
+        currentY += 10;
+
+        // Program details dalam 2 kolom
+        doc.setFontSize(10);
+        doc.setTextColor(60, 60, 60);
+
+        const leftCol = margin + 10;
+        const rightCol = pageWidth / 2 + 10;
+        
+        doc.setFont('helvetica', 'bold');
+        doc.text('Deskripsi:', leftCol, currentY);
+        doc.setFont('helvetica', 'normal');
+        // ✅ Handle long text dengan splitTextToSize
+        const deskripsi = program.deskripsi || 'Tidak ada deskripsi';
+        const deskripsiLines = doc.splitTextToSize(deskripsi, 70);
+        doc.text(deskripsiLines[0] || deskripsi, leftCol, currentY + 6);
+
+        doc.setFont('helvetica', 'bold');
+        doc.text('Tanggal Dimulai:', leftCol, currentY + 18);
+        doc.setFont('helvetica', 'normal');
+        doc.text(program.tanggal_dimulai || 'Tidak diketahui', leftCol, currentY + 24);
+
+        doc.setFont('helvetica', 'bold');
+        doc.text('Kategori:', leftCol, currentY + 36);
+        doc.setFont('helvetica', 'normal');
+        doc.text(program.kategori_barang || 'Lainnya', leftCol, currentY + 42);
+
+        // Kolom kanan
+        doc.setFont('helvetica', 'bold');
+        doc.text('Target Dana:', rightCol, currentY);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(220, 53, 69);
+        doc.text(`Rp ${Number(program.target_dana || 0).toLocaleString('id-ID')}`, rightCol, currentY + 6);
+
+        doc.setTextColor(60, 60, 60);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Tanggal Selesai:', rightCol, currentY + 18);
+        doc.setFont('helvetica', 'normal');
+        doc.text(program.tanggal_selesai_formatted || 'Belum selesai', rightCol, currentY + 24);
+
+        doc.setFont('helvetica', 'bold');
+        doc.text('Dana Terkumpul:', rightCol, currentY + 36);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(25, 135, 84);
+        doc.text(`Rp ${Number(program.dana_terkumpul || 0).toLocaleString('id-ID')}`, rightCol, currentY + 42);
+
+        currentY += 70;
+
+        // ✅ SUMMARY BOX
+        doc.setTextColor(60, 60, 60);
+        doc.setDrawColor(25, 135, 84);
+        doc.setFillColor(240, 253, 244);
+        doc.roundedRect(margin, currentY, pageWidth - (margin * 2), 25, 3, 3, 'FD');
+        
+        currentY += 8;
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('RINGKASAN:', margin + 10, currentY);
+        
+        currentY += 8;
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        const targetDana = Number(program.target_dana || 0);
+        const danaTerkumpul = Number(program.dana_terkumpul || 0);
+        const percentage = targetDana > 0 ? ((danaTerkumpul / targetDana) * 100).toFixed(1) : 0;
+        
+        const summaryText = `Total ${program.total_donatur || 0} donatur telah mengumpulkan ${percentage}% dari target (${danaTerkumpul.toLocaleString('id-ID')} dari ${targetDana.toLocaleString('id-ID')})`;
+        const summaryLines = doc.splitTextToSize(summaryText, pageWidth - (margin * 2) - 20);
+        doc.text(summaryLines, margin + 10, currentY);
+
+        currentY += 25;
+
+        // ✅ GARIS PEMISAH
+        doc.setDrawColor(200, 200, 200);
+        doc.setLineWidth(1);
+        doc.line(margin, currentY, pageWidth - margin, currentY);
+        currentY += 15;
+
+        // ✅ SECTION 2: DAFTAR DONATUR
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(40, 40, 40);
+        doc.text(`DAFTAR DONATUR (${donations.length} Orang)`, margin, currentY);
+        currentY += 10;
+
+        if (donations.length === 0) {
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'italic');
+            doc.setTextColor(120, 120, 120);
+            doc.text('Belum ada donatur untuk program ini.', margin, currentY);
+            currentY += 20;
+        } else {
+            // ✅ MANUAL TABLE (simple dan works)
+            console.log('📋 Creating donations table manually...');
+            
+            // Table headers
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(255, 255, 255);
+            doc.setFillColor(25, 135, 84);
+            doc.rect(margin, currentY, pageWidth - (margin * 2), 8, 'F');
+            
+            doc.text('No', margin + 2, currentY + 5);
+            doc.text('Nama Donatur', margin + 15, currentY + 5);
+            doc.text('Nominal', margin + 70, currentY + 5);
+            doc.text('Kode Unik', margin + 105, currentY + 5);
+            doc.text('Metode', margin + 130, currentY + 5);
+            doc.text('Tanggal', margin + 155, currentY + 5);
+            
+            currentY += 8;
+            
+            // Table rows
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(60, 60, 60);
+            
+            donations.forEach((donation, index) => {
+                // Alternate row colors
+                if (index % 2 === 0) {
+                    doc.setFillColor(248, 250, 252);
+                    doc.rect(margin, currentY, pageWidth - (margin * 2), 6, 'F');
+                }
+                
+                doc.text(String(index + 1), margin + 2, currentY + 4);
+                
+                // Truncate nama if too long
+                const nama = (donation.nama_donatur || 'Anonim').substring(0, 20);
+                doc.text(nama, margin + 15, currentY + 4);
+                
+                doc.text(`Rp ${Number(donation.nominal || 0).toLocaleString('id-ID')}`, margin + 70, currentY + 4);
+                doc.text(donation.kode_unik ? `+${donation.kode_unik}` : '-', margin + 105, currentY + 4);
+                
+                // Truncate metode
+                const metode = (donation.metode_pembayaran || 'UNKNOWN').substring(0, 8).toUpperCase();
+                doc.text(metode, margin + 130, currentY + 4);
+                
+                doc.text(donation.tanggal_donasi || '-', margin + 155, currentY + 4);
+                
+                currentY += 6;
+                
+                // Check if new page needed
+                if (currentY > 250) {
+                    doc.addPage();
+                    currentY = 20;
+                }
+            });
+        }
+
+        // ✅ FOOTER
+        const finalY = currentY + 20;
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'italic');
+        doc.setTextColor(120, 120, 120);
+        doc.text(`Laporan digenerate pada: ${new Date().toLocaleDateString('id-ID', { 
+            day: 'numeric', 
+            month: 'long', 
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        })}`, margin, finalY);
+
+        doc.text('© MasjidHub - Sistem Manajemen Masjid', pageWidth - margin, finalY, { align: 'right' });
+
+        console.log('📄 PDF created successfully');
+
+        // Send PDF
+        const pdfBuffer = doc.output('arraybuffer');
+        
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="laporan-donasi-${programName.replace(/\s+/g, '-')}-${Date.now()}.pdf"`);
+        res.send(Buffer.from(pdfBuffer));
+
+        console.log('✅ PDF sent to client');
+
+    } catch (error) {
+        console.error('❌ Error generating PDF:', error);
+        console.error('Stack trace:', error.stack);
+        res.status(500).json({ 
+            error: 'Gagal generate PDF', 
+            message: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
     }
 });
