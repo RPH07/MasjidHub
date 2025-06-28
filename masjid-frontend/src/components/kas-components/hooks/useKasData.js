@@ -8,7 +8,7 @@ export const useKasData = (selectedPeriod) => {
     kasData: [],
     zakatData: [],
     infaqData: [],
-    lelangData: [],
+    donasiData: [],
     summary: {
       totalSaldo: 0,
       totalPemasukan: 0,
@@ -16,7 +16,6 @@ export const useKasData = (selectedPeriod) => {
       pemasukanKategori: {
         zakat: 0,
         infaq: 0,
-        lelang: 0,
         donasi: 0,
       },
       pengeluaranKategori: {
@@ -143,7 +142,7 @@ export const useKasData = (selectedPeriod) => {
       const kasData = kasResponseData.kas || [];
       const zakatData = kasResponseData.zakat || [];
       const infaqData = kasResponseData.infaq || [];
-      const lelangData = kasResponseData.lelang || [];
+      const donasiData = kasResponseData.donasi || [];
 
       const previousPeriod = getPreviousPeriod(selectedPeriod);
       let previousSummary = {
@@ -203,7 +202,7 @@ export const useKasData = (selectedPeriod) => {
         kasData,
         zakatData,
         infaqData,
-        lelangData,
+        donasiData,
         summary: {
           totalSaldo: currentSummary.saldoBersih || 0,
           totalPemasukan: currentSummary.totalPemasukan || 0,
@@ -213,7 +212,6 @@ export const useKasData = (selectedPeriod) => {
             // Gunakan breakdown dari response baru
             zakat: breakdown.zakat || 0,
             infaq: breakdown.infaq || 0,
-            lelang: breakdown.lelang || 0,
             donasi: breakdown.kasManual || 0,
           },
           pengeluaranKategori: {
@@ -237,7 +235,7 @@ export const useKasData = (selectedPeriod) => {
           totalPemasukan: 0,
           totalPengeluaran: 0,
           percentageChanges: { saldo: 0, pemasukan: 0, pengeluaran: 0 },
-          pemasukanKategori: { zakat: 0, infaq: 0, lelang: 0, donasi: 0 },
+          pemasukanKategori: { zakat: 0, infaq: 0, donasi: 0 },
           pengeluaranKategori: {
             operasional: 0,
             kegiatan: 0,
