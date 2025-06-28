@@ -13,6 +13,7 @@ const KasPemasukan = ({
   kasData,
   zakatData,
   infaqData,
+  donasiData = [],
   onOpenModal,
   onOpenBukti,
   onEdit,
@@ -36,29 +37,33 @@ const KasPemasukan = ({
           <table className="w-full min-w-[800px]">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Tanggal
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Kategori
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Jenis
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Nama Jamaah
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Nama/Donatur
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Deskripsi
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Deskripsi/Program
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Metode
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Jumlah
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                {/*  TAMBAH KOLOM KODE UNIK */}
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Kode Unik
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Bukti
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Aksi
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Aksi/Status
                 </th>
               </tr>
             </thead>
@@ -69,19 +74,21 @@ const KasPemasukan = ({
                   <td className="px-6 py-4 text-sm text-gray-900">
                     {new Date(item.created_at).toLocaleDateString('id-ID')}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">Zakat {item.jenis_zakat}</td>
+                  <td className="px-6 py-4 text-sm text-gray-900">
+                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                      🕌 Zakat {item.jenis_zakat}
+                    </span>
+                  </td>
                   <td className="px-6 py-4 text-sm text-gray-900">{item.nama}</td>
                   <td className="px-6 py-4 text-sm text-gray-500">-</td>
                   <td className="px-6 py-4 text-sm text-gray-900">
-                    <span
-                      className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        item.metode_pembayaran === 'qris'
-                          ? 'bg-purple-100 text-purple-800'
-                          : item.metode_pembayaran === 'cash'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-blue-100 text-blue-800'
-                      }`}
-                    >
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                      item.metode_pembayaran === 'qris'
+                        ? 'bg-purple-100 text-purple-800'
+                        : item.metode_pembayaran === 'cash'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-blue-100 text-blue-800'
+                    }`}>
                       {item.metode_pembayaran === 'qris'
                         ? '📱 QRIS'
                         : item.metode_pembayaran === 'cash'
@@ -91,6 +98,9 @@ const KasPemasukan = ({
                   </td>
                   <td className="px-6 py-4 text-sm font-medium text-green-600">
                     {formatCurrency(item.jumlah)}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-center">
+                    <span className="text-gray-400 text-xs">-</span>
                   </td>
                   <td className="px-6 py-4">
                     {item.bukti_transfer ? (
@@ -116,7 +126,11 @@ const KasPemasukan = ({
                   <td className="px-6 py-4 text-sm text-gray-900">
                     {new Date(item.tanggal).toLocaleDateString("id-ID")}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">Infaq</td>
+                  <td className="px-6 py-4 text-sm text-gray-900">
+                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                      📝 Infaq
+                    </span>
+                  </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
                     {item.nama_pemberi || '-'}
                   </td>
@@ -135,25 +149,86 @@ const KasPemasukan = ({
                     <span className="text-gray-400 text-sm">Tidak ada</span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="text-green-600 text-sm font-medium">
-                      ✓ Approved
-                    </span>
+                    <span className="text-green-600 text-sm font-medium">✓ Approved</span>
                   </td>
                 </tr>
               ))}
 
-              {/* Data Kas Masuk (Manual) */}
+              {/* Data Donasi */}
+              {donasiData.map((item) => (
+                <tr key={`donasi-${item.id}`}>
+                  <td className="px-6 py-4 text-sm text-gray-900">
+                    {new Date(item.tanggal || item.created_at).toLocaleDateString('id-ID')}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-900">
+                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-800">
+                      💝 Donasi Program
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-900">
+                    {item.nama_donatur || item.nama_pemberi || 'Hamba Allah'}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-900">
+                    <div className="font-medium">{item.program_donasi || 'Program Donasi'}</div>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-900">
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                      item.metode_pembayaran === 'qris'
+                        ? 'bg-purple-100 text-purple-800'
+                        : item.metode_pembayaran === 'cash' || item.metode_pembayaran === 'tunai'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-blue-100 text-blue-800'
+                    }`}>
+                      {item.metode_pembayaran === 'qris'
+                        ? '📱 QRIS'
+                        : item.metode_pembayaran === 'cash' || item.metode_pembayaran === 'tunai'
+                        ? '💵 Tunai'
+                        : '🏦 Transfer Bank'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm font-medium text-green-600">
+                    {formatCurrency(item.jumlah)}
+                  </td>
+                  {/*  KOLOM KODE UNIK */}
+                  <td className="px-6 py-4 text-sm text-center">
+                    {item.kode_unik ? (
+                      <span className="px-2 py-1 text-xs font-mono font-medium bg-yellow-100 text-yellow-800 rounded">
+                        +{item.kode_unik}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 text-xs">-</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
+                    {item.bukti_transfer ? (
+                      <button
+                        onClick={() => onOpenBukti(item.bukti_transfer)}
+                        className="text-blue-600 hover:text-blue-900 text-sm bg-blue-50 px-2 py-1 rounded"
+                      >
+                        Lihat Bukti
+                      </button>
+                    ) : (
+                      <span className="text-gray-400 text-sm">Tidak ada</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-green-600 text-sm font-medium">✓ Approved</span>
+                  </td>
+                </tr>
+              ))}
+
+              {/* Data Kas Manual */}
               {kasData
-              .filter((item) => item.jenis === "masuk")
-              .map((item) => {
-                
-                return (
+                .filter((item) => item.jenis === "masuk")
+                .map((item) => (
                   <tr key={`kas-${item.id}`}>
                     <td className="px-6 py-4 text-sm text-gray-900">
                       {new Date(item.tanggal).toLocaleDateString("id-ID")}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
-                      {formatKategori(item.kategori)}
+                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-800">
+                        ✏️ {formatKategori(item.kategori)}
+                      </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
                       {item.nama_donatur || item.nama || item.nama_pemberi || 'Hamba Allah'}
@@ -190,8 +265,7 @@ const KasPemasukan = ({
                       </div>
                     </td>
                   </tr>
-                );
-              })}
+                ))}
             </tbody>
           </table>
         </div>
@@ -289,6 +363,70 @@ const KasPemasukan = ({
             </div>
             <div className="flex justify-end">
               <span className="text-gray-400 text-sm">Tidak ada bukti</span>
+            </div>
+          </div>
+        ))}
+
+        {/* Donasi mobile */}
+        {donasiData.map((item) => (
+          <div
+            key={`donasi-mobile-${item.id}`}
+            className="bg-white border rounded-lg p-4 shadow-sm"
+          >
+            <div className="flex justify-between items-start mb-2">
+              <div className="text-sm text-gray-500">
+                {new Date(item.tanggal || item.created_at).toLocaleDateString("id-ID")}
+              </div>
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                ✓ Approved
+              </span>
+            </div>
+            <div className="text-sm font-medium text-gray-900 mb-1">
+              💝 Donasi Program
+            </div>
+            <div className="text-sm text-gray-600 mb-1">
+              <span className="font-medium">Donatur:</span> {item.nama_donatur || item.nama_pemberi || 'Hamba Allah'}
+            </div>
+            <div className="text-sm text-gray-600 mb-1">
+              <span className="font-medium">Program:</span> {item.program_donasi || 'Program Donasi'}
+            </div>
+            {item.kode_unik && (
+              <div className="text-sm text-gray-600 mb-2">
+                <span className="font-medium">Kode Unik:</span> 
+                <span className="ml-1 px-2 py-1 text-xs font-mono font-medium bg-yellow-100 text-yellow-800 rounded">
+                  +{item.kode_unik}
+                </span>
+              </div>
+            )}
+            <div className="flex justify-between items-center mb-2">
+              <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                item.metode_pembayaran === 'qris'
+                  ? 'bg-purple-100 text-purple-800'
+                  : item.metode_pembayaran === 'cash' || item.metode_pembayaran === 'tunai'
+                  ? 'bg-green-100 text-green-800'
+                  : 'bg-blue-100 text-blue-800'
+              }`}>
+                {item.metode_pembayaran === 'qris'
+                  ? '📱 QRIS'
+                  : item.metode_pembayaran === 'cash' || item.metode_pembayaran === 'tunai'
+                  ? '💵 Tunai'
+                  : '🏦 Transfer Bank'}
+              </span>
+              <div className="text-lg font-medium text-green-600">
+                {formatCurrency(item.jumlah)}
+              </div>
+            </div>
+            <div className="flex justify-end">
+              {item.bukti_transfer ? (
+                <button
+                  onClick={() => onOpenBukti(item.bukti_transfer)}
+                  className="text-blue-600 hover:text-blue-900 text-sm bg-blue-50 px-2 py-1 rounded"
+                >
+                  Lihat Bukti
+                </button>
+              ) : (
+                <span className="text-gray-400 text-sm">Tidak ada bukti</span>
+              )}
             </div>
           </div>
         ))}
