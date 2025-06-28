@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react'
 import { donasiService } from '../services/DonasiService'
 import { createFormData } from '../utils/helpers'
 
-export const useDonasiHistory = () => {
+export const useDonasiHistory = () => {    
     const [state, setState] = useState({
         historyDonasi: [],
         detailProgram: null,
@@ -73,50 +73,78 @@ export const useDonasiHistory = () => {
     }, [])
 
     // Export laporan donasi
-    const exportLaporanDonasi = useCallback(async (programId, format = 'excel') => {
+    const exportLaporanDonasi = useCallback(async (programId, format = 'csv') => {
         try {
-            setState(prev => ({ ...prev, loading: true }))
+            setState(prev => ({ ...prev, loading: true, error: null }));
+            const token = localStorage.getItem('token');
             
-            // Mock export functionality - you can implement actual export logic
-            const response = await donasiService.getDonationHistory(programId)
-            const data = response.data
-            
-            // Create CSV content
-            if (format === 'csv') {
-                const csvContent = [
-                    ['No', 'Nama Donatur', 'Nominal', 'Metode Pembayaran', 'Tanggal', 'Status'],
-                    ...data.map((donasi, index) => [
-                        index + 1,
-                        donasi.nama_donatur,
-                        donasi.nominal,
-                        donasi.metode_pembayaran,
-                        new Date(donasi.tanggal_donasi).toLocaleDateString('id-ID'),
-                        donasi.status
-                    ])
-                ].map(row => row.join(',')).join('\n')
+            let endpoint;
+            if (format === 'pdf') {
+                endpoint = `http://localhost:5000/api/donasi/program/${programId}/export/pdf`;
+            } else {
+                endpoint = `http://localhost:5000/api/donasi/program/${programId}/export?format=${format}`;
+            }
+
+            console.log('📡 Fetching from:', endpoint);
+
+            const response = await fetch(endpoint, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            // Handle PDF differently
+            if (format === 'pdf') {
+                const blob = await response.blob();
+                console.log('📄 PDF Blob size:', blob.size, 'bytes');
+                console.log('📄 PDF Blob type:', blob.type);
                 
-                // Download CSV
-                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-                const link = document.createElement('a')
-                link.href = URL.createObjectURL(blob)
-                link.download = `laporan-donasi-${programId}-${new Date().toISOString().split('T')[0]}.csv`
-                link.click()
+                if (blob.size === 0) {
+                    throw new Error('PDF file is empty');
+                }
+
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `laporan-donasi-program-${programId}-${Date.now()}.pdf`;
+                link.target = '_blank';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+                
+                console.log('✅ PDF download completed');
+            } else {
+                // Handle CSV/Excel
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `laporan-donasi-program-${programId}-${Date.now()}.${format}`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
             }
+
+            // ✅ UPDATE STATE SUCCESS
+            setState(prev => ({ ...prev, loading: false, error: null }));
+            return { success: true, message: 'Laporan berhasil diexport' };
             
-            setState(prev => ({ ...prev, loading: false }))
-            return { success: true, message: 'Laporan berhasil diexport' }
         } catch (error) {
-            setState(prev => ({ ...prev, loading: false }))
-            console.log(error);
-            return {
-                success: false,
-                message: 'Gagal export laporan'
-            }
+            console.error('❌ Export error:', error);
+            setState(prev => ({ 
+                ...prev, 
+                loading: false, 
+                error: error.message 
+            }));
+            return { success: false, message: error.message };
         }
-    }, [])
+    }, []);
 
     return {
-        // State
         ...state,
 
         // Actions
