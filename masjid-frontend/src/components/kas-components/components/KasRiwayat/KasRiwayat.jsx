@@ -18,10 +18,50 @@ const KasRiwayat = ({
   onOpenBukti = [], 
   currentPeriod 
 }) => {
+  // ✅ STATE UNTUK SORTING
+  const [sortConfig, setSortConfig] = useState({
+    key: 'tanggal',
+    direction: 'desc' // desc = terbaru, asc = terlama
+  });
+
   const [exportLoading, setExportLoading] = useState({
     csv: false,
     excel: false
   });
+
+  // ✅ FUNGSI SORTING
+  const handleSort = (key) => {
+    let direction = 'desc';
+    if (sortConfig.key === key && sortConfig.direction === 'desc') {
+      direction = 'asc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  // ✅ ICON UNTUK SORTING
+  const SortIcon = ({ column }) => {
+    if (sortConfig.key !== column) {
+      return (
+        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+        </svg>
+      );
+    }
+    
+    if (sortConfig.direction === 'desc') {
+      return (
+        <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+        </svg>
+      );
+    } else {
+      return (
+        <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+        </svg>
+      );
+    }
+  };
 
   // export function
   const handleExport = async (format = 'csv') => {
@@ -43,10 +83,9 @@ const KasRiwayat = ({
         responseType: 'blob'
       });
 
-      console.log(`📦 Response received:`, response); // DEBUG LOG
+      console.log(`📦 Response received:`, response);
       console.log(`📊 Blob size:`, response.data.size)
 
-      // handle csv and excel export
       const blob = new Blob([response.data],{
         type: format === 'csv' ? 'text/csv' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       });
@@ -63,8 +102,8 @@ const KasRiwayat = ({
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
 
-      console.log(` ${format} export completed!`);
-      alert( `Export ${format.toUpperCase()} berhasil! File telah diunduh`);
+      console.log(`✅ ${format} export completed!`);
+      alert(`Export ${format.toUpperCase()} berhasil! File telah diunduh`);
     } catch (error) {
       console.error('❌ Error exporting data:', error);
       alert('Gagal export data: ' + (error.response?.data?.message || error.message));
@@ -73,25 +112,129 @@ const KasRiwayat = ({
     }
   };
 
-  // Gabungkan semua data dan urutkan berdasarkan tanggal
-  const allTransactions = [
-    ...kasData.map(item => ({ ...item, type: item.jenis, source: 'kas' })),
-    ...zakatData.map(item => ({ ...item, type: 'masuk', source: 'zakat', tanggal: item.created_at })),
-    ...infaqData.map(item => ({ ...item, type: 'masuk', source: 'infaq' })),
-    ...donasiData.map(item => ({...item, type: 'masuk', source: 'donasi', tanggal: item.tanggal || item.created_at}))
-  ].sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
+  // ✅ NORMALIZE DATA - GABUNGKAN SEMUA DATA DENGAN FORMAT YANG SAMA
+  const normalizeAllData = () => {
+    const allData = [];
 
+    // Data Kas
+    kasData.forEach(item => {
+      allData.push({
+        ...item,
+        source: 'kas',
+        display_date: item.tanggal,
+        display_jenis: item.jenis === 'masuk' ? `✏️ ${formatKategori(item.kategori)}` : `📤 ${item.kategori || 'Operasional'}`,
+        display_nama: item.jenis === 'masuk' ? (item.nama_pemberi || 'Hamba Allah') : (item.nama_penerima || '-'),
+        display_deskripsi: item.keterangan || item.deskripsi || '-',
+        display_metode: 'Manual',
+        display_jumlah: item.jumlah,
+        display_bukti: null,
+        display_kode_unik: null
+      });
+    });
 
-  // helper function untuk get nama pemberi (desktop)
-  const getNamaPemberi = (item) => {
-    if (item.source === 'zakat') return item.nama;
-    if (item.source === 'infaq') return item.nama_pemberi || '-';
-    if (item.source === 'donasi') return item.nama_donatur || item.nama_pemberi || 'Hamba Allah';
-    if (item.source === 'kas') {
-      return item.type === 'masuk' ? (item.nama_pemberi || 'Hamba Allah') : (item.nama_pember || '-');
-    }
-    return '-';
+    // Data Zakat
+    zakatData.forEach(item => {
+      allData.push({
+        ...item,
+        type: 'masuk',
+        source: 'zakat',
+        display_date: item.created_at,
+        display_jenis: `🕌 Zakat ${item.jenis_zakat}`,
+        display_nama: item.nama,
+        display_deskripsi: '-',
+        display_metode: item.metode_pembayaran,
+        display_jumlah: item.jumlah,
+        display_bukti: item.bukti_transfer,
+        display_kode_unik: null
+      });
+    });
+
+    // Data Infaq
+    infaqData.forEach(item => {
+      allData.push({
+        ...item,
+        type: 'masuk',
+        source: 'infaq',
+        display_date: item.tanggal,
+        display_jenis: '📝 Infaq',
+        display_nama: item.nama_pemberi || 'Hamba Allah',
+        display_deskripsi: item.keterangan || '-',
+        display_metode: 'Form Online',
+        display_jumlah: item.jumlah,
+        display_bukti: item.bukti_transfer,
+        display_kode_unik: null
+      });
+    });
+
+    // Data Donasi
+    donasiData.forEach(item => {
+      allData.push({
+        ...item,
+        type: 'masuk',
+        source: 'donasi',
+        display_date: item.tanggal || item.created_at,
+        display_jenis: '💝 Donasi Program',
+        display_nama: item.nama_donatur || item.nama_pemberi || 'Hamba Allah',
+        display_deskripsi: item.program_donasi || 'Program Donasi',
+        display_metode: item.metode_pembayaran,
+        display_jumlah: item.jumlah,
+        display_bukti: item.bukti_transfer,
+        display_kode_unik: item.kode_unik
+      });
+    });
+
+    return allData;
   };
+
+  // ✅ FUNGSI UNTUK SORT DATA GABUNGAN
+  const sortData = (data) => {
+    if (!sortConfig.key) return data;
+
+    return [...data].sort((a, b) => {
+      let aValue, bValue;
+
+      switch (sortConfig.key) {
+        case 'tanggal':
+          aValue = new Date(a.display_date);
+          bValue = new Date(b.display_date);
+          break;
+        case 'jenis':
+          aValue = a.display_jenis.toLowerCase();
+          bValue = b.display_jenis.toLowerCase();
+          break;
+        case 'nama':
+          aValue = (a.display_nama || '').toLowerCase();
+          bValue = (b.display_nama || '').toLowerCase();
+          break;
+        case 'deskripsi':
+          aValue = (a.display_deskripsi || '').toLowerCase();
+          bValue = (b.display_deskripsi || '').toLowerCase();
+          break;
+        case 'metode':
+          aValue = (a.display_metode || '').toLowerCase();
+          bValue = (b.display_metode || '').toLowerCase();
+          break;
+        case 'jumlah':
+          aValue = Number(a.display_jumlah || 0);
+          bValue = Number(b.display_jumlah || 0);
+          break;
+        default:
+          return 0;
+      }
+
+      if (aValue < bValue) {
+        return sortConfig.direction === 'asc' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortConfig.direction === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
+  };
+
+  // ✅ GET ALL DATA DAN SORT
+  const allData = normalizeAllData();
+  const sortedAllTransactions = sortData(allData);
 
   // helper function untuk get nama pemberi (mobile)
   const shouldShowName = (item) => {
@@ -102,7 +245,6 @@ const KasRiwayat = ({
     return false;
   }
 
-  
   return (
     <div className="space-y-4">
       <div className='flex justify-between items-center'>
@@ -112,7 +254,7 @@ const KasRiwayat = ({
         <div className="flex gap-2">
           <button
             onClick={() => handleExport('csv')}
-            disabled={exportLoading.csv || allTransactions.length === 0}
+            disabled={exportLoading.csv || sortedAllTransactions.length === 0}
             className='flex items-center gap-2 px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed'
           >
             {exportLoading.csv ? (
@@ -136,10 +278,9 @@ const KasRiwayat = ({
             )}
           </button>
 
-          {/* Export button excel */}
           <button
             onClick={() => handleExport('excel')}
-            disabled={exportLoading.excel || allTransactions.length === 0}
+            disabled={exportLoading.excel || sortedAllTransactions.length === 0}
             className='flex items-center gap-2 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed'
           >
             {exportLoading.excel ? (
@@ -165,128 +306,159 @@ const KasRiwayat = ({
         </div>
       </div>
 
+      {/* ✅ INFO SORTING */}
+      {sortedAllTransactions.length > 0 && (
+        <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+          <div className="flex items-center gap-2 text-sm text-blue-700">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>
+              Diurutkan berdasarkan: <strong className="capitalize">{sortConfig.key}</strong> 
+              ({sortConfig.direction === 'desc' ? 'Terbaru ke Terlama' : 'Terlama ke Terbaru'}) - 
+              Total: <strong>{sortedAllTransactions.length}</strong> transaksi
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Empty state */}
-      {allTransactions.length === 0 && (
+      {sortedAllTransactions.length === 0 && (
         <div className="p-6 text-center text-gray-500">
           <p>Tidak ada transaksi yang tersedia.</p>
         </div>
       )}
+
       {/* Desktop View */}
-      {allTransactions.length > 0 && (
+      {sortedAllTransactions.length > 0 && (
       <div className="hidden sm:block rounded-lg border bg-white shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px]">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Jenis</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama/Donatur</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Deskripsi/Program</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Metode</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Jumlah</th>
+                {/* ✅ SORTABLE HEADERS */}
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('tanggal')}
+                >
+                  <div className="flex items-center gap-1">
+                    Tanggal
+                    <SortIcon column="tanggal" />
+                  </div>
+                </th>
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('jenis')}
+                >
+                  <div className="flex items-center gap-1">
+                    Jenis
+                    <SortIcon column="jenis" />
+                  </div>
+                </th>
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('nama')}
+                >
+                  <div className="flex items-center gap-1">
+                    Nama/Donatur
+                    <SortIcon column="nama" />
+                  </div>
+                </th>
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('deskripsi')}
+                >
+                  <div className="flex items-center gap-1">
+                    Deskripsi/Program
+                    <SortIcon column="deskripsi" />
+                  </div>
+                </th>
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('metode')}
+                >
+                  <div className="flex items-center gap-1">
+                    Metode
+                    <SortIcon column="metode" />
+                  </div>
+                </th>
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('jumlah')}
+                >
+                  <div className="flex items-center gap-1">
+                    Jumlah
+                    <SortIcon column="jumlah" />
+                  </div>
+                </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kode Unik</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bukti</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {allTransactions.map((item, index) => {
+              {/* ✅ RENDER DATA YANG SUDAH DI-SORT */}
+              {sortedAllTransactions.map((item, index) => {
                 return (
                   <tr key={`${item.source}-${item.id}-${index}`}>
                     <td className="px-6 py-4 text-sm text-gray-900">
-                      {new Date(item.tanggal).toLocaleDateString('id-ID')}
+                      {new Date(item.display_date).toLocaleDateString('id-ID')}
                     </td>
                     
-                    {/*  KOLOM JENIS - UPDATE */}
                     <td className="px-6 py-4">
-                      {item.source === 'zakat' ? (
-                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
-                          🕌 Zakat {item.jenis_zakat}
-                        </span>
-                      ) : item.source === 'infaq' ? (
-                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                          📝 Infaq
-                        </span>
-                      ) : item.source === 'donasi' ? (
-                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-800">
-                          💝 Donasi Program
-                        </span>
-                      ) : (
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                          item.type === 'masuk' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'
-                        }`}>
-                          {item.type === 'masuk' ? '✏️ Kas Manual' : '📤 Pengeluaran'}
-                        </span>
-                      )}
-                    </td>
-                    
-                    {/*  KOLOM NAMA */}
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {getNamaPemberi(item)}
-                    </td>
-                    
-                    {/*  KOLOM DESKRIPSI/PROGRAM */}
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {item.source === 'donasi' ? (
-                        <div>
-                          <div className="font-medium">{item.program_donasi || 'Program Donasi'}</div>
-                        </div>
-                      ) : item.source === 'kas' ? (
-                        item.keterangan || item.deskripsi || '-'
-                      ) : item.source === 'infaq' ? (
-                        item.keterangan || '-'
-                      ) : '-'}
-                    </td>
-                    
-                    {/*  KOLOM METODE */}
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {item.source === 'zakat' || item.source === 'donasi' ? (
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                          item.metode_pembayaran === 'qris'
-                            ? 'bg-purple-100 text-purple-800'
-                            : item.metode_pembayaran === 'cash' || item.metode_pembayaran === 'tunai'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-blue-100 text-blue-800'
-                        }`}>
-                          {item.metode_pembayaran === 'qris'
-                            ? '📱 QRIS'
-                            : item.metode_pembayaran === 'cash' || item.metode_pembayaran === 'tunai'
-                            ? '💵 Tunai'
-                            : '🏦 Transfer Bank'}
-                        </span>
-                      ) : item.source === 'infaq' ? (
-                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
-                          📝 Form Online
-                        </span>
-                      ) : (
-                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-800">
-                          ✏️ Input Manual
-                        </span>
-                      )}
-                    </td>
-                    
-                    {/*  KOLOM JUMLAH */}
-                    <td className="px-6 py-4 text-sm font-medium">
-                      <span className={item.type === 'masuk' ? 'text-green-600' : 'text-red-600'}>
-                        {item.type === 'masuk' ? '+' : '-'}{formatCurrency(item.jumlah)}
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                        item.source === 'zakat' ? 'bg-green-100 text-green-800' :
+                        item.source === 'infaq' ? 'bg-blue-100 text-blue-800' :
+                        item.source === 'donasi' ? 'bg-purple-100 text-purple-800' :
+                        (item.jenis || item.type) === 'masuk' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {item.display_jenis}
                       </span>
                     </td>
                     
-                    {/*  KOLOM KODE UNIK */}
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      {item.display_nama}
+                    </td>
+                    
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      {item.display_deskripsi}
+                    </td>
+                    
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                        item.display_metode === 'Manual' ? 'bg-amber-100 text-amber-800' :
+                        item.display_metode === 'Form Online' ? 'bg-gray-100 text-gray-800' :
+                        item.display_metode === 'qris' ? 'bg-purple-100 text-purple-800' :
+                        item.display_metode === 'cash' || item.display_metode === 'tunai' ? 'bg-green-100 text-green-800' :
+                        'bg-blue-100 text-blue-800'
+                      }`}>
+                        {item.display_metode === 'Manual' ? '✏️ Input Manual' :
+                         item.display_metode === 'Form Online' ? '📝 Form Online' :
+                         item.display_metode === 'qris' ? '📱 QRIS' :
+                         item.display_metode === 'cash' || item.display_metode === 'tunai' ? '💵 Tunai' :
+                         '🏦 Transfer Bank'}
+                      </span>
+                    </td>
+                    
+                    <td className="px-6 py-4 text-sm font-medium">
+                      <span className={(item.jenis || item.type) === 'masuk' ? 'text-green-600' : 'text-red-600'}>
+                        {(item.jenis || item.type) === 'masuk' ? '+' : '-'}{formatCurrency(item.display_jumlah)}
+                      </span>
+                    </td>
+                    
                     <td className="px-6 py-4 text-sm text-center">
-                      {item.source === 'donasi' && item.kode_unik ? (
+                      {item.display_kode_unik ? (
                         <span className="px-2 py-1 text-xs font-mono font-medium bg-yellow-100 text-yellow-800 rounded">
-                          +{item.kode_unik}
+                          +{item.display_kode_unik}
                         </span>
                       ) : (
                         <span className="text-gray-400 text-xs">-</span>
                       )}
                     </td>
                     
-                    {/*  KOLOM BUKTI */}
                     <td className="px-6 py-4">
-                      {item.bukti_transfer ? (
+                      {item.display_bukti ? (
                         <button
-                          onClick={() => onOpenBukti(item.bukti_transfer)}
+                          onClick={() => onOpenBukti(item.display_bukti)}
                           className="text-blue-600 hover:text-blue-900 text-xs bg-blue-50 px-2 py-1 rounded"
                         >
                           Lihat
@@ -305,89 +477,93 @@ const KasRiwayat = ({
       )}
 
       {/* Mobile View */}
-      {allTransactions.length > 0 && (
+      {sortedAllTransactions.length > 0 && (
       <div className="block sm:hidden space-y-4">
-        {allTransactions.map((item, index) => (
-          <div key={`${item.source}-mobile-${item.id}-${index}`} className="bg-white border rounded-lg p-4 shadow-sm">
+        {/* ✅ Mobile sorting controls */}
+        <div className="bg-white p-3 rounded-lg border">
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-medium text-gray-700">Urutkan berdasarkan:</span>
+            <select 
+              value={`${sortConfig.key}-${sortConfig.direction}`}
+              onChange={(e) => {
+                const [key, direction] = e.target.value.split('-');
+                setSortConfig({ key, direction });
+              }}
+              className="text-sm border border-gray-300 rounded px-2 py-1"
+            >
+              <option value="tanggal-desc">Tanggal (Terbaru)</option>
+              <option value="tanggal-asc">Tanggal (Terlama)</option>
+              <option value="jenis-asc">Jenis (A-Z)</option>
+              <option value="jenis-desc">Jenis (Z-A)</option>
+              <option value="nama-asc">Nama (A-Z)</option>
+              <option value="nama-desc">Nama (Z-A)</option>
+              <option value="jumlah-desc">Jumlah (Tertinggi)</option>
+              <option value="jumlah-asc">Jumlah (Terendah)</option>
+            </select>
+          </div>
+        </div>
+
+        {/* ✅ Mobile cards dengan data yang sudah di-sort */}
+        {sortedAllTransactions.map((item, index) => (
+          <div key={`mobile-${item.source}-${item.id}-${index}`} className="bg-white border rounded-lg p-4 shadow-sm">
             <div className="flex justify-between items-start mb-2">
               <div className="text-sm text-gray-500">
-                {new Date(item.tanggal).toLocaleDateString('id-ID')}
+                {new Date(item.display_date).toLocaleDateString('id-ID')}
               </div>
               <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                item.type === 'masuk' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                (item.jenis || item.type) === 'masuk' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
               }`}>
-                {item.type === 'masuk' ? 'Pemasukan' : 'Pengeluaran'}
+                {(item.jenis || item.type) === 'masuk' ? 'Pemasukan' : 'Pengeluaran'}
               </span>
             </div>
             
-            {/*  JENIS DENGAN ICON */}
             <div className="text-sm font-medium text-gray-900 mb-1">
-              {item.source === 'zakat' ? `🕌 Zakat ${item.jenis_zakat}` :
-                item.source === 'infaq' ? '📝 Infaq' :
-                item.source === 'donasi' ? '💝 Donasi Program' :
-                item.type === 'masuk' ? `✏️ ${formatKategori(item.kategori)}` :
-                `📤 ${item.kategori || 'Operasional'}`}
+              {item.display_jenis}
             </div>
             
-            {/*  NAMA */}
             {shouldShowName(item) && (
               <div className="text-sm text-gray-700 mb-1">
-                <span className="font-medium">Nama:</span> {getNamaPemberi(item)}
+                <span className="font-medium">Nama:</span> {item.display_nama}
               </div>
             )}
             
-            {/*  PROGRAM UNTUK DONASI */}
-            {item.source === 'donasi' && (
-              <div className="text-sm text-gray-600 mb-1">
-                <span className="font-medium">Program:</span> {item.program_donasi || 'Program Donasi'}
-              </div>
-            )}
-            
-            {/*  KODE UNIK UNTUK DONASI */}
-            {item.source === 'donasi' && item.kode_unik && (
+            {item.source === 'donasi' && item.display_kode_unik && (
               <div className="text-sm text-gray-600 mb-2">
                 <span className="font-medium">Kode Unik:</span> 
                 <span className="ml-1 px-2 py-1 text-xs font-mono font-medium bg-yellow-100 text-yellow-800 rounded">
-                  +{item.kode_unik}
+                  +{item.display_kode_unik}
                 </span>
               </div>
             )}
             
-            {/*  DESKRIPSI */}
-            {((item.source === 'kas' && (item.keterangan || item.deskripsi)) || 
-              (item.source === 'infaq' && item.keterangan)) && (
+            {item.display_deskripsi !== '-' && (
               <div className="text-sm text-gray-600 mb-2">
-                <span className="font-medium">Deskripsi:</span> {
-                  item.source === 'kas' ? (item.keterangan || item.deskripsi) :
-                  item.keterangan
-                }
+                <span className="font-medium">Deskripsi:</span> {item.display_deskripsi}
               </div>
             )}
             
-            {/*  METODE */}
             {(item.source === 'zakat' || item.source === 'donasi' || item.source === 'infaq') && (
               <div className="text-sm text-gray-600 mb-2">
                 <span className="font-medium">Metode:</span>
                 <span className="ml-1">
-                  {item.source === 'zakat' || item.source === 'donasi' ? (
-                    item.metode_pembayaran === 'qris' ? '📱 QRIS' :
-                    item.metode_pembayaran === 'cash' || item.metode_pembayaran === 'tunai' ? '💵 Tunai' :
-                    '🏦 Transfer Bank'
-                  ) : item.source === 'infaq' ? '📝 Form Online' : 'Manual'}
+                  {item.display_metode === 'Manual' ? '✏️ Input Manual' :
+                   item.display_metode === 'Form Online' ? '📝 Form Online' :
+                   item.display_metode === 'qris' ? '📱 QRIS' :
+                   item.display_metode === 'cash' || item.display_metode === 'tunai' ? '💵 Tunai' :
+                   '🏦 Transfer Bank'}
                 </span>
               </div>
             )}
             
-            {/*  JUMLAH DAN BUKTI */}
             <div className="flex justify-between items-center mb-2">
               <div className="text-lg font-medium">
-                <span className={item.type === 'masuk' ? 'text-green-600' : 'text-red-600'}>
-                  {item.type === 'masuk' ? '+' : '-'}{formatCurrency(item.jumlah)}
+                <span className={(item.jenis || item.type) === 'masuk' ? 'text-green-600' : 'text-red-600'}>
+                  {(item.jenis || item.type) === 'masuk' ? '+' : '-'}{formatCurrency(item.display_jumlah)}
                 </span>
               </div>
-              {item.bukti_transfer ? (
+              {item.display_bukti ? (
                 <button
-                  onClick={() => onOpenBukti(item.bukti_transfer)}
+                  onClick={() => onOpenBukti(item.display_bukti)}
                   className="text-blue-600 hover:text-blue-900 text-xs bg-blue-50 px-2 py-1 rounded"
                 >
                   Lihat Bukti
