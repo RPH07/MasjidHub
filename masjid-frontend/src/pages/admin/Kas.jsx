@@ -158,7 +158,7 @@ const Kas = () => {
             kasData={kasDataHook.kasData}
             zakatData={kasDataHook.zakatData}
             infaqData={kasDataHook.infaqData}
-            lelangData={kasDataHook.lelangData}
+            donasiData={kasDataHook.donasiData}
             onEdit={handleEdit}
             onDelete={handleDelete}
             onOpenBukti={handleOpenBukti}
@@ -183,6 +183,7 @@ const Kas = () => {
             kasData={kasDataHook.kasData}
             zakatData={kasDataHook.zakatData}
             infaqData={kasDataHook.infaqData}
+            donasiData={kasDataHook.donasiData}
             onOpenBukti={handleOpenBukti}
             kategoriPemasukan={kategoriPemasukan}
             currentPeriod={selectedPeriod}
