@@ -52,10 +52,11 @@ router.get('/', async (req, res) => {
     const { period = 'bulan-ini' } = req.query;
     const { startDate, endDate } = getPeriodFilter(period);
 
-    // ✅ TAMBAH DONASI KE QUERY
+    //  TAMBAH DONASI KE QUERY
     const [allRows] = await db.query(`
       SELECT 
         kb.*,
+        kb.kode_unik,
         DATE_FORMAT(kb.tanggal, '%Y-%m-%d') AS tanggal,
         -- Zakat fields
         z.nama as zakat_nama,
@@ -68,7 +69,7 @@ router.get('/', async (req, res) => {
         i.kategori_infaq,
         i.status as infaq_status,
         i.tanggal as infaq_tanggal,
-        -- ✅ TAMBAH DONASI FIELDS
+        -- Donasi Field
         d.nama_donatur as donasi_nama_donatur,
         d.nominal as donasi_nominal,
         d.kode_unik as donasi_kode_unik,
@@ -88,8 +89,7 @@ router.get('/', async (req, res) => {
           (kb.source_table = 'zakat' AND z.status = 'approved') OR
           (kb.source_table = 'infaq' AND i.status = 'approved') OR
           (kb.source_table = 'donasi_pengadaan' AND d.status = 'approved') OR
-          (kb.source_table = 'manual') OR
-          (kb.source_table = 'lelang')
+          (kb.source_table = 'manual')
         )
       ORDER BY kb.tanggal DESC, kb.created_at DESC
     `, [startDate, endDate]);
@@ -120,13 +120,13 @@ router.get('/', async (req, res) => {
         tanggal: row.infaq_tanggal
       }));
 
-    // ✅ TAMBAH DONASI ROWS
+    
     const donasiRows = allRows
       .filter(row => row.source_table === 'donasi_pengadaan')
       .map(row => ({
         id: row.source_id,
         nama_donatur: row.donasi_nama_donatur,
-        nama_pemberi: row.donasi_nama_donatur, // Alias untuk konsistensi
+        nama_pemberi: row.donasi_nama_donatur,
         jumlah: row.jumlah,
         nominal: row.donasi_nominal,
         kode_unik: row.donasi_kode_unik,
@@ -146,7 +146,7 @@ router.get('/', async (req, res) => {
         kas: kasRows,
         zakat: zakatRows,
         infaq: infaqRows,
-        donasi: donasiRows, // ✅ TAMBAH DONASI
+        donasi: donasiRows,
         lelang: lelangRows
       }
     });
@@ -173,6 +173,16 @@ router.get('/summary', async (req, res) => {
     }
 
     const { startDate: sDate, endDate: eDate } = dateFilter;
+    const [kodeUnikSummary] = await db.query(`
+      SELECT 
+        COUNT(kode_unik) as total_transaksi_kode_unik,
+        COALESCE(SUM(kode_unik), 0) as total_kode_unik_terkumpul
+      FROM kas_buku_besar
+      WHERE jenis = 'masuk'
+        AND kode_unik IS NOT NULL
+        AND tanggal >= ? AND tanggal < ?
+        AND deleted_at IS NULL
+    `, [sDate, eDate]);
 
     // 1. HITUNG SALDO TOTAL (dari awal sampai sekarang)
     const [totalSaldoRows] = await db.query(`
@@ -309,10 +319,9 @@ router.get('/summary', async (req, res) => {
 const [pemasukanKategoriRows] = await db.query(`
   SELECT 
     CASE 
-      WHEN kategori = 'zakat' THEN 'zakat'
-      WHEN kategori = 'infaq' THEN 'infaq' 
-      WHEN kategori = 'donasi_pengadaan' THEN 'donasi'
-      WHEN kategori = 'lelang' THEN 'lelang'
+      WHEN source_table = 'zakat' THEN 'zakat'
+      WHEN source_table = 'infaq' THEN 'infaq' 
+      WHEN source_table = 'donasi_pengadaan' THEN 'donasi'
       ELSE 'kas_manual'
     END as kategori_grouped,
     COALESCE(SUM(jumlah), 0) as total
@@ -328,7 +337,6 @@ const pemasukanKategori = {
   zakat: 0,
   infaq: 0,
   donasi: 0,
-  lelang: 0,
   kas_manual: 0
 };
 
@@ -362,7 +370,11 @@ pemasukanKategoriRows.forEach(row => {
         totalSaldo: totalSaldo,
         pemasukanKategori,
         pengeluaranKategori,
-        percentageChanges
+        percentageChanges,
+        kodeUnikStats: {
+          totalTransaksi: Number(kodeUnikSummary[0]?.total_transaksi_kode_unik || 0),
+          totalKodeUnik: Number(kodeUnikSummary[0]?.total_kode_unik_terkumpul || 0)
+        }
       }
     });
 
@@ -662,7 +674,7 @@ router.get('/history', async (req, res) => {
 
     let transactions = [];
 
-    // 1. Fetch Zakat data ✅ FIX
+    // 1. Fetch Zakat data
     if (type === 'all' || type === 'zakat') {
       let zakatQuery = `
         SELECT 
@@ -679,7 +691,7 @@ router.get('/history', async (req, res) => {
           'zakat' as type,
           'Zakat' as type_label
         FROM zakat 
-        WHERE DATE(created_at) >= ? AND DATE(created_at) < ?  -- ✅ FIX: Ganti <= jadi <
+        WHERE DATE(created_at) >= ? AND DATE(created_at) < ? 
       `;
       
       const zakatParams = [dateFilter.startDate, dateFilter.endDate];
@@ -695,7 +707,7 @@ router.get('/history', async (req, res) => {
       transactions.push(...zakatRows);
     }
 
-    // 2. Fetch Infaq data ✅ FIX
+    // 2. Fetch Infaq data
     if (type === 'all' || type === 'infaq') {
       let infaqQuery = `
         SELECT 
@@ -713,7 +725,7 @@ router.get('/history', async (req, res) => {
           'infaq' as type,
           'Infaq' as type_label
         FROM infaq 
-        WHERE DATE(tanggal) >= ? AND DATE(tanggal) < ?  -- ✅ FIX: Ganti <= jadi <
+        WHERE DATE(tanggal) >= ? AND DATE(tanggal) < ?
       `;
       
       const infaqParams = [dateFilter.startDate, dateFilter.endDate];
@@ -729,12 +741,12 @@ router.get('/history', async (req, res) => {
       transactions.push(...infaqRows);
     }
 
-    // 3. Fetch Kas Manual data ✅ FIX
+    // 3. Fetch Kas Manual data
     if (type === 'all' || type === 'kas') {
       const kasQuery = `
         SELECT 
           id,
-          deskripsi as nama_pemberi,  -- ✅ FIX: Pakai deskripsi bukan keterangan
+          deskripsi as nama_pemberi,
           jumlah,
           jenis as kas_jenis,
           kategori,
@@ -747,7 +759,7 @@ router.get('/history', async (req, res) => {
           'kas' as type,
           CONCAT('Kas ', UPPER(jenis)) as type_label
         FROM kas_buku_besar 
-        WHERE tanggal >= ? AND tanggal < ?  -- ✅ FIX: Ganti <= jadi <
+        WHERE tanggal >= ? AND tanggal < ?
         AND (source_table IS NULL OR source_table NOT IN ('zakat', 'infaq'))
         AND deleted_at IS NULL
       `;
@@ -759,6 +771,43 @@ router.get('/history', async (req, res) => {
         const [kasRows] = await db.query(kasQuery + ' ORDER BY tanggal DESC', kasParams);
         transactions.push(...kasRows);
       }
+    }
+
+    // 4. Fetch Donasi
+    if (type === 'all' || type === 'donasi') {
+        let donasiQuery = `
+          SELECT
+            d.id,
+            d.nama_donatur as nama_pemberi,
+            d.nominal as jumlah,
+            d.kode_unik,
+            d.total_transfer,
+            d.bukti_transfer,
+            d.metode_pembayaran,
+            d.status,
+            d.created_at,
+            p.nama_barang as program_donasi,
+            'donasi' as type,
+            'Donasi Program' as type_label
+          FROM donasi_pengadaan d
+          JOIN barang_pengadaan p ON d.barang_id = p.id
+          WHERE DATE(d.created_at) >= ? AND DATE(d.created_at) < ?
+        `;
+
+        
+
+        const donasiParams = [dateFilter.startDate, dateFilter.endDate];
+
+        if(status !== 'all'){
+          donasiQuery += ' AND d.status = ?';
+          donasiParams.push(status);
+        }
+
+        donasiQuery += ' ORDER BY d.created_at DESC';
+        const [donasiRows] = await db.query(donasiQuery, donasiParams);
+        transactions.push(...donasiRows);
+
+      
     }
 
     // Sort all transactions by date (newest first)
@@ -816,16 +865,10 @@ router.get('/history/export', async (req, res) => {
       endDate,
       type = 'all',
       status = 'all',
-      format = 'csv' // 'csv' or 'excel'
+      format = 'csv'
     } = req.query;
 
-    // Reuse history logic to get data
-    const historyReq = {
-      query: { period, startDate, endDate, type, status }
-    };
-    
-    // Get the same data as history endpoint
-    // (We can refactor this to a shared function later)
+    // Get date filter
     let dateFilter;
     if (startDate && endDate) {
       dateFilter = { startDate, endDate };
@@ -835,88 +878,190 @@ router.get('/history/export', async (req, res) => {
 
     let transactions = [];
 
-    // Same logic as history endpoint...
+    //  1. ZAKAT - DARI APPROVED DI kas_buku_besar
     if (type === 'all' || type === 'zakat') {
-      let zakatQuery = `
-        SELECT 
-          id,
-          nama as nama_pemberi,
-          jumlah,
-          jenis_zakat,
-          bukti_transfer,
-          metode_pembayaran,
-          status,
-          reject_reason,
-          validated_at,
-          created_at,
-          'zakat' as type
-        FROM zakat 
-        WHERE DATE(created_at) >= ? AND DATE(created_at) < ?
-      `;
-      
-      const zakatParams = [dateFilter.startDate, dateFilter.endDate];
-      if (status !== 'all') {
-        zakatQuery += ' AND status = ?';
-        zakatParams.push(status);
+      if (status === 'approved' || status === 'all') {
+        const [zakatRows] = await db.query(`
+          SELECT 
+            kb.id,
+            z.nama as nama_pemberi,
+            kb.jumlah,
+            z.jenis_zakat as kategori,
+            z.bukti_transfer,
+            z.metode_pembayaran,
+            'approved' as status,
+            kb.created_at,
+            'zakat' as type,
+            'Zakat' as type_label,
+            NULL as kode_unik,
+            NULL as keterangan
+          FROM kas_buku_besar kb
+          JOIN zakat z ON kb.source_table = 'zakat' AND kb.source_id = z.id
+          WHERE kb.tanggal >= ? AND kb.tanggal < ?
+            AND z.status = 'approved'
+            AND kb.deleted_at IS NULL
+        `, [dateFilter.startDate, dateFilter.endDate]);
+        transactions.push(...zakatRows);
       }
-      
-      const [zakatRows] = await db.query(zakatQuery, zakatParams);
-      transactions.push(...zakatRows);
     }
 
+    //  2. INFAQ - DARI APPROVED DI kas_buku_besar
     if (type === 'all' || type === 'infaq') {
-      let infaqQuery = `
-        SELECT 
-          id,
-          nama_pemberi,
-          jumlah,
-          kategori_infaq,
-          keterangan,
-          bukti_transfer,
-          metode_pembayaran,
-          status,
-          reject_reason,
-          validated_at,
-          tanggal as created_at,
-          'infaq' as type
-        FROM infaq 
-        WHERE DATE(tanggal) >= ? AND DATE(tanggal) < ?
-      `;
-      
-      const infaqParams = [dateFilter.startDate, dateFilter.endDate];
-      if (status !== 'all') {
-        infaqQuery += ' AND status = ?';
-        infaqParams.push(status);
+      if (status === 'approved' || status === 'all') {
+        const [infaqRows] = await db.query(`
+          SELECT 
+            kb.id,
+            i.nama_pemberi,
+            kb.jumlah,
+            i.kategori_infaq as kategori,
+            i.bukti_transfer,
+            i.metode_pembayaran,
+            'approved' as status,
+            kb.created_at,
+            'infaq' as type,
+            'Infaq' as type_label,
+            NULL as kode_unik,
+            i.keterangan
+          FROM kas_buku_besar kb
+          JOIN infaq i ON kb.source_table = 'infaq' AND kb.source_id = i.id
+          WHERE kb.tanggal >= ? AND kb.tanggal < ?
+            AND i.status = 'approved'
+            AND kb.deleted_at IS NULL
+        `, [dateFilter.startDate, dateFilter.endDate]);
+        transactions.push(...infaqRows);
       }
-      
-      const [infaqRows] = await db.query(infaqQuery, infaqParams);
-      transactions.push(...infaqRows);
     }
 
+    //  3. DONASI - DARI APPROVED DI kas_buku_besar
+    if (type === 'all' || type === 'donasi') {
+      if (status === 'approved' || status === 'all') {
+        const [donasiRows] = await db.query(`
+          SELECT 
+            kb.id,
+            d.nama_donatur as nama_pemberi,
+            kb.jumlah,
+            p.nama_barang as kategori,
+            d.bukti_transfer,
+            d.metode_pembayaran,
+            'approved' as status,
+            kb.created_at,
+            'donasi' as type,
+            'Donasi Program' as type_label,
+            kb.kode_unik,
+            CONCAT('Program: ', p.nama_barang) as keterangan
+          FROM kas_buku_besar kb
+          JOIN donasi_pengadaan d ON kb.source_table = 'donasi_pengadaan' AND kb.source_id = d.id
+          JOIN barang_pengadaan p ON d.barang_id = p.id
+          WHERE kb.tanggal >= ? AND kb.tanggal < ?
+            AND d.status = 'approved'
+            AND kb.deleted_at IS NULL
+        `, [dateFilter.startDate, dateFilter.endDate]);
+        transactions.push(...donasiRows);
+      }
+    }
+
+    //  4. KAS MANUAL
     if (type === 'all' || type === 'kas') {
       if (status === 'approved' || status === 'all') {
         const [kasRows] = await db.query(`
           SELECT 
-            id,
-            nama_pemberi,
-            deskripsi,
-            jumlah,
-            kategori,
-            tanggal as created_at,
-            'kas' as type,
-            'approved' as status,
+            kb.id,
+            COALESCE(kb.nama_pemberi, 'Hamba Allah') as nama_pemberi,
+            kb.jumlah,
+            CASE 
+              WHEN kb.jenis = 'masuk' THEN COALESCE(kb.kategori, 'Kas Masuk')
+              ELSE COALESCE(kb.kategori, 'Pengeluaran')
+            END as kategori,
             NULL as bukti_transfer,
             'manual' as metode_pembayaran,
-            NULL as reject_reason,
-            NULL as kategori_infaq,
-            NULL as jenis_zakat,
-            NULL as keterangan
-          FROM kas_buku_besar 
-          WHERE tanggal >= ? AND tanggal < ?
-          AND (source_table IS NULL OR source_table NOT IN ('zakat', 'infaq'))
-          AND deleted_at IS NULL
+            'approved' as status,
+            kb.created_at,
+            'kas' as type,
+            CASE 
+              WHEN kb.jenis = 'masuk' THEN 'Kas Manual'
+              ELSE 'Pengeluaran'
+            END as type_label,
+            NULL as kode_unik,
+            kb.deskripsi as keterangan
+          FROM kas_buku_besar kb
+          WHERE kb.tanggal >= ? AND kb.tanggal < ?
+            AND kb.source_table = 'manual'
+            AND kb.deleted_at IS NULL
         `, [dateFilter.startDate, dateFilter.endDate]);
         transactions.push(...kasRows);
+      }
+    }
+
+    //  5. PENDING TRANSACTIONS (jika status = pending atau all)
+    if (status === 'pending' || status === 'all') {
+      // Pending Zakat
+      if (type === 'all' || type === 'zakat') {
+        const [pendingZakat] = await db.query(`
+          SELECT 
+            id,
+            nama as nama_pemberi,
+            jumlah,
+            jenis_zakat as kategori,
+            bukti_transfer,
+            metode_pembayaran,
+            status,
+            created_at,
+            'zakat' as type,
+            'Zakat' as type_label,
+            NULL as kode_unik,
+            NULL as keterangan
+          FROM zakat 
+          WHERE DATE(created_at) >= ? AND DATE(created_at) < ?
+            AND status = 'pending'
+        `, [dateFilter.startDate, dateFilter.endDate]);
+        transactions.push(...pendingZakat);
+      }
+
+      // Pending Infaq
+      if (type === 'all' || type === 'infaq') {
+        const [pendingInfaq] = await db.query(`
+          SELECT 
+            id,
+            nama_pemberi,
+            jumlah,
+            kategori_infaq as kategori,
+            bukti_transfer,
+            metode_pembayaran,
+            status,
+            tanggal as created_at,
+            'infaq' as type,
+            'Infaq' as type_label,
+            NULL as kode_unik,
+            keterangan
+          FROM infaq 
+          WHERE DATE(tanggal) >= ? AND DATE(tanggal) < ?
+            AND status = 'pending'
+        `, [dateFilter.startDate, dateFilter.endDate]);
+        transactions.push(...pendingInfaq);
+      }
+
+      // Pending Donasi
+      if (type === 'all' || type === 'donasi') {
+        const [pendingDonasi] = await db.query(`
+          SELECT 
+            d.id,
+            d.nama_donatur as nama_pemberi,
+            d.nominal as jumlah,
+            p.nama_barang as kategori,
+            d.bukti_transfer,
+            d.metode_pembayaran,
+            d.status,
+            d.created_at,
+            'donasi' as type,
+            'Donasi Program' as type_label,
+            d.kode_unik,
+            CONCAT('Program: ', p.nama_barang) as keterangan
+          FROM donasi_pengadaan d
+          JOIN barang_pengadaan p ON d.barang_id = p.id
+          WHERE DATE(d.created_at) >= ? AND DATE(d.created_at) < ?
+            AND d.status = 'pending'
+        `, [dateFilter.startDate, dateFilter.endDate]);
+        transactions.push(...pendingDonasi);
       }
     }
 
@@ -924,62 +1069,207 @@ router.get('/history/export', async (req, res) => {
     transactions.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
     if (format === 'csv') {
-      // Generate CSV
-      const csvHeader = 'Tanggal,Type,Nama,Jumlah,Status,Metode Pembayaran,Alasan Tolak\n';
-      const csvData = transactions.map(t => 
-        `${new Date(t.created_at).toLocaleDateString('id-ID')},${t.type},${t.nama_pemberi},"${t.jumlah}",${t.status},${t.metode_pembayaran || 'manual'},"${t.reject_reason || ''}"`
-      ).join('\n');
+      const csvHeader = 'Tanggal,Jenis,Nama/Donatur,Program/Kategori,Metode,Jumlah,Kode Unik,Status,Keterangan,Bukti Transfer\n';
+      const csvData = transactions.map(t => {
+        const tanggal = new Date(t.created_at).toLocaleDateString('id-ID');
+        const jenis = t.type_label || t.type;
+        const nama = t.nama_pemberi || 'Hamba Allah';
+        const kategori = t.kategori || '-';
+        const metode = t.metode_pembayaran === 'qris' ? 'QRIS' : 
+                      t.metode_pembayaran === 'cash' || t.metode_pembayaran === 'tunai' ? 'Tunai' :
+                      t.metode_pembayaran === 'transfer_bank' ? 'Transfer Bank' : 'Manual';
+        const jumlah = Number(t.jumlah);
+        const kodeUnik = t.kode_unik ? `+${t.kode_unik}` : '-';
+        const status = t.status === 'approved' ? 'Approved' : 
+                      t.status === 'pending' ? 'Pending' : 'Rejected';
+        const keterangan = t.keterangan || '-';
+        const bukti = t.bukti_transfer ? 'Ada' : 'Tidak Ada';
+        
+        return `"${tanggal}","${jenis}","${nama}","${kategori}","${metode}","${jumlah}","${kodeUnik}","${status}","${keterangan}","${bukti}"`;
+      }).join('\n');
       
       res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename="transaction-history-${Date.now()}.csv"`);
+      res.setHeader('Content-Disposition', `attachment; filename="riwayat-transaksi-${Date.now()}.csv"`);
       res.send(csvHeader + csvData);
-    } else if(format === 'excel') {
-      // For Excel
-      const excelData = transactions.map(t => ({
-        'Tanggal': new Date(t.created_at).toLocaleDateString('id-ID'),
-        'Type': t.type,
-        'Nama': t.type === 'kas' 
-        ? (t.nama_pemberi || 'Hamba Allah')
-        : (t.nama_pemberi || '-'),
-        'Jumlah': Number(t.jumlah),
-        'Status': t.status,
-        'Metode Pembayaran': t.metode_pembayaran || 'manual',
-        'Kategori': t.kategori_infaq || t.jenis_zakat || t.kategori || '-',
-        'Keterangan': t.type === 'kas' 
-        ? (t.deskripsi || '-')
-        : (t.keterangan || t.reject_reason || '-'),
-        'Bukti Transfer': t.bukti_transfer ? 'Ada' : 'Tidak Ada'
-      }));
 
-      const workbook = XLSX.utils.book_new();
-      const worksheet = XLSX.utils.json_to_sheet(excelData);
+    } else if (format === 'excel') {
+  const excelData = transactions.map(t => ({
+    'Tanggal': new Date(t.created_at).toLocaleDateString('id-ID'),
+    'Jenis': t.type_label || t.type,
+    'Nama/Donatur': t.nama_pemberi || 'Hamba Allah',
+    'Program/Kategori': t.kategori || '-',
+    'Metode': t.metode_pembayaran === 'qris' ? 'QRIS' : 
+             t.metode_pembayaran === 'cash' || t.metode_pembayaran === 'tunai' ? 'Tunai' :
+             t.metode_pembayaran === 'transfer_bank' ? 'Transfer Bank' : 'Manual',
+    'Jumlah': Number(t.jumlah),
+    'Kode Unik': t.kode_unik ? `+${t.kode_unik}` : '-',
+    'Status': t.status === 'approved' ? 'Approved' : 
+             t.status === 'pending' ? 'Pending' : 'Rejected',
+    'Keterangan': t.keterangan || '-',
+    'Bukti Transfer': t.bukti_transfer ? 'Ada' : 'Tidak Ada'
+  }));
 
-      // auto size column
-      const colWidth = [
-        { wch: 12 }, // Tanggal
-        { wch: 10 }, // Type
-        { wch: 20 }, // Nama
-        { wch: 15 }, // Jumlah
-        { wch: 10 }, // Status
-        { wch: 15 }, // Metode Pembayaran
-        { wch: 15 }, // Kategori
-        { wch: 30 }, // Keterangan
-        { wch: 12 }  // Bukti Transfer
-      ];
-      worksheet['!cols'] = colWidth;
+  const workbook = XLSX.utils.book_new();
+  
+  // BUAT WORKSHEET KOSONG DULU
+  const worksheet = XLSX.utils.aoa_to_sheet([]);
 
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Riwayat Transaksi');
+  // TAMBAH HEADER YANG DI-MERGE
+  const currentMonth = new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+  const headerTitle = `Data Export Bulan: ${currentMonth}`;
 
-      const buffer = XLSX.write(workbook, {
-        type: 'buffer',
-        bookType: 'xlsx'
-      });
+  // Baris 1-4: Kosong untuk spacing
+  XLSX.utils.sheet_add_aoa(worksheet, [
+    [''], // Row 1
+    [''], // Row 2  
+    [''], // Row 3
+    [''], // Row 4
+    ['','','','','','','','',''], // Row 5 
+    [''], // Row 6
+    [''], // Row 7
+    // Row 8 - Headers
+    ['Tanggal', 'Jenis', 'Nama/Donatur', 'Program/Kategori', 'Metode', 'Jumlah', 'Kode Unik', 'Status', 'Keterangan', 'Bukti Transfer']
+  ], { origin: 'A1' });
 
-      // set header untuk download
-      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', `attachment; filename="riwayat-transaksi-${Date.now()}.xlsx"`);
-      res.send(buffer);
-    } else{
+  //  TAMBAH DATA MULAI DARI ROW 9
+  const dataRows = excelData.map(item => [
+    item['Tanggal'],
+    item['Jenis'], 
+    item['Nama/Donatur'],
+    item['Program/Kategori'],
+    item['Metode'],
+    item['Jumlah'],
+    item['Kode Unik'],
+    item['Status'],
+    item['Keterangan'],
+    item['Bukti Transfer']
+  ]);
+
+  XLSX.utils.sheet_add_aoa(worksheet, dataRows, { origin: 'A9' });
+
+  worksheet['C5'] = { v: headerTitle, t: 's'};
+
+  //  MERGE HEADER TITLE (C5:H5)
+  if (!worksheet['!merges']) worksheet['!merges'] = [];
+  worksheet['!merges'].push({
+    s: { r: 4, c: 2 }, // Start: Row 5 (index 4), Column C (index 2)
+    e: { r: 4, c: 7 }  // End: Row 5 (index 4), Column H (index 7)
+  });
+
+  //  STYLING HEADER TITLE
+  worksheet['C5'].s = {
+    font: { bold: true, sz: 14 },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    fill: { fgColor: { rgb: 'E3F2FD' } }
+  };
+
+  //  STYLING TABLE HEADERS (ROW 8)
+  const headerCells = ['A8', 'B8', 'C8', 'D8', 'E8', 'F8', 'G8', 'H8', 'I8', 'J8'];
+  headerCells.forEach(cell => {
+    if (worksheet[cell]) {
+      worksheet[cell].s = {
+        font: { bold: true, color: { rgb: 'FFFFFF' } },
+        fill: { fgColor: { rgb: '1976D2' } },
+        alignment: { horizontal: 'center', vertical: 'center' },
+        border: {
+          top: { style: 'thin', color: { rgb: '000000' } },
+          bottom: { style: 'thin', color: { rgb: '000000' } },
+          left: { style: 'thin', color: { rgb: '000000' } },
+          right: { style: 'thin', color: { rgb: '000000' } }
+        }
+      };
+    }
+  });
+
+  //  STYLING DATA ROWS
+  for (let i = 0; i < dataRows.length; i++) {
+    const rowNum = i + 9; // Data starts from row 9
+    const rowCells = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'].map(col => `${col}${rowNum}`);
+    
+    rowCells.forEach(cell => {
+      if (worksheet[cell]) {
+        worksheet[cell].s = {
+          border: {
+            top: { style: 'thin', color: { rgb: 'CCCCCC' } },
+            bottom: { style: 'thin', color: { rgb: 'CCCCCC' } },
+            left: { style: 'thin', color: { rgb: 'CCCCCC' } },
+            right: { style: 'thin', color: { rgb: 'CCCCCC' } }
+          },
+          alignment: { vertical: 'center' }
+        };
+        
+        // Special styling for status column
+        if (cell.startsWith('H')) { // Status column
+          const statusValue = worksheet[cell].v;
+          if (statusValue === 'Approved') {
+            worksheet[cell].s.fill = { fgColor: { rgb: 'E8F5E8' } };
+            worksheet[cell].s.font = { color: { rgb: '2E7D32' } };
+          } else if (statusValue === 'Pending') {
+            worksheet[cell].s.fill = { fgColor: { rgb: 'FFF3E0' } };
+            worksheet[cell].s.font = { color: { rgb: 'F57C00' } };
+          } else if (statusValue === 'Rejected') {
+            worksheet[cell].s.fill = { fgColor: { rgb: 'FFEBEE' } };
+            worksheet[cell].s.font = { color: { rgb: 'C62828' } };
+          }
+        }
+        
+        // Special styling for amount column (Right align)
+        if (cell.startsWith('F')) { // Jumlah column
+          worksheet[cell].s.alignment = { horizontal: 'right', vertical: 'center' };
+          worksheet[cell].s.numFmt = '#,##0';
+        }
+        
+        // Special styling for kode unik column (Center align)
+        if (cell.startsWith('G')) { // Kode Unik column
+          worksheet[cell].s.alignment = { horizontal: 'center', vertical: 'center' };
+          if (worksheet[cell].v !== '-') {
+            worksheet[cell].s.fill = { fgColor: { rgb: 'FFFDE7' } };
+            worksheet[cell].s.font = { color: { rgb: 'F57F17' }, bold: true };
+          }
+        }
+      }
+    });
+  }
+
+  //  UPDATE COLUMN WIDTH - TAMBAH KODE UNIK
+  const colWidth = [
+    { wch: 12 }, // Tanggal (A)
+    { wch: 15 }, // Jenis (B)
+    { wch: 20 }, // Nama/Donatur (C)
+    { wch: 20 }, // Program/Kategori (D)
+    { wch: 12 }, // Metode (E)
+    { wch: 15 }, // Jumlah (F)
+    { wch: 10 }, // Kode Unik (G)
+    { wch: 10 }, // Status (H)
+    { wch: 30 }, // Keterangan (I)
+    { wch: 12 }  // Bukti Transfer (J)
+  ];
+  worksheet['!cols'] = colWidth;
+
+  //  SET ROW HEIGHTS
+  worksheet['!rows'] = [
+    { hpx: 20 }, // Row 1
+    { hpx: 20 }, // Row 2
+    { hpx: 20 }, // Row 3
+    { hpx: 20 }, // Row 4
+    { hpx: 30 }, // Row 5 - Header title (taller)
+    { hpx: 20 }, // Row 6
+    { hpx: 20 }, // Row 7
+    { hpx: 25 }, // Row 8 - Table headers (taller)
+  ];
+
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Riwayat Transaksi');
+
+  const buffer = XLSX.write(workbook, {
+    type: 'buffer',
+    bookType: 'xlsx'
+  });
+
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="riwayat-transaksi-${Date.now()}.xlsx"`);
+  res.send(buffer);
+
+    } else {
       res.status(400).json({
         success: false,
         message: 'Format tidak didukung. Gunakan "csv" atau "excel".'
