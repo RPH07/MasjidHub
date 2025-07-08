@@ -1,8 +1,10 @@
 import React, { useState, useMemo } from 'react'
 import { formatRupiah } from '../../utils/formatters'
 import { formatKodeUnik, generateKodeUnikDonasi } from '.'
+import { useAuth } from '../../../../hooks/useAuth'
 
 const DetailDonasiModal = ({ program, onSubmit, onClose, loading = false }) => {
+    const { user } =useAuth();
     const [currentStep, setCurrentStep] = useState(1)
     const [formData, setFormData] = useState({
         nama_donatur: 'Hamba Allah',
@@ -79,6 +81,7 @@ const DetailDonasiModal = ({ program, onSubmit, onClose, loading = false }) => {
             submitData.append('metode_pembayaran', formData.metode_pembayaran)
             submitData.append('catatan', formData.catatan)
             submitData.append('kode_unik_frontend', kodeUnikFixed)
+            submitData.append('user_id', user?.id || '')
 
             if (formData.bukti_transfer) {
                 submitData.append('bukti_transfer', formData.bukti_transfer)
