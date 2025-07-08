@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 const multer = require('multer');
+const jwt = require('jsonwebtoken');
 const path = require('path');
 
 // Helper function untuk generate kode unik zakat
@@ -35,49 +36,200 @@ const upload = multer({
   }
 });
 
+// ✅ NEW: POST - Generate kode unik saja (sebelum submit final)
+router.post('/generate-kode', async (req, res) => {
+  try {
+    console.log('🔄 Generating kode unik...');
+    console.log('📋 Request body:', req.body);
+    
+    const { nominal } = req.body;
+
+    if (!nominal || nominal <= 0) {
+      console.log('❌ Invalid nominal:', nominal);
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Nominal harus lebih dari 0' 
+      });
+    }
+
+    // Generate kode unik
+    const kodeUnik = generateKodeUnikZakat();
+    const totalBayar = parseInt(nominal) + kodeUnik;
+
+    console.log('✅ Generated kode unik:', kodeUnik);
+    console.log('💰 Total bayar:', totalBayar);
+    console.log('📤 Sending response...');
+
+    res.json({
+      success: true,
+      message: 'Kode unik berhasil di-generate',
+      data: {
+        kode_unik: kodeUnik,
+        total_bayar: totalBayar,
+        nominal: parseInt(nominal)
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error generating kode unik:', error);
+    
+    res.status(500).json({
+      success: false,
+      message: 'Terjadi kesalahan saat generate kode unik',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
 // POST - Submit pembayaran zakat
 router.post('/', upload.single('bukti'), async (req, res) => {
   try {
-    const { nama, nominal, jenisZakat, metodePembayaran } = req.body;
+    console.log('🚀 Zakat submission received');
+    console.log('📋 Request body:', req.body);
+    console.log('📁 Request file:', req.file);
+    console.log('🔑 Request headers:', req.headers);
+
+    let user_id = null;
+console.log('🔍 Checking authorization header...');
+if (req.headers.authorization) {
+  try {
+    const token = req.headers.authorization.split(' ')[1];
+    console.log('🎫 Extracted token:', token ? 'EXISTS' : 'NULL');
+    
+    // ✅ FIX: Pastikan jwtSecret didefinisikan dulu
+    const jwtSecret = process.env.JWT_SECRET || 'your_jwt_secret';
+    console.log('🔐 JWT Secret exists:', jwtSecret ? 'YES' : 'NO');
+    
+    const decoded = jwt.verify(token, jwtSecret);
+    user_id = decoded.id;
+    console.log('👤 User login detected, ID:', user_id);
+    console.log('👤 Decoded user data:', decoded);
+    
+  } catch (error) { // ✅ FIX: Variable name harus 'error' bukan 'jwtError'
+    console.log('🔓 JWT Verification failed:', error.message); // ✅ FIX: 'error' bukan 'jwtError'
+    console.log('🔓 Anonymous user (invalid token)');
+    // user_id tetap null untuk anonymous user
+  } 
+} else {
+  console.log('🔓 No authorization header found - anonymous user');
+}
+
+console.log('🎯 Final user_id for zakat:', user_id);
+
+    const { 
+      nama, 
+      email, 
+      no_telepon, 
+      jenis_zakat,        
+      jumlah_jiwa,        
+      total_harta,          
+      gaji_kotor,         
+      nominal,            
+      kode_unik,          
+      total_bayar,        
+      metode_pembayaran   
+    } = req.body;
+    
     const buktiTransfer = req.file ? req.file.filename : null;
 
-    if (!nama || !nominal || !jenisZakat || !metodePembayaran) {
+    // Validasi field yang wajib
+    if (!nama || !email || !no_telepon || !jenis_zakat || !nominal || !metode_pembayaran) {
+      console.log('❌ Missing required fields');
       return res.status(400).json({ 
         success: false, 
-        message: 'Semua field harus diisi!' 
+        message: 'Field nama, email, no_telepon, jenis_zakat, nominal, dan metode_pembayaran harus diisi!' 
       });
     }
 
-    // Untuk transfer/qris wajib ada bukti, untuk cash opsional
-    if ((metodePembayaran === 'transfer_bank' || metodePembayaran === 'qris') && !buktiTransfer) {
+    // Untuk transfer/qris wajib ada bukti, untuk cash/tunai opsional
+    if ((metode_pembayaran === 'transfer' || metode_pembayaran === 'qris') && !buktiTransfer) {
+      console.log('❌ Missing bukti transfer for non-cash payment');
       return res.status(400).json({ 
         success: false, 
-        message: 'Bukti transfer harus diupload!' 
+        message: 'Bukti transfer harus diupload untuk metode pembayaran selain tunai!' 
       });
     }
 
-    // genere kode unik untuk zakat
-    const kode_unik = generateKodeUnikZakat();
-    const total_zakat = parseInt(nominal) + kode_unik;
+    // Generate kode unik jika belum ada dari frontend
+    const finalKodeUnik = kode_unik || generateKodeUnikZakat();
+    const finalTotalBayar = total_bayar || (parseInt(nominal) + finalKodeUnik);
 
+    console.log('💰 Final calculation:');
+    console.log('- Nominal:', nominal);
+    console.log('- Kode Unik:', finalKodeUnik);
+    console.log('- Total Bayar:', finalTotalBayar);
+
+    // Query dengan field lengkap
     const query = `
-      INSERT INTO zakat (nama, jumlah, jenis_zakat, bukti_transfer, metode_pembayaran, status, created_at) 
-      VALUES (?, ?, ?, ?, ?, 'pending', NOW())
-    `;
-    
-    await db.execute(query, [nama, nominal, jenisZakat, buktiTransfer, metodePembayaran]);
+  INSERT INTO zakat (
+    user_id,
+    nama, 
+    email, 
+    no_telepon, 
+    jenis_zakat, 
+    jumlah_jiwa, 
+    total_harta, 
+    gaji_kotor, 
+    jumlah, 
+    kode_unik, 
+    total_bayar, 
+    metode_pembayaran, 
+    bukti_transfer, 
+    status, 
+    created_at
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())
+`;
+//          1  2  3  4  5  6  7  8  9  10 11 12 13     14      15
+//          ↑ 13 placeholder + 'pending' + NOW() = 15 values ✅
+
+// ✅ VALUES tetap 13 elements (untuk 13 placeholder)
+const values = [
+  user_id,                    // 1
+  nama,                       // 2
+  email,                      // 3
+  no_telepon,                 // 4
+  jenis_zakat,                // 5
+  jumlah_jiwa || null,        // 6
+  total_harta || null,        // 7
+  gaji_kotor || null,         // 8
+  nominal,                    // 9
+  finalKodeUnik,              // 10
+  finalTotalBayar,            // 11
+  metode_pembayaran,          // 12
+  buktiTransfer               // 13
+  // status = 'pending' (hardcoded di query)
+  // created_at = NOW() (hardcoded di query)
+];
+
+    console.log('📝 Executing query with values:', values);
+
+    const [result] = await db.execute(query, values);
+
+    console.log('✅ Zakat submitted successfully with ID:', result.insertId);
 
     res.status(201).json({
       success: true,
       message: 'Pembayaran zakat berhasil dikirim! Menunggu verifikasi admin.',
       data: {
-        kode_unik,
-        total_zakat
+        id: result.insertId,
+        kode_unik: finalKodeUnik,
+        total_bayar: finalTotalBayar,
+        user_id: user_id
       }
     });
 
   } catch (error) {
-    console.error('Error submitting zakat:', error);
+    console.error('❌ Error submitting zakat:', error);
+    
+    if (process.env.NODE_ENV === 'development') {
+      return res.status(500).json({
+        success: false,
+        message: 'Terjadi kesalahan server',
+        error: error.message,
+        stack: error.stack
+      });
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Terjadi kesalahan server'
@@ -88,10 +240,13 @@ router.post('/', upload.single('bukti'), async (req, res) => {
 // PUT - Approve/Reject pembayaran zakat
 router.put('/:id/validate', async (req, res) => {
   try {
+    console.log('🔍 Validating zakat ID:', req.params.id);
+    
     const { id } = req.params;
     const { action, reason } = req.body;
 
     if (!['approve', 'reject'].includes(action)) {
+      console.log('❌ Invalid action:', action);
       return res.status(400).json({ 
         success: false,
         message: 'Action harus approve atau reject' 
@@ -102,6 +257,7 @@ router.put('/:id/validate', async (req, res) => {
     const [zakatRows] = await db.query('SELECT * FROM zakat WHERE id = ?', [id]);
     
     if (zakatRows.length === 0) {
+      console.log('❌ Zakat not found for ID:', id);
       return res.status(404).json({ 
         success: false,
         message: 'Data zakat tidak ditemukan' 
@@ -109,8 +265,10 @@ router.put('/:id/validate', async (req, res) => {
     }
 
     const zakatData = zakatRows[0];
+    console.log('📊 Zakat data found:', zakatData);
 
     if (zakatData.status !== 'pending') {
+      console.log('❌ Zakat already validated with status:', zakatData.status);
       return res.status(400).json({ 
         success: false,
         message: 'Zakat sudah divalidasi sebelumnya' 
@@ -118,37 +276,28 @@ router.put('/:id/validate', async (req, res) => {
     }
 
     if (action === 'approve') {
-      // Update status ke approved
+      console.log('✅ Approving zakat...');
+      
       await db.query(
         'UPDATE zakat SET status = ?, validated_at = NOW() WHERE id = ?',
         ['approved', id]
       );
       
-      // Insert ke kas_buku_besar - perbaiki kolom dan SQL
-      // await db.query(`
-      //   INSERT INTO kas_buku_besar 
-      //   (tanggal, deskripsi, jenis, jumlah, kategori, source_table, source_id, metode_input, metode_pembayaran, bukti_transfer, nama_pemberi, created_at)
-      //   VALUES (CURDATE(), ?, 'masuk', ?, ?, 'zakat', ?, 'online', ?, ?, ?, NOW())
-      // `, [
-      //   `Zakat ${zakatData.jenis_zakat} dari ${zakatData.nama}`,
-      //   zakatData.jumlah,
-      //   `zakat_${zakatData.jenis_zakat}`,
-      //   id,
-      //   zakatData.metode_pembayaran,
-      //   zakatData.bukti_transfer,
-      //   zakatData.nama
-      // ]);
+      console.log('✅ Zakat approved successfully');
 
       res.json({
         success: true,
         message: 'Zakat berhasil diapprove'
       });
     } else {
-      // Update status ke rejected
+      console.log('❌ Rejecting zakat with reason:', reason);
+      
       await db.query(
         'UPDATE zakat SET status = ?, reject_reason = ?, validated_at = NOW() WHERE id = ?',
         ['rejected', reason || 'Tidak ada alasan yang diberikan', id]
       );
+      
+      console.log('❌ Zakat rejected successfully');
       
       res.json({
         success: true,
@@ -157,10 +306,12 @@ router.put('/:id/validate', async (req, res) => {
     }
 
   } catch (err) {
-    console.error('Error validating zakat:', err);
+    console.error('❌ Error validating zakat:', err);
+    
     res.status(500).json({ 
       success: false,
-      message: 'Terjadi kesalahan saat validasi zakat' 
+      message: 'Terjadi kesalahan saat validasi zakat',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
     });
   }
 });
@@ -168,22 +319,32 @@ router.put('/:id/validate', async (req, res) => {
 // GET - Ambil data zakat pending untuk validasi
 router.get('/pending', async (req, res) => {
   try {
+    console.log('📋 Fetching pending zakat...');
+    
     const [rows] = await db.execute(`
-      SELECT id, nama, jumlah, jenis_zakat, bukti_transfer, metode_pembayaran, created_at 
+      SELECT 
+        id, user_id, nama, email, no_telepon, jenis_zakat, 
+        jumlah_jiwa, total_harta, gaji_kotor, jumlah, 
+        kode_unik, total_bayar, metode_pembayaran, 
+        bukti_transfer, created_at,
+        nama as nama_pemberi
       FROM zakat 
       WHERE status = 'pending'
       ORDER BY created_at DESC
     `);
+    
+    console.log(`📊 Found ${rows.length} pending zakat entries`);
     
     res.json({
       success: true,
       data: rows
     });
   } catch (error) {
-    console.error('Error fetching pending zakat:', error);
+    console.error('❌ Error fetching pending zakat:', error);
     res.status(500).json({
       success: false,
-      message: 'Terjadi kesalahan server'
+      message: 'Terjadi kesalahan server',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
@@ -191,8 +352,14 @@ router.get('/pending', async (req, res) => {
 // GET - Ambil semua data zakat (untuk admin)
 router.get('/', async (req, res) => {
   try {
+    console.log('📋 Fetching all zakat data...');
+    
     const [rows] = await db.execute(`
-      SELECT id, nama, jumlah, jenis_zakat, bukti_transfer, metode_pembayaran, status, created_at, validated_at 
+      SELECT 
+        id, user_id, nama, email, no_telepon, jenis_zakat, jumlah_jiwa, 
+        total_harta, gaji_kotor, jumlah, kode_unik, total_bayar,
+        bukti_transfer, metode_pembayaran, status, created_at, validated_at,
+        reject_reason
       FROM zakat 
       ORDER BY created_at DESC
     `);
@@ -202,10 +369,45 @@ router.get('/', async (req, res) => {
       data: rows
     });
   } catch (error) {
-    console.error('Error fetching zakat data:', error);
+    console.error('❌ Error fetching zakat data:', error);
     res.status(500).json({
       success: false,
-      message: 'Terjadi kesalahan server'
+      message: 'Terjadi kesalahan server',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+//GET - History zakat untuk user tertentu
+router.get('/history/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    console.log('📋 Fetching zakat history for user:', userId);
+    
+    const [rows] = await db.execute(`
+      SELECT 
+        id, nama, email, no_telepon, jenis_zakat, 
+        jumlah_jiwa, total_harta, gaji_kotor, jumlah, 
+        kode_unik, total_bayar, metode_pembayaran, 
+        bukti_transfer, status, created_at, validated_at,
+        reject_reason
+      FROM zakat 
+      WHERE user_id = ?
+      ORDER BY created_at DESC
+    `, [userId]);
+    
+    console.log(`📊 Found ${rows.length} zakat entries for user ${userId}`);
+    
+    res.json({
+      success: true,
+      data: rows
+    });
+  } catch (error) {
+    console.error('❌ Error fetching user zakat history:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Terjadi kesalahan server',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
