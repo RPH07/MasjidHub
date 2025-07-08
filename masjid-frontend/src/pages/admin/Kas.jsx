@@ -42,37 +42,39 @@ const Kas = () => {
     closeBuktiModal
   } = useModal();
 
-  const handleOpenBukti = (buktiTransfer, transactionInfo = null) => {
-    if (!buktiTransfer) {
-      alert('Bukti transfer tidak tersedia');
-      return;
-    }
+const handleOpenBukti = (buktiTransfer, transactionInfo = null) => {
+  if (!buktiTransfer) {
+    alert('Bukti transfer tidak tersedia');
+    return;
+  }
 
-    console.log('Opening bukti with info:', transactionInfo); // Debug log
+  console.log('Opening bukti with info:', transactionInfo);
 
-    // Tentukan folder berdasarkan jenis transaksi
-    let folderPath = '';
+  let folderPath = '';
+  
+  if (buktiTransfer.startsWith('zakat-')) {
+    folderPath = 'bukti-zakat';
+  } else if (buktiTransfer.startsWith('infaq-')) {
+    folderPath = 'bukti-infaq';
+  } else if (buktiTransfer.startsWith('donasi-')) {
+    folderPath = 'bukti-donasi';
+  } else {
+    // Fallback berdasarkan transaction type
     switch (transactionInfo?.type) {
-      case 'zakat':
-        folderPath = 'bukti-zakat';
-        break;
-      case 'infaq':
-        folderPath = 'infaq';
-        break;
-      case 'donasi':
-        folderPath = 'bukti-donasi';
-        break;
-      default:
-        folderPath = 'bukti-donasi'; // default fallback
+      case 'zakat': folderPath = 'bukti-zakat'; break;
+      case 'infaq': folderPath = 'bukti-infaq'; break;
+      case 'donasi': folderPath = 'bukti-donasi'; break;
+      default: folderPath = 'uploads'; 
     }
+  }
 
-    const imageUrl = `http://localhost:5000/uploads/${folderPath}/${buktiTransfer}`;
-    
-    console.log('Generated image URL:', imageUrl); // Debug log
+  const imageUrl = `http://localhost:5000/uploads/${folderPath}/${buktiTransfer}`;
+  
+  console.log('Generated image URL:', imageUrl);
+  console.log('File prefix detection:', buktiTransfer.split('-')[0]);
 
-    // Call modal dengan URL yang sudah dibuat
-    openBuktiModal(imageUrl, transactionInfo);
-  };
+  openBuktiModal(imageUrl, transactionInfo);
+};
 
   // Loading state
   if (kasDataHook.loading) {
