@@ -6,7 +6,7 @@ import PercentageBadge from '../shared/PercentageBadge';
 const KasOverview = () => {
   const [summary, setSummary] = useState(null);
 
-  useEffect(() => {
+useEffect(() => {
     const fetchSummary = async () => {
       try {
         const res = await axios.get('http://localhost:5000/api/kas/summary');
@@ -40,7 +40,20 @@ const KasOverview = () => {
     return result;
   };
 
-  if (!summary) return <div>Loading...</div>;
+  console.log("🔍 KasOverview props:", { summary });
+
+
+  // ✅ ADD: Check if summary exists
+  if (!summary) {
+    console.log("❌ No summary data available");
+    return (
+      <div className="text-center py-8">
+        <p className="text-gray-500">Data tidak tersedia</p>
+      </div>
+    );
+  }
+
+  // console.log("✅ Rendering KasOverview with summary:", summary);
 
   //  HANYA UNTUK PENGELUARAN
   const pengeluaran = groupByMainKategori(summary.pengeluaranKategori);
