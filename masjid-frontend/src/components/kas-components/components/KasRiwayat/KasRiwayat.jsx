@@ -70,7 +70,7 @@ const KasRiwayat = ({
       const token = localStorage.getItem('token');
       console.log(`🚀 Starting ${format} export...`);
 
-      const response = await axios.get('http://localhost:5000/api/kas/history/export', {
+      const response = await axios.get('https://api.masjidnurulilmi.my.id/api/kas/history/export', {
         params: {
           period: currentPeriod,
           type: 'all',
