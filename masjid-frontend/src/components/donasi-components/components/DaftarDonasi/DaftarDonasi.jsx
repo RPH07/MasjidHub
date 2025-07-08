@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { ProgramCard } from '../shared'
 import { useDonasi } from '../../hooks/'
 import { DONASI_STATUS } from '../../utils/'
+import {EditDonasi, ViewDonations} from '../index'
 
 const DaftarDonasi = () => {
     const {
@@ -9,6 +10,7 @@ const DaftarDonasi = () => {
         loading,
         error,
         fetchProgramDonasi,
+        updateProgramDonasi,
         deleteProgramDonasi,
         activateProgram,
         deactivateProgram,
@@ -17,10 +19,19 @@ const DaftarDonasi = () => {
 
     const [filter, setFilter] = useState('all')
     const [searchTerm, setSearchTerm] = useState('')
+    const [editingProgram, setEditingProgram] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [viewingDonations, setViewingDonations] = useState(null);
 
     useEffect(() => {
         fetchProgramDonasi()
     }, [fetchProgramDonasi])
+
+    useEffect (() => {
+        if (error){
+            console.error('Error in DaftarDonasi: ', error)
+        }
+    }, [error]);
 
     const filteredPrograms = programDonasi.filter(program => {
         const matchesFilter = filter === 'all' || program.status === filter
@@ -29,21 +40,50 @@ const DaftarDonasi = () => {
         return matchesFilter && matchesSearch
     })
 
+    // Handler untuk edit
     const handleEdit = (program) => {
-        // TODO: Implement edit functionality
-        console.log('Edit program:', program)
-    }
+        setEditingProgram(program);
+    };
 
+    // Handler untuk save edit
+    const handleSaveEdit = async (formData) => {
+        setIsSubmitting(true);
+        try {
+            const result = await updateProgramDonasi(editingProgram.id, formData, formData.foto_barang);
+            
+            if (result.success) {
+                alert('Program donasi berhasil diperbarui!');
+                setEditingProgram(null);
+            } else {
+                alert(result.message);
+            }
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    // Handler untuk cancel edit
+    const handleCancelEdit = () => {
+        setEditingProgram(null);
+    };
+
+    // Update handleDelete method
     const handleDelete = async (programId) => {
         if (window.confirm('Apakah Anda yakin ingin menghapus program donasi ini?')) {
-            const result = await deleteProgramDonasi(programId)
-            if (result.success) {
-                alert('Program donasi berhasil dihapus')
-            } else {
-                alert(result.message)
+            try {
+                const result = await deleteProgramDonasi(programId);
+                if (result.success) {
+                    alert('Program donasi berhasil dihapus');
+                    await fetchProgramDonasi();
+                } else {
+                    alert(result.message || 'Gagal menghapus program donasi');
+                }
+            } catch (error) {
+                console.error('Error deleting program:', error);
+                alert(error.response?.data?.message || 'Terjadi kesalahan saat menghapus program');
             }
         }
-    }
+    };
 
     const handleActivate = async (programId) => {
         const result = await activateProgram(programId)
@@ -77,8 +117,11 @@ const DaftarDonasi = () => {
     }
 
     const handleViewDonations = (program) => {
-        // TODO: Navigate to donations detail
-        console.log('View donations for:', program)
+        setViewingDonations(program);
+    };
+
+    const handleCloseViewDonations = () => {
+        setViewingDonations(null);
     }
 
     if (loading) {
@@ -92,7 +135,7 @@ const DaftarDonasi = () => {
     if (error) {
         return (
             <div className="text-center py-8">
-                <div className="text-red-600 mb-4">{error}</div>
+                <div className="text-red-600 mb-4">Terjadi Kesalahan: {error}</div>
                 <button
                     onClick={() => fetchProgramDonasi()}
                     className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
@@ -114,6 +157,18 @@ const DaftarDonasi = () => {
                     Total: {filteredPrograms.length} program
                 </div>
             </div>
+
+            {error && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                    <strong>Error:</strong> {error}
+                    <button 
+                        onClick={() => fetchProgramDonasi()} 
+                        className="ml-2 underline hover:no-underline"
+                    >
+                        Muat ulang
+                    </button>
+                </div>
+            )}
 
             {/* Filters */}
             <div className="bg-white p-4 rounded-lg shadow">
@@ -178,6 +233,23 @@ const DaftarDonasi = () => {
                         />
                     ))}
                 </div>
+            )}
+
+            {/* ✅ FIX: Edit Modal di luar conditional rendering */}
+            {editingProgram && (
+                <EditDonasi 
+                    program={editingProgram}
+                    onSave={handleSaveEdit}
+                    onCancel={handleCancelEdit}
+                    isSubmitting={isSubmitting}
+                />
+            )}
+
+            {viewingDonations && (
+                <ViewDonations 
+                    program={viewingDonations}
+                    onClose= {handleCloseViewDonations}
+                />
             )}
         </div>
     )
