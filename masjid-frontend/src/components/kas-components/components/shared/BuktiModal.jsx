@@ -69,7 +69,7 @@ const BuktiModal = ({ isOpen, onClose, buktiTransfer, transactionInfo }) => {
                 {transactionInfo.total_transfer && (
                   <div>
                     <span className="font-medium text-gray-600">Total Transfer:</span>
-                    <p className="text-gray-900 font-bold text-purple-600">
+                    <p className="text-gray-900 font-bold">
                       {new Intl.NumberFormat('id-ID', {
                         style: 'currency',
                         currency: 'IDR',
