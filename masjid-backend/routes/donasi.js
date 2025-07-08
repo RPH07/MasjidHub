@@ -42,27 +42,36 @@ const uploadBukti = multer({ storage: storageBukti });
 router.get('/program', async (req, res) => {
     try {
         const { status } = req.query;
-                let query = `
-            SELECT p.*, 
-                   COALESCE(p.dana_terkumpul, 0) as dana_terkumpul,
-                   (p.target_dana - COALESCE(p.dana_terkumpul, 0)) as sisa_kekurangan,
-                   COUNT(DISTINCT d.id) as total_donatur,
-                   COUNT(DISTINCT k.id) as total_kas_entries,
-                   p.created_at as tanggal_dibuat,
-                   COALESCE(p.status, 'aktif') as status,
-                   COALESCE(p.kategori_barang, 'lainnya') as kategori_barang
+        let query = `
+            SELECT p.id, p.nama_barang, p.deskripsi, p.target_dana, 
+                COALESCE(p.dana_terkumpul, 0) as dana_terkumpul,
+                COALESCE(p.dana_awal_kas, 0) as dana_awal_kas,
+                COALESCE(p.dana_donasi, 0) as dana_donasi,
+                (p.target_dana - COALESCE(p.dana_terkumpul, 0)) as sisa_kebutuhan,
+                p.foto_barang, p.deadline, p.created_at, p.tanggal_selesai,
+                COUNT(DISTINCT d.id) as total_donatur,
+                COALESCE(p.status, 'aktif') as status,
+                COALESCE(p.status, 'aktif') as status_pengadaan,  -- ✅ TAMBAH ALIAS
+                COALESCE(p.kategori_barang, 'lainnya') as kategori_barang
             FROM barang_pengadaan p
             LEFT JOIN donasi_pengadaan d ON p.id = d.barang_id AND d.status = 'approved'
-            LEFT JOIN kas_buku_besar k ON k.source_table = 'donasi_pengadaan' AND k.source_id = d.id
         `;
         
         let whereConditions = [];
         let params = [];
         
-        // Filter berdasarkan status jika ada
+        // ✅ FIX: Handle multiple status filter untuk user
         if (status && status !== 'all') {
-            whereConditions.push('COALESCE(p.status, "aktif") = ?');
-            params.push(status);
+            // Handle multiple status (aktif,selesai)
+            if (status.includes(',')) {
+                const statusList = status.split(',').map(s => s.trim());
+                const placeholders = statusList.map(() => '?').join(',');
+                whereConditions.push(`COALESCE(p.status, "aktif") IN (${placeholders})`);
+                params.push(...statusList);
+            } else {
+                whereConditions.push('COALESCE(p.status, "aktif") = ?');
+                params.push(status);
+            }
         }
         
         if (whereConditions.length > 0) {
@@ -71,16 +80,26 @@ router.get('/program', async (req, res) => {
         
         query += ' GROUP BY p.id ORDER BY p.created_at DESC';
         
+        console.log('🔍 Query:', query);
+        console.log('📊 Params:', params);
+        
         const [results] = await db.query(query, params);
+        
+        console.log(`📋 Found ${results.length} programs`);
         
         // Pastikan setiap record memiliki property yang dibutuhkan
         const formattedResults = results.map(row => ({
             ...row,
             status: row.status || 'aktif',
+            status_pengadaan: row.status || 'aktif',  // ✅ ENSURE CONSISTENT FIELD
             kategori_barang: row.kategori_barang || 'lainnya',
             dana_terkumpul: parseFloat(row.dana_terkumpul) || 0,
+            dana_awal_kas: parseFloat(row.dana_awal_kas) || 0,
+            dana_donasi: parseFloat(row.dana_donasi) || 0,
             target_dana: parseFloat(row.target_dana) || 0,
-            total_donatur: parseInt(row.total_donatur) || 0
+            sisa_kebutuhan: parseFloat(row.sisa_kebutuhan) || 0,
+            total_donatur: parseInt(row.total_donatur) || 0,
+            tanggal_dibuat: row.created_at
         }));
         
         res.json(formattedResults);
@@ -90,13 +109,13 @@ router.get('/program', async (req, res) => {
     }
 });
 
-// POST: Membuat program donasi baru (perbaikan)
+// POST: Membuat program donasi baru
 router.post('/program', uploadProgram.single('foto_barang'), async (req, res) => {
     try {
         const { nama_barang, deskripsi, target_dana, kategori_barang, deadline } = req.body;
         const foto_barang = req.file ? req.file.filename : null;
 
-        // Validasi
+        // Validasi penambahan donasi
         if (!nama_barang || !deskripsi || !target_dana) {
             return res.status(400).json({ 
                 error: 'Nama barang, deskripsi, dan target dana harus diisi',
@@ -104,44 +123,58 @@ router.post('/program', uploadProgram.single('foto_barang'), async (req, res) =>
             });
         }
 
-        if (parseInt(target_dana) < 100000) {
+        // validasi target dana
+        const targetDanaNum = parseInt(target_dana);
+        if (targetDanaNum <= 0) {
             return res.status(400).json({ 
-                error: 'Target dana minimal Rp 100.000',
+                error: 'Target dana harus lebih dari 0',
                 success: false 
             });
         }
 
-        // Cek apakah kolom ada di database
-        const [columns] = await db.query(`
-            SELECT COLUMN_NAME 
-            FROM INFORMATION_SCHEMA.COLUMNS 
-            WHERE TABLE_SCHEMA = DATABASE() 
-            AND TABLE_NAME = 'barang_pengadaan'
+        // HITUNG TOTAL KAS SAAT INI
+        const [kasResult] = await db.query(`
+            SELECT COALESCE(SUM(CASE 
+                WHEN jenis = 'masuk' THEN jumlah 
+                WHEN jenis = 'keluar' THEN -jumlah 
+                ELSE 0 
+            END), 0) as total_kas
+            FROM kas_buku_besar 
+            WHERE deleted_at IS NULL
         `);
+
+        const totalKas = kasResult[0].total_kas || 0;
         
-        const columnNames = columns.map(col => col.COLUMN_NAME);
-        const hasStatusColumn = columnNames.includes('status');
-        const hasKategoriColumn = columnNames.includes('kategori_barang');
-        const hasDeadlineColumn = columnNames.includes('deadline');
+        // Hitung dana awal dari kas
+        const danaAwalKas = Math.min(totalKas, targetDanaNum);
+        const danaDonasi = 0;
+        const danaTerkumpul = danaAwalKas + danaDonasi;
 
-        // Build query dinamis berdasarkan kolom yang ada
-        let insertColumns = ['nama_barang', 'deskripsi', 'target_dana'];
-        let insertValues = ['?', '?', '?'];
-        let params = [nama_barang, deskripsi, parseInt(target_dana)];
+        // Check apakah kolom ada di database
+        const [kasColumns] = await db.query("SHOW COLUMNS FROM barang_pengadaan LIKE 'dana_awal_kas'");
+        const hasKasColumns = kasColumns.length > 0;
 
-        if (hasStatusColumn) {
-            insertColumns.push('status');
-            insertValues.push('?');
-            params.push('draft');
+        let insertColumns = ['nama_barang', 'deskripsi', 'target_dana', 'dana_terkumpul'];
+        let insertValues = ['?', '?', '?', '?'];
+        let params = [nama_barang, deskripsi, targetDanaNum, danaTerkumpul];
+
+        // Tambahkan kolom kas jika ada
+        if (hasKasColumns) {
+            insertColumns.push('dana_awal_kas', 'dana_donasi');
+            insertValues.push('?', '?');
+            params.push(danaAwalKas, danaDonasi);
         }
 
-        if (hasKategoriColumn) {
+        // Tambahkan kolom opsional lainnya
+        const [kategoriColumns] = await db.query("SHOW COLUMNS FROM barang_pengadaan LIKE 'kategori_barang'");
+        if (kategoriColumns.length > 0) {
             insertColumns.push('kategori_barang');
             insertValues.push('?');
             params.push(kategori_barang || 'lainnya');
         }
 
-        if (hasDeadlineColumn && deadline) {
+        const [deadlineColumns] = await db.query("SHOW COLUMNS FROM barang_pengadaan LIKE 'deadline'");
+        if (deadlineColumns.length > 0 && deadline) {
             insertColumns.push('deadline');
             insertValues.push('?');
             params.push(deadline);
@@ -153,13 +186,6 @@ router.post('/program', uploadProgram.single('foto_barang'), async (req, res) =>
             params.push(foto_barang);
         }
 
-        // Pastikan dana_terkumpul 0
-        if (columnNames.includes('dana_terkumpul')) {
-            insertColumns.push('dana_terkumpul');
-            insertValues.push('?');
-            params.push(0);
-        }
-
         const query = `
             INSERT INTO barang_pengadaan (${insertColumns.join(', ')}) 
             VALUES (${insertValues.join(', ')})
@@ -168,17 +194,20 @@ router.post('/program', uploadProgram.single('foto_barang'), async (req, res) =>
         const [result] = await db.query(query, params);
         
         res.status(201).json({ 
-            message: 'Program donasi berhasil dibuat', 
+            message: `Program donasi berhasil dibuat. Dana awal dari kas: Rp ${danaAwalKas.toLocaleString('id-ID')}`, 
             id: result.insertId,
-            success: true
+            success: true,
+            data: {
+                dana_awal_kas: danaAwalKas,
+                dana_donasi: danaDonasi,
+                dana_terkumpul: danaTerkumpul,
+                sisa_kebutuhan: targetDanaNum - danaTerkumpul,
+                total_kas_tersedia: totalKas
+            }
         });
     } catch (err) {
-        console.error('Error creating program:', err);
-        res.status(500).json({ 
-            error: 'Gagal membuat program', 
-            details: err.message,
-            success: false 
-        });
+        console.error('Error creating program donasi:', err);
+        res.status(500).json({ error: 'Internal Server Error', details: err.message });
     }
 });
 
@@ -223,7 +252,74 @@ router.put('/program/:id', uploadProgram.single('foto_barang'), async (req, res)
     }
 });
 
-// PUT: Validasi donasi (Approve/Reject) - FIXED VERSION
+// DELETE: Menghapus program donasi (oleh Admin)
+router.delete('/program/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // ✅ FIX: Cek di barang_pengadaan, bukan donasi_pengadaan
+        const [programRows] = await db.query(
+            'SELECT * FROM barang_pengadaan WHERE id = ?',
+            [id]
+        );
+
+        if (programRows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Program donasi tidak ditemukan'
+            });
+        }
+
+        const program = programRows[0];
+
+        // ✅ FIX: Cek apakah program sudah ada donasi yang masuk (dari donasi_pengadaan)
+        const [donasiRows] = await db.query(
+            'SELECT COUNT(*) as total_donasi FROM donasi_pengadaan WHERE barang_id = ? AND status IN ("approved", "pending")',
+            [id]
+        );
+
+        const totalDonasi = donasiRows[0].total_donasi;
+
+        if (totalDonasi > 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Program tidak dapat dihapus karena sudah ada donasi yang masuk. Silakan nonaktifkan program sebagai gantinya.'
+            });
+        }
+
+        // ✅ FIX: Hapus program dari barang_pengadaan (hard delete karena belum ada donasi)
+        await db.query(
+            'DELETE FROM barang_pengadaan WHERE id = ?',
+            [id]
+        );
+
+        // ✅ Optional: Hapus foto jika ada
+        if (program.foto_barang) {
+            const fs = require('fs');
+            const path = require('path');
+            const fotoPath = path.join(__dirname, '../public/images/donasi-program', program.foto_barang);
+            
+            fs.unlink(fotoPath, (err) => {
+                if (err) console.log('Warning: Could not delete photo file:', err.message);
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Program donasi berhasil dihapus'
+        });
+
+    } catch (error) {
+        console.error('Error deleting program donasi:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Terjadi kesalahan saat menghapus program donasi',
+            error: error.message
+        });
+    }
+});
+
+// PUT: Validasi donasi (Approve/Reject)
 router.put('/:id/validate', async (req, res) => {
     try {
         const { id } = req.params;
@@ -259,7 +355,7 @@ router.put('/:id/validate', async (req, res) => {
         if (action === 'approve') {
             console.log('✅ Approving donasi - trigger will handle the rest');
             
-            // ✅ SEDERHANA: HANYA UPDATE STATUS - TRIGGER AKAN HANDLE SISANYA
+            // SEDERHANA: HANYA UPDATE STATUS - TRIGGER AKAN HANDLE SISANYA
             await db.query(
                 'UPDATE donasi_pengadaan SET status = ?, validated_at = NOW() WHERE id = ?',
                 ['approved', id]
@@ -366,7 +462,7 @@ router.post('/program/:id/complete', async (req, res) => {
 router.post('/submit/:programId', uploadBukti.single('bukti_transfer'), async (req, res) => {
     try {
         const { programId } = req.params;
-        const { nama_donatur, kontak_donatur, nominal_donasi, metode_pembayaran, catatan, kode_unik_frontend } = req.body;
+        const { nama_donatur, kontak_donatur, nominal_donasi, metode_pembayaran, catatan, kode_unik_frontend, user_id } = req.body; // ✅ TAMBAH user_id
         const bukti_transfer = req.file ? req.file.filename : null;
 
         if (!nama_donatur || !nominal_donasi || !metode_pembayaran) {
@@ -402,12 +498,13 @@ router.post('/submit/:programId', uploadBukti.single('bukti_transfer'), async (r
 
         const query = `
             INSERT INTO donasi_pengadaan 
-            (barang_id, nama_donatur, kontak_donatur, nominal, metode_pembayaran, bukti_transfer, catatan, kode_unik, total_transfer, status) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+            (barang_id, user_id, nama_donatur, kontak_donatur, nominal, metode_pembayaran, bukti_transfer, catatan, kode_unik, total_transfer, status) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
         `;
 
         const [result] = await db.query(query, [
             programId, 
+            user_id || null, // ✅ SEKARANG user_id sudah didefinisikan dari req.body
             nama_donatur, 
             kontak_donatur || null,
             parseInt(nominal_donasi), 
@@ -534,6 +631,168 @@ router.get('/admin/check-consistency', async (req, res) => {
     }
 });
 
+// GET: History donasi untuk user yang login
+router.get('/history/user/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { status, limit = 10, offset = 0 } = req.query;
+        
+        console.log('🔍 Fetching donation history for user:', userId);
+        
+        let whereConditions = ['d.user_id = ?'];
+        let params = [userId];
+        
+        // Filter berdasarkan status jika ada
+        if (status && status !== 'all') {
+            whereConditions.push('d.status = ?');
+            params.push(status);
+        }
+        
+        // Query utama untuk history donasi
+        const query = `
+            SELECT 
+                d.id,
+                d.nominal,
+                d.metode_pembayaran,
+                d.status,
+                d.kode_unik,
+                d.total_transfer,
+                d.catatan,
+                d.created_at,
+                d.validated_at,
+                d.reject_reason,
+                p.nama_barang,
+                p.foto_barang,
+                p.target_dana,
+                p.dana_terkumpul,
+                DATE_FORMAT(d.created_at, '%d %M %Y %H:%i') as tanggal_donasi_formatted,
+                DATE_FORMAT(d.validated_at, '%d %M %Y %H:%i') as tanggal_validasi_formatted
+            FROM donasi_pengadaan d
+            INNER JOIN barang_pengadaan p ON d.barang_id = p.id
+            WHERE ${whereConditions.join(' AND ')}
+            ORDER BY d.created_at DESC
+            LIMIT ? OFFSET ?
+        `;
+        
+        params.push(parseInt(limit), parseInt(offset));
+        
+        const [donations] = await db.query(query, params);
+        
+        // Query untuk total count
+        const countQuery = `
+            SELECT COUNT(*) as total
+            FROM donasi_pengadaan d
+            INNER JOIN barang_pengadaan p ON d.barang_id = p.id
+            WHERE ${whereConditions.join(' AND ')}
+        `;
+        
+        const [countResult] = await db.query(countQuery, [userId, ...(status && status !== 'all' ? [status] : [])]);
+        
+        // Query untuk statistik user
+        const statsQuery = `
+            SELECT 
+                COUNT(*) as total_donasi,
+                COALESCE(SUM(CASE WHEN d.status = 'approved' THEN d.nominal ELSE 0 END), 0) as total_nominal_approved,
+                COALESCE(SUM(CASE WHEN d.status = 'pending' THEN d.nominal ELSE 0 END), 0) as total_nominal_pending,
+                COUNT(CASE WHEN d.status = 'approved' THEN 1 END) as donasi_approved,
+                COUNT(CASE WHEN d.status = 'pending' THEN 1 END) as donasi_pending,
+                COUNT(CASE WHEN d.status = 'rejected' THEN 1 END) as donasi_rejected
+            FROM donasi_pengadaan d
+            WHERE d.user_id = ?
+        `;
+        
+        const [statsResult] = await db.query(statsQuery, [userId]);
+        
+        console.log(`📊 Found ${donations.length} donations for user ${userId}`);
+        
+        res.json({
+            success: true,
+            data: {
+                donations: donations.map(donation => ({
+                    ...donation,
+                    nominal: parseFloat(donation.nominal) || 0,
+                    total_transfer: parseFloat(donation.total_transfer) || 0,
+                    target_dana: parseFloat(donation.target_dana) || 0,
+                    dana_terkumpul: parseFloat(donation.dana_terkumpul) || 0
+                })),
+                pagination: {
+                    total: countResult[0].total,
+                    limit: parseInt(limit),
+                    offset: parseInt(offset),
+                    hasMore: (parseInt(offset) + donations.length) < countResult[0].total
+                },
+                statistics: {
+                    total_donasi: statsResult[0].total_donasi || 0,
+                    total_nominal_approved: parseFloat(statsResult[0].total_nominal_approved) || 0,
+                    total_nominal_pending: parseFloat(statsResult[0].total_nominal_pending) || 0,
+                    donasi_approved: statsResult[0].donasi_approved || 0,
+                    donasi_pending: statsResult[0].donasi_pending || 0,
+                    donasi_rejected: statsResult[0].donasi_rejected || 0
+                }
+            }
+        });
+        
+    } catch (error) {
+        console.error('❌ Error fetching user donation history:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Gagal mengambil history donasi',
+            error: error.message
+        });
+    }
+});
+
+// GET: Detail donasi spesifik untuk user
+router.get('/history/user/:userId/donation/:donationId', async (req, res) => {
+    try {
+        const { userId, donationId } = req.params;
+        
+        const query = `
+            SELECT 
+                d.*,
+                p.nama_barang,
+                p.deskripsi,
+                p.foto_barang,
+                p.target_dana,
+                p.dana_terkumpul,
+                DATE_FORMAT(d.created_at, '%d %M %Y %H:%i:%s') as tanggal_donasi_formatted,
+                DATE_FORMAT(d.validated_at, '%d %M %Y %H:%i:%s') as tanggal_validasi_formatted
+            FROM donasi_pengadaan d
+            INNER JOIN barang_pengadaan p ON d.barang_id = p.id
+            WHERE d.id = ? AND d.user_id = ?
+        `;
+        
+        const [result] = await db.query(query, [donationId, userId]);
+        
+        if (result.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Donasi tidak ditemukan'
+            });
+        }
+        
+        res.json({
+            success: true,
+            data: {
+                ...result[0],
+                nominal: parseFloat(result[0].nominal) || 0,
+                total_transfer: parseFloat(result[0].total_transfer) || 0,
+                target_dana: parseFloat(result[0].target_dana) || 0,
+                dana_terkumpul: parseFloat(result[0].dana_terkumpul) || 0
+            }
+        });
+        
+    } catch (error) {
+        console.error('❌ Error fetching donation detail:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Gagal mengambil detail donasi',
+            error: error.message
+        });
+    }
+});
+
+
 // ======= API untuk export ke pdf
 router.get('/program/:programId/export/pdf', async (req, res) => {
     console.log('🚀 PDF export started for program:', req.params.programId);
@@ -578,7 +837,7 @@ router.get('/program/:programId/export/pdf', async (req, res) => {
         const program = programDetails[0];
         console.log('🏗️ Creating PDF for program:', program.nama_barang);
 
-        // ✅ CREATE PDF (TANPA CHECK autoTable dulu)
+        // CREATE PDF (TANPA CHECK autoTable dulu)
         const doc = new jsPDF({
             orientation: 'portrait',
             unit: 'mm',
@@ -589,7 +848,7 @@ router.get('/program/:programId/export/pdf', async (req, res) => {
         const margin = 20;
         let currentY = 20;
 
-        // ✅ HEADER - NAMA PROGRAM
+        // HEADER - NAMA PROGRAM
         doc.setFontSize(18);
         doc.setTextColor(40, 40, 40);
         doc.text('LAPORAN DONASI PROGRAM', pageWidth / 2, currentY, { align: 'center' });
@@ -601,7 +860,7 @@ router.get('/program/:programId/export/pdf', async (req, res) => {
         doc.text(programName.toUpperCase(), pageWidth / 2, currentY, { align: 'center' });
         currentY += 20;
 
-        // ✅ SECTION 1: DETAIL PROGRAM
+        // SECTION 1: DETAIL PROGRAM
         doc.setDrawColor(200, 200, 200);
         doc.setFillColor(248, 250, 252);
         doc.roundedRect(margin, currentY, pageWidth - (margin * 2), 60, 3, 3, 'FD');
@@ -617,7 +876,7 @@ router.get('/program/:programId/export/pdf', async (req, res) => {
         doc.setFont('helvetica', 'bold');
         doc.text('Deskripsi:', leftCol, currentY);
         doc.setFont('helvetica', 'normal');
-        // ✅ Handle long text dengan splitTextToSize
+        // Handle long text dengan splitTextToSize
         const deskripsi = program.deskripsi || 'Tidak ada deskripsi';
         const deskripsiLines = doc.splitTextToSize(deskripsi, 70);
         doc.text(deskripsiLines[0] || deskripsi, leftCol, currentY + 6);
@@ -653,7 +912,7 @@ router.get('/program/:programId/export/pdf', async (req, res) => {
 
         currentY += 70;
 
-        // ✅ SUMMARY BOX
+        // SUMMARY BOX
         doc.setTextColor(60, 60, 60);
         doc.setDrawColor(25, 135, 84);
         doc.setFillColor(240, 253, 244);
@@ -677,13 +936,13 @@ router.get('/program/:programId/export/pdf', async (req, res) => {
 
         currentY += 25;
 
-        // ✅ GARIS PEMISAH
+        // GARIS PEMISAH
         doc.setDrawColor(200, 200, 200);
         doc.setLineWidth(1);
         doc.line(margin, currentY, pageWidth - margin, currentY);
         currentY += 15;
 
-        // ✅ SECTION 2: DAFTAR DONATUR
+        // SECTION 2: DAFTAR DONATUR
         doc.setFontSize(14);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(40, 40, 40);
@@ -697,7 +956,7 @@ router.get('/program/:programId/export/pdf', async (req, res) => {
             doc.text('Belum ada donatur untuk program ini.', margin, currentY);
             currentY += 20;
         } else {
-            // ✅ MANUAL TABLE (simple dan works)
+            // MANUAL TABLE (simple dan works)
             console.log('📋 Creating donations table manually...');
             
             // Table headers
@@ -752,7 +1011,7 @@ router.get('/program/:programId/export/pdf', async (req, res) => {
             });
         }
 
-        // ✅ FOOTER
+        // FOOTER
         const finalY = currentY + 20;
         doc.setFontSize(8);
         doc.setFont('helvetica', 'italic');
