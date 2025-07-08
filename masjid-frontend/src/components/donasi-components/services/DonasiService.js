@@ -6,6 +6,19 @@ const api = axios.create({
     baseURL: `${API_BASE_URL}/donasi`
 });
 
+api.interceptors.request.use(
+    (config) => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            config.headers.Authorization = `Bearer ${token};`
+        }
+        return config;
+    },
+    (error) => {
+        return Promise.reject(error);
+    }
+);
+
 export const donasiService = {
     // CRUD Program Donasi
     getPrograms: (status) => {
@@ -25,8 +38,21 @@ export const donasiService = {
         });
     },
 
-    deleteProgram: (id) => {
-        return api.delete(`/program/${id}`);
+    deleteProgram: async (id) => {
+        try {
+            const response = await api.delete(`/program/${id}`);
+            return response;
+        } catch (error) {
+            console.error('Error deleting program:', error);
+            // Throw error agar bisa di-catch di component
+            throw {
+                response: {
+                    data: {
+                        message: error.response?.data?.message || 'Gagal menghapus program donasi'
+                    }
+                }
+            };
+        }
     },
 
     // Kelola Status Program
