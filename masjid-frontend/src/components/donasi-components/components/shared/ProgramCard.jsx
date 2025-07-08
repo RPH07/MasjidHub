@@ -4,7 +4,6 @@ import { formatRupiah, formatDate, getStatusBadge } from '../../utils'
 const ProgramCard = ({
     program,
     onActivate,
-    onDeactivate,
     onComplete,
     onEdit,
     onDelete,
@@ -188,12 +187,6 @@ const ProgramCard = ({
                                         className="text-blue-600 hover:text-blue-800 px-3 py-1 rounded border border-blue-300 text-sm"
                                     >
                                         Kelola Donasi
-                                    </button>
-                                    <button
-                                        onClick={() => onDeactivate?.(id)}
-                                        className="text-red-600 hover:text-red-800 px-3 py-1 rounded border border-red-300 text-sm"
-                                    >
-                                        Nonaktifkan
                                     </button>
                                     <button
                                         onClick={() => onComplete?.(id)}
