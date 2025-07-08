@@ -81,19 +81,65 @@ export const useDonasi = () => {
             };
         }
     }, [fetchProgramDonasi]);
+    const updateProgramDonasi = useCallback(async (id, formData, file) => {
+        try {
+            setState(prev => ({ ...prev, loading: true }));
+            
+            const updateData = new FormData();
+            
+            // Append form data
+            Object.keys(formData).forEach(key => {
+                if (formData[key] !== null && formData[key] !== undefined) {
+                    updateData.append(key, formData[key]);
+                }
+            });
+            
+            // Append file if exists
+            if (file) {
+                updateData.append('foto_barang', file);
+            }
+            
+            const response = await donasiService.updateProgram(id, updateData);
+            
+            setState(prev => ({ ...prev, loading: false }));
+            await fetchProgramDonasi(); // Refresh data
+            
+            return { 
+                success: true, 
+                message: response.data?.message || 'Program donasi berhasil diperbarui' 
+            };
+        } catch (error) {
+            setState(prev => ({ ...prev, loading: false }));
+            console.error('Update program error:', error);
+            
+            return {
+                success: false,
+                message: error.response?.data?.message || error.message || 'Gagal memperbarui program donasi'
+            };
+        }
+    }, [fetchProgramDonasi]);
 
+        // Update deleteProgramDonasi method
     const deleteProgramDonasi = useCallback(async (id) => {
         try {
+            setState(prev => ({ ...prev, loading: true }));
+            
             const response = await donasiService.deleteProgram(id);
-            await fetchProgramDonasi();
+            
+            setState(prev => ({ ...prev, loading: false }));
+            await fetchProgramDonasi(); // Refresh data
+            
             return { 
                 success: true, 
                 message: response.data?.message || 'Program donasi berhasil dihapus' 
             };
         } catch (error) {
+            setState(prev => ({ ...prev, loading: false }));
+            console.error('Delete program error:', error);
+            
             return {
                 success: false,
-                message: error.response?.data?.error || 'Gagal menghapus program donasi'
+                message: error.response?.data?.message || error.message || 'Gagal menghapus program donasi'
             };
         }
     }, [fetchProgramDonasi]);
@@ -154,6 +200,7 @@ export const useDonasi = () => {
         fetchProgramDonasi,
         fetchProgramAktif,
         createProgramDonasi,
+        updateProgramDonasi,
         deleteProgramDonasi,
         activateProgram,
         deactivateProgram,
