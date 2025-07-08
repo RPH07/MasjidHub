@@ -7,43 +7,50 @@ const XLSX = require('xlsx')
 const getPeriodFilter = (period) => {
   // timezone Indonesia (UTC+7)
   const now = new Date();
-  const indonesiaOffset = 7 * 60; // UTC+7 dalam menit
-  const indonesiaTime = new Date(now.getTime() + (indonesiaOffset * 60 * 1000));
+  
+  // Gunakan Date lokal Indonesia tanpa manipulasi UTC yang rumit
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth(); // 0-11
+  const date = today.getDate();
   
   let startDate, endDate;
 
   switch (period) {
     case 'hari-ini':
-      startDate = new Date(Date.UTC(indonesiaTime.getUTCFullYear(), indonesiaTime.getUTCMonth(), indonesiaTime.getUTCDate()));
-      endDate = new Date(Date.UTC(indonesiaTime.getUTCFullYear(), indonesiaTime.getUTCMonth(), indonesiaTime.getUTCDate() + 1));
+      startDate = new Date(year, month, date);
+      endDate = new Date(year, month, date + 1);
       break;
       
     case 'minggu-ini':
-      const dayOfWeek = indonesiaTime.getUTCDay();
-      const startOfWeek = new Date(Date.UTC(indonesiaTime.getUTCFullYear(), indonesiaTime.getUTCMonth(), indonesiaTime.getUTCDate() - dayOfWeek));
+      const dayOfWeek = today.getDay(); // 0 = Sunday
+      const startOfWeek = new Date(year, month, date - dayOfWeek);
       startDate = startOfWeek;
-      endDate = new Date(Date.UTC(startOfWeek.getUTCFullYear(), startOfWeek.getUTCMonth(), startOfWeek.getUTCDate() + 7));
+      endDate = new Date(year, month, date - dayOfWeek + 7);
       break;
       
     case 'bulan-ini':
-      startDate = new Date(Date.UTC(indonesiaTime.getUTCFullYear(), indonesiaTime.getUTCMonth(), 1));
-      endDate = new Date(Date.UTC(indonesiaTime.getUTCFullYear(), indonesiaTime.getUTCMonth() + 1, 1));
+      startDate = new Date(year, month, 1);
+      endDate = new Date(year, month + 1, 1);
       break;
       
     case 'tahun-ini':
-      startDate = new Date(Date.UTC(indonesiaTime.getUTCFullYear(), 0, 1));
-      endDate = new Date(Date.UTC(indonesiaTime.getUTCFullYear() + 1, 0, 1));
+      startDate = new Date(year, 0, 1);
+      endDate = new Date(year + 1, 0, 1);
       break;
       
     default:
-      startDate = new Date(Date.UTC(indonesiaTime.getUTCFullYear(), indonesiaTime.getUTCMonth(), 1));
-      endDate = new Date(Date.UTC(indonesiaTime.getUTCFullYear(), indonesiaTime.getUTCMonth() + 1, 1));
+      startDate = new Date(year, month, 1);
+      endDate = new Date(year, month + 1, 1);
   }
 
+  // Format ke YYYY-MM-DD
   const result = {
     startDate: startDate.toISOString().split('T')[0],
     endDate: endDate.toISOString().split('T')[0]
   };
+  
+  console.log(`Period filter for "${period}":`, result); // Debug log
   return result;
 };
 
@@ -61,6 +68,8 @@ router.get('/', async (req, res) => {
         -- Zakat fields
         z.nama as zakat_nama,
         z.jenis_zakat,
+        z.kode_unik as zakat_kode_unik,
+        z.total_bayar as zakat_total_bayar,
         z.status as zakat_status,
         z.created_at as zakat_created_at,
         -- Infaq fields  
@@ -106,7 +115,9 @@ router.get('/', async (req, res) => {
         jumlah: row.jumlah,
         bukti_transfer: row.bukti_transfer,
         created_at: row.zakat_created_at,
-        metode_pembayaran: row.metode_pembayaran
+        metode_pembayaran: row.metode_pembayaran,
+        kode_unik: row.zakat_kode_unik || row.kode_unik,
+        total_bayar: row.zakat_total_bayar
       }));
 
     const infaqRows = allRows
@@ -117,7 +128,8 @@ router.get('/', async (req, res) => {
         jumlah: row.jumlah,
         keterangan: row.infaq_keterangan,
         kategori_infaq: row.kategori_infaq,
-        tanggal: row.infaq_tanggal
+        tanggal: row.infaq_tanggal,
+        kode_unik: row.kode_unik
       }));
 
     
@@ -128,7 +140,7 @@ router.get('/', async (req, res) => {
         nama_donatur: row.donasi_nama_donatur,
         nama_pemberi: row.donasi_nama_donatur,
         jumlah: row.jumlah,
-        nominal: row.donasi_nominal,
+        kode_unik: row.kode_unik,
         kode_unik: row.donasi_kode_unik,
         total_transfer: row.donasi_total_transfer,
         metode_pembayaran: row.donasi_metode,
@@ -160,7 +172,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// endpoint summary
+// summary endpoint
 router.get('/summary', async (req, res) => {
   try {
     const { period = 'bulan-ini', startDate, endDate } = req.query;
@@ -173,16 +185,8 @@ router.get('/summary', async (req, res) => {
     }
 
     const { startDate: sDate, endDate: eDate } = dateFilter;
-    const [kodeUnikSummary] = await db.query(`
-      SELECT 
-        COUNT(kode_unik) as total_transaksi_kode_unik,
-        COALESCE(SUM(kode_unik), 0) as total_kode_unik_terkumpul
-      FROM kas_buku_besar
-      WHERE jenis = 'masuk'
-        AND kode_unik IS NOT NULL
-        AND tanggal >= ? AND tanggal < ?
-        AND deleted_at IS NULL
-    `, [sDate, eDate]);
+    
+    console.log('Summary filter dates:', { sDate, eDate }); // Debug log
 
     // 1. HITUNG SALDO TOTAL (dari awal sampai sekarang)
     const [totalSaldoRows] = await db.query(`
@@ -193,10 +197,11 @@ router.get('/summary', async (req, res) => {
       WHERE deleted_at IS NULL
     `);
     
-
     const totalMasuk = Number(totalSaldoRows[0].total_masuk);
     const totalKeluar = Number(totalSaldoRows[0].total_keluar);
     const totalSaldo = totalMasuk - totalKeluar;
+
+    console.log('Total saldo calculation:', { totalMasuk, totalKeluar, totalSaldo }); // Debug log
 
     // 2. HITUNG TRANSAKSI PERIODE SAAT INI
     const [periodRows] = await db.query(`
@@ -210,11 +215,73 @@ router.get('/summary', async (req, res) => {
 
     const periodMasuk = Number(periodRows[0].period_masuk);
     const periodKeluar = Number(periodRows[0].period_keluar);
-    const periodSaldo = periodMasuk - periodKeluar;
 
-    // 3. HITUNG PERIODE SEBELUMNYA
+    console.log('Period calculation:', { periodMasuk, periodKeluar }); // Debug log
+
+    // 3. KODE UNIK STATS
+    const [kodeUnikSummary] = await db.query(`
+      SELECT 
+        COUNT(kode_unik) as total_transaksi_kode_unik,
+        COALESCE(SUM(kode_unik), 0) as total_kode_unik_terkumpul
+      FROM kas_buku_besar
+      WHERE jenis = 'masuk'
+        AND kode_unik IS NOT NULL
+        AND tanggal >= ? AND tanggal < ?
+        AND deleted_at IS NULL
+    `, [sDate, eDate]);
+
+    // 4. BREAKDOWN KATEGORI PEMASUKAN
+    const [pemasukanKategoriRows] = await db.query(`
+      SELECT 
+        CASE 
+          WHEN source_table = 'zakat' THEN 'zakat'
+          WHEN source_table = 'infaq' THEN 'infaq' 
+          WHEN source_table = 'donasi_pengadaan' THEN 'donasi'
+          WHEN source_table = 'manual' OR source_table IS NULL THEN 'kas_manual'
+          ELSE 'kas_manual'
+        END as kategori_grouped,
+        COALESCE(SUM(jumlah), 0) as total
+      FROM kas_buku_besar
+      WHERE jenis = 'masuk'
+        AND tanggal >= ? AND tanggal < ?
+        AND deleted_at IS NULL
+      GROUP BY kategori_grouped
+    `, [sDate, eDate]);
+
+    const pemasukanKategori = {
+      zakat: 0,
+      infaq: 0,
+      donasi: 0,
+      kas_manual: 0
+    };
+
+    pemasukanKategoriRows.forEach(row => {
+      pemasukanKategori[row.kategori_grouped] = Number(row.total);
+    });
+
+    console.log('Pemasukan kategori:', pemasukanKategori); // Debug log
+
+    // 5. BREAKDOWN KATEGORI PENGELUARAN
+    const [pengeluaranKategoriRows] = await db.query(`
+      SELECT 
+        COALESCE(kategori, 'operasional') as kategori,
+        COALESCE(SUM(jumlah), 0) as total
+      FROM kas_buku_besar
+      WHERE jenis = 'keluar'
+        AND tanggal >= ? AND tanggal < ?
+        AND deleted_at IS NULL
+      GROUP BY kategori
+    `, [sDate, eDate]);
+
+    const pengeluaranKategori = {};
+    pengeluaranKategoriRows.forEach(row => {
+      pengeluaranKategori[row.kategori] = Number(row.total);
+    });
+
+    console.log('Pengeluaran kategori:', pengeluaranKategori); // Debug log
+
+    // 6. HITUNG PERIODE SEBELUMNYA UNTUK PERSENTASE
     const getPreviousPeriod = (period) => {
-      // Gunakan timezone Indonesia (UTC+7)
       const today = new Date();
       const jakartaOffset = 7 * 60;
       const localOffset = today.getTimezoneOffset();
@@ -257,7 +324,6 @@ router.get('/summary', async (req, res) => {
       };
     };
 
-    // 4. HITUNG SALDO PERIODE SEBELUMNYA
     const prevPeriod = getPreviousPeriod(period);
     
     // Saldo sampai akhir periode sebelumnya
@@ -287,23 +353,19 @@ router.get('/summary', async (req, res) => {
     const prevPeriodMasuk = Number(prevPeriodRows[0].prev_period_masuk);
     const prevPeriodKeluar = Number(prevPeriodRows[0].prev_period_keluar);
 
-    // 5. HITUNG PERSENTASE PERUBAHAN
+    // 7. HITUNG PERSENTASE PERUBAHAN
     const calculatePercentageChange = (current, previous) => {
       const curr = parseFloat(current) || 0;
       const prev = parseFloat(previous) || 0;
 
-      // No change scenario
       if (curr === prev) return 0;
       
-      // Handle zero previous value
       if (prev === 0) {
         if (curr === 0) return 0;
         return curr > 0 ? 100 : -100;
       }
 
-      // Calculate percentage
       let percentage = ((curr - prev) / Math.abs(prev)) * 100;
-      // Clamp percentage to -100% to 100%
       percentage = Math.max(-100, Math.min(100, percentage));
       
       return Math.round(percentage * 10) / 10;
@@ -315,74 +377,33 @@ router.get('/summary', async (req, res) => {
       pengeluaran: calculatePercentageChange(periodKeluar, prevPeriodKeluar)
     };
 
-    // 6. BREAKDOWN KATEGORI UNTUK PERIODE SAAT INI
-const [pemasukanKategoriRows] = await db.query(`
-  SELECT 
-    CASE 
-      WHEN source_table = 'zakat' THEN 'zakat'
-      WHEN source_table = 'infaq' THEN 'infaq' 
-      WHEN source_table = 'donasi_pengadaan' THEN 'donasi'
-      ELSE 'kas_manual'
-    END as kategori_grouped,
-    COALESCE(SUM(jumlah), 0) as total
-  FROM kas_buku_besar
-  WHERE jenis = 'masuk'
-    AND tanggal >= ? AND tanggal < ?
-    AND deleted_at IS NULL
-    AND kategori IS NOT NULL
-  GROUP BY kategori_grouped
-`, [sDate, eDate]);
+    const responseData = {
+      totalPemasukan: periodMasuk,
+      totalPengeluaran: periodKeluar,
+      saldoBersih: periodMasuk - periodKeluar,
+      totalSaldo: totalSaldo,
+      pemasukanKategori,
+      pengeluaranKategori,
+      percentageChanges,
+      kodeUnikStats: {
+        totalTransaksi: Number(kodeUnikSummary[0]?.total_transaksi_kode_unik || 0),
+        totalKodeUnik: Number(kodeUnikSummary[0]?.total_kode_unik_terkumpul || 0)
+      }
+    };
 
-const pemasukanKategori = {
-  zakat: 0,
-  infaq: 0,
-  donasi: 0,
-  kas_manual: 0
-};
-
-pemasukanKategoriRows.forEach(row => {
-  pemasukanKategori[row.kategori_grouped] = Number(row.total);
-});
-
-    const [pengeluaranKategoriRows] = await db.query(`
-      SELECT 
-        kategori,
-        COALESCE(SUM(jumlah), 0) as total
-      FROM kas_buku_besar
-      WHERE jenis = 'keluar'
-        AND tanggal >= ? AND tanggal < ?
-        AND deleted_at IS NULL
-        AND kategori IS NOT NULL
-      GROUP BY kategori
-    `, [sDate, eDate]);
-
-    const pengeluaranKategori = {};
-    pengeluaranKategoriRows.forEach(row => {
-      pengeluaranKategori[row.kategori] = Number(row.total);
-    });
+    console.log('Final response data:', responseData); // Debug log
 
     res.json({
       success: true,
-      data: {
-        totalPemasukan: periodMasuk,
-        totalPengeluaran: periodKeluar,
-        saldoBersih: periodSaldo,
-        totalSaldo: totalSaldo,
-        pemasukanKategori,
-        pengeluaranKategori,
-        percentageChanges,
-        kodeUnikStats: {
-          totalTransaksi: Number(kodeUnikSummary[0]?.total_transaksi_kode_unik || 0),
-          totalKodeUnik: Number(kodeUnikSummary[0]?.total_kode_unik_terkumpul || 0)
-        }
-      }
+      data: responseData
     });
 
   } catch (err) {
     console.error('Error fetching kas summary:', err);
     res.status(500).json({
       success: false,
-      message: 'Terjadi kesalahan saat mengambil ringkasan kas'
+      message: 'Terjadi kesalahan saat mengambil ringkasan kas',
+      error: err.message
     });
   }
 });
@@ -590,9 +611,13 @@ router.delete('/:id', async (req, res) => {
 router.get('/pending', async (req, res) => {
   try {
     // Get pending zakat
-    const [zakatRows] = await db.query(`
-      SELECT id, nama as nama_pemberi, jumlah, jenis_zakat, bukti_transfer, 
-      metode_pembayaran, created_at, 'zakat' as type
+    const [zakatRows] = await db.execute(`
+      SELECT 
+        id, nama as nama_pemberi, email, no_telepon, jenis_zakat, 
+        jumlah_jiwa, total_harta, gaji_kotor, jumlah, 
+        kode_unik, total_bayar, metode_pembayaran, 
+        bukti_transfer, created_at,
+        'zakat' as type
       FROM zakat 
       WHERE status = 'pending'
       ORDER BY created_at DESC
