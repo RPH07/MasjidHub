@@ -54,6 +54,7 @@ const KasPemasukan = ({
         display_metode: item.metode_pembayaran,
         display_jumlah: item.jumlah,
         display_bukti: item.bukti_transfer,
+        display_kode_unik: item.kode_unik || null,
         can_edit: false,
         is_approved: true
       });
@@ -71,6 +72,7 @@ const KasPemasukan = ({
         display_metode: item.metode_pembayaran,
         display_jumlah: item.jumlah,
         display_bukti: item.bukti_transfer,
+        display_kode_unik: item.kode_unik || null,
         can_edit: false,
         is_approved: true
       });
@@ -88,12 +90,13 @@ const KasPemasukan = ({
         display_metode: item.metode_pembayaran,
         display_jumlah: item.jumlah || item.nominal,
         display_bukti: item.bukti_transfer,
+        display_kode_unik: item.kode_unik || null,
         can_edit: false,
         is_approved: true
       });
     });
 
-    // Data Kas Manual - ✅ SEKARANG formatKategori SUDAH TERSEDIA
+    // Data Kas Manual
     kasData.filter(item => item.jenis === 'masuk').forEach(item => {
       allData.push({
         ...item,
@@ -214,7 +217,7 @@ const KasPemasukan = ({
       {/* Desktop Table View */}
       <div className="hidden sm:block rounded-lg border bg-white shadow-sm overflow-hidden">
         <div className="overflow-x-auto no-scrollbar">
-          <table className="w-full min-w-[800px]">
+          <table className="w-full min-w-[900px]">
             <thead className="bg-gray-50">
               <tr>
                 {/* ✅ SORTABLE HEADERS */}
@@ -267,6 +270,9 @@ const KasPemasukan = ({
                   </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Kode Unik
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Bukti
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -302,6 +308,15 @@ const KasPemasukan = ({
                   </td>
                   <td className="px-6 py-4 text-sm font-medium text-green-600">
                     {formatCurrency(item.display_jumlah)}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-center">
+                    {item.display_kode_unik ? (
+                      <span className="px-2 py-1 text-xs font-mono font-medium bg-yellow-100 text-yellow-800 rounded">
+                        +{item.display_kode_unik}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 text-xs">-</span>
+                    )}
                   </td>
                   <td className="px-6 py-4">
                     {item.display_bukti ? (
@@ -343,7 +358,7 @@ const KasPemasukan = ({
         </div>
       </div>
 
-      {/* Mobile View dengan data yang sudah di-sort */}
+      {/* Mobile View */}
       <div className="block sm:hidden space-y-4">
         {/* Mobile sorting controls */}
         <div className="bg-white p-3 rounded-lg border">
@@ -401,6 +416,14 @@ const KasPemasukan = ({
             <div className="text-sm text-gray-600 mb-1">
               <span className="font-medium">Nama:</span> {item.display_name}
             </div>
+            {item.display_kode_unik && (
+              <div className="text-sm text-gray-600 mb-2">
+                <span className="font-medium">Kode Unik:</span> 
+                <span className="ml-1 px-2 py-1 text-xs font-mono font-medium bg-yellow-100 text-yellow-800 rounded">
+                  +{item.display_kode_unik}
+                </span>
+              </div>
+            )}
             {item.display_kategori !== '-' && (
               <div className="text-sm text-gray-600 mb-2">
                 <span className="font-medium">Kategori:</span> {item.display_kategori}
