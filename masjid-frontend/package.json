@@ -1,7 +1,7 @@
 {
   "name": "masjidhub",
   "private": true,
-  "homepage": "http://localhost:5173/",
+  // "homepage": "http://localhost:5173/",
   "version": "0.0.0",
   "type": "module",
   "scripts": {
