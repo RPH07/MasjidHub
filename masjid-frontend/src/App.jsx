@@ -14,7 +14,6 @@ import DonasiPage from './pages/admin/Donasi';
 import AdminSignup from './auth/AdminSignup';
 import AdminRoute from './components/route-guard/AdminRoute';
 import ProtectedRoute from './components/route-guard/ProtectedRoute';
-import AuthCallback from './auth/AuthCallback';
 import UserDashboard from './pages/user/userDashoard';
 import Crowdfunding from './pages/user/Crowdfunding';
 import UserLayout from './components/layouts/UserLayout'; 
@@ -51,10 +50,6 @@ const router = createBrowserRouter([
   {
     path: "/zakat",
     element: <ZakatForm />,
-  },
-  {
-    path: "/auth/callback",
-    element: <AuthCallback />,
   },
   {
     path: "/crowdfunding",

@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
-import { supabase } from '@/config/supabaseClient';
 // import {API_BASE_URL} from '../config/api'
 
 const LoginPages = () => {
@@ -70,26 +69,6 @@ const LoginPages = () => {
             setLoading(false);
         }
     };
-
-    // Tambahkan useEffect untuk handle auth state change
-    useEffect(() => {
-        const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-            if (event === 'SIGNED_IN' && session) {
-                // Simpan data user
-                localStorage.setItem('token', session.access_token);
-                localStorage.setItem('userRole', session.user.user_metadata.role || 'user');
-                
-                // Redirect ke dashboard
-                navigate('/dashboard');
-            }
-        });
-
-        return () => {
-            authListener.subscription.unsubscribe();
-        };
-    }, [navigate]);
-
-
     return (
         <div className="min-h-screen flex items-center justify-center">
             <div className="w-full max-w-md">
