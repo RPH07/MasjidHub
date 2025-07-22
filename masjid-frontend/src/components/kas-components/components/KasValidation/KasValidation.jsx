@@ -102,7 +102,7 @@ const KasValidation = ({
   if (pendingData.length === 0) {
     return (
       <div className="text-center py-8">
-        <div className="text-gray-500 text-lg mb-2">✅ Tidak ada transaksi yang perlu divalidasi</div>
+        <div className="text-gray-500 text-lg mb-2"> Tidak ada transaksi yang perlu divalidasi</div>
         <div className="text-gray-400">Semua pembayaran sudah diproses</div>
       </div>
     );
@@ -153,7 +153,7 @@ const KasValidation = ({
                   </p>
                 </div>
 
-                {/* ✅ KODE UNIK - MOBILE RESPONSIVE */}
+                {/*  KODE UNIK - MOBILE RESPONSIVE */}
                 {transaction.kode_unik && (
                   <div>
                     <p className="text-xs sm:text-sm text-gray-600">Kode Unik</p>
@@ -163,7 +163,7 @@ const KasValidation = ({
                   </div>
                 )}
 
-                {/* ✅ TOTAL BAYAR - MOBILE RESPONSIVE */}
+                {/*  TOTAL BAYAR - MOBILE RESPONSIVE */}
                 {(transaction.total_bayar || transaction.total_transfer) && (
                   <div>
                     <p className="text-xs sm:text-sm text-gray-600">
@@ -175,7 +175,7 @@ const KasValidation = ({
                   </div>
                 )}
 
-                {/* ✅ JENIS ZAKAT - MOBILE RESPONSIVE */}
+                {/*  JENIS ZAKAT - MOBILE RESPONSIVE */}
                 {transaction.type === 'zakat' && transaction.jenis_zakat && (
                   <div>
                     <p className="text-xs sm:text-sm text-gray-600">Jenis Zakat</p>
@@ -183,13 +183,13 @@ const KasValidation = ({
                   </div>
                 )}
 
-                {/* ✅ METODE PEMBAYARAN - MOBILE RESPONSIVE */}
+                {/*  METODE PEMBAYARAN - MOBILE RESPONSIVE */}
                 <div>
                   <p className="text-xs sm:text-sm text-gray-600">Metode Pembayaran</p>
                   <p className="font-medium capitalize text-sm sm:text-base">{transaction.metode_pembayaran?.replace('_', ' ')}</p>
                 </div>
 
-                {/* ✅ EMAIL - MOBILE RESPONSIVE */}
+                {/*  EMAIL - MOBILE RESPONSIVE */}
                 {transaction.email && (
                   <div className="col-span-full sm:col-span-1">
                     <p className="text-xs sm:text-sm text-gray-600">Email</p>
@@ -197,7 +197,7 @@ const KasValidation = ({
                   </div>
                 )}
 
-                {/* ✅ NO TELEPON - MOBILE RESPONSIVE */}
+                {/*  NO TELEPON - MOBILE RESPONSIVE */}
                 {transaction.no_telepon && (
                   <div className="col-span-full sm:col-span-1">
                     <p className="text-xs sm:text-sm text-gray-600">No. Telepon</p>
@@ -205,7 +205,7 @@ const KasValidation = ({
                   </div>
                 )}
 
-                {/* ✅ KATEGORI INFAQ - MOBILE RESPONSIVE */}
+                {/*  KATEGORI INFAQ - MOBILE RESPONSIVE */}
                 {transaction.type === 'infaq' && transaction.kategori_infaq && (
                   <div>
                     <p className="text-xs sm:text-sm text-gray-600">Kategori</p>
@@ -213,7 +213,7 @@ const KasValidation = ({
                   </div>
                 )}
 
-                {/* ✅ PROGRAM DONASI - MOBILE RESPONSIVE */}
+                {/*  PROGRAM DONASI - MOBILE RESPONSIVE */}
                 {transaction.type === 'donasi' && transaction.nama_barang && (
                   <div>
                     <p className="text-xs sm:text-sm text-gray-600">Program Donasi</p>
@@ -221,7 +221,7 @@ const KasValidation = ({
                   </div>
                 )}
 
-                {/* ✅ KETERANGAN - MOBILE RESPONSIVE */}
+                {/*  KETERANGAN - MOBILE RESPONSIVE */}
                 {transaction.keterangan && (
                   <div className="col-span-full">
                     <p className="text-xs sm:text-sm text-gray-600">Keterangan</p>
@@ -229,7 +229,7 @@ const KasValidation = ({
                   </div>
                 )}
 
-                {/* ✅ KHUSUS ZAKAT: Breakdown Detail - MOBILE RESPONSIVE */}
+                {/*  KHUSUS ZAKAT: Breakdown Detail - MOBILE RESPONSIVE */}
                 {transaction.type === 'zakat' && transaction.kode_unik && (
                   <div className="col-span-full">
                     <div className="bg-green-50 border border-green-200 rounded-lg p-3">
@@ -255,7 +255,7 @@ const KasValidation = ({
                   </div>
                 )}
 
-                {/* ✅ KHUSUS ZAKAT FITRAH: Jumlah Jiwa */}
+                {/*  KHUSUS ZAKAT FITRAH: Jumlah Jiwa */}
                 {transaction.type === 'zakat' && transaction.jenis_zakat === 'fitrah' && transaction.jumlah_jiwa && (
                   <div className="col-span-full">
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
@@ -267,7 +267,7 @@ const KasValidation = ({
                   </div>
                 )}
 
-                {/* ✅ KHUSUS ZAKAT MAAL: Total Harta */}
+                {/*  KHUSUS ZAKAT MAAL: Total Harta */}
                 {transaction.type === 'zakat' && transaction.jenis_zakat === 'maal' && transaction.total_harta && (
                   <div className="col-span-full">
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
@@ -279,7 +279,7 @@ const KasValidation = ({
                   </div>
                 )}
 
-                {/* ✅ KHUSUS ZAKAT PROFESI: Gaji Kotor */}
+                {/*  KHUSUS ZAKAT PROFESI: Gaji Kotor */}
                 {transaction.type === 'zakat' && transaction.jenis_zakat === 'profesi' && transaction.gaji_kotor && (
                   <div className="col-span-full">
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
@@ -291,7 +291,7 @@ const KasValidation = ({
                   </div>
                 )}
 
-                {/* ✅ KHUSUS INFAQ: Detail Breakdown - MOBILE RESPONSIVE */}
+                {/*  KHUSUS INFAQ: Detail Breakdown - MOBILE RESPONSIVE */}
                 {transaction.type === 'infaq' && transaction.kode_unik && (
                   <div className="col-span-full">
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
@@ -317,8 +317,8 @@ const KasValidation = ({
                   </div>
                 )}
 
-                {/* ✅ KHUSUS DONASI: Detail Breakdown - MOBILE RESPONSIVE */}
-                {transaction.type === 'donasi' && transaction.kode_unik && (
+                
+                {/* {transaction.type === 'donasi' && transaction.kode_unik && (
                   <div className="col-span-full">
                     <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
                       <p className="text-sm font-medium text-purple-800 mb-3">🎁 Detail Donasi:</p>
@@ -341,10 +341,10 @@ const KasValidation = ({
                       </div>
                     </div>
                   </div>
-                )}
+                )} */}
               </div>
 
-              {/* ✅ BUKTI TRANSFER - MOBILE RESPONSIVE */}
+              {/*BUKTI TRANSFER - MOBILE RESPONSIVE */}
               {transaction.bukti_transfer && (
                 <div className="mb-4">
                   <button
@@ -357,13 +357,13 @@ const KasValidation = ({
               )}
             </div>
 
-            {/* ✅ ACTION BUTTONS - MOBILE RESPONSIVE */}
+            {/*  ACTION BUTTONS - MOBILE RESPONSIVE */}
             <div className="flex flex-col sm:flex-row gap-2 mt-4 sm:mt-0 sm:ml-4 w-full sm:w-auto">
               <button
                 onClick={() => handleApprove(transaction)}
                 className="px-3 py-2 sm:px-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-1 text-sm sm:text-base"
               >
-                ✅ <span className="hidden sm:inline">Approve</span><span className="sm:hidden">OK</span>
+                 <span className="hidden sm:inline">Approve</span><span className="sm:hidden">OK</span>
               </button>
               <button
                 onClick={() => handleRejectClick(transaction)}
@@ -376,7 +376,7 @@ const KasValidation = ({
         </div>
       ))}
 
-      {/* ✅ REJECT MODAL - MOBILE RESPONSIVE */}
+      {/*  REJECT MODAL - MOBILE RESPONSIVE */}
       {rejectModal.isOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-md">
