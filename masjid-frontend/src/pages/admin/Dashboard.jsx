@@ -57,7 +57,7 @@ const Dashboard = () => {
           totalKas: summaryData?.totalSaldo || 0,
           totalKegiatan: kegiatanData?.length || 0,
           // Mengambil total zakat dari ringkasan kas bulan ini
-          totalZakat: summaryData?.pemasukanKategori?.zakat_mal || 0 + summaryData?.pemasukanKategori?.zakat_fitrah || 0,
+          totalZakat: summaryData?.pemasukanKategori?.zakat || 0,
           totalAnggota: userData?.length || 0,
         });
 
