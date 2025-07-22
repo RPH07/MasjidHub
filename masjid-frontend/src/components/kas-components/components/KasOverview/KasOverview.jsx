@@ -3,20 +3,34 @@ import axios from 'axios';
 import { formatCurrency } from '../../utils/formatters';
 import PercentageBadge from '../shared/PercentageBadge';
 
-const KasOverview = () => {
+const KasOverview = ({selectedPeriod = 'bulan-ini', startDate, endDate}) => {
   const [summary, setSummary] = useState(null);
 
 useEffect(() => {
     const fetchSummary = async () => {
       try {
-        const res = await axios.get('http://localhost:5000/api/kas/summary');
+        let url = 'http://localhost:5000/api/kas/summary';
+        const params = new URLSearchParams();
+
+        if (startDate && endDate) {
+          params.append('startDate', startDate);
+          params.append('endDate', endDate);
+        } else {
+          params.append('period', selectedPeriod);
+        }
+
+        if (params.toString()) {
+          url += '?' + params.toString();
+        }
+        
+        const res = await axios.get(url);
         setSummary(res.data.data);
       } catch (error) {
         console.error('Error fetching summary:', error);
       }
     };
     fetchSummary();
-  }, []);
+  }, [selectedPeriod, startDate, endDate]);
 
   const safePercentageChanges = summary?.percentageChanges || {
     saldo: 0,
@@ -24,7 +38,6 @@ useEffect(() => {
     pengeluaran: 0,
   };
 
-  //  FUNGSI YANG SUDAH DIPERBAIKI
   const groupByMainKategori = (data) => {
     const result = {};
     Object.entries(data || {}).forEach(([kategori, total]) => {
@@ -42,8 +55,6 @@ useEffect(() => {
 
   console.log("🔍 KasOverview props:", { summary });
 
-
-  // ✅ ADD: Check if summary exists
   if (!summary) {
     console.log("❌ No summary data available");
     return (
@@ -55,7 +66,6 @@ useEffect(() => {
 
   // console.log("✅ Rendering KasOverview with summary:", summary);
 
-  //  HANYA UNTUK PENGELUARAN
   const pengeluaran = groupByMainKategori(summary.pengeluaranKategori);
 
   return (
