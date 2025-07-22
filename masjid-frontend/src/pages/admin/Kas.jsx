@@ -48,7 +48,7 @@ const handleOpenBukti = (buktiTransfer, transactionInfo = null) => {
     return;
   }
 
-  console.log('Opening bukti with info:', transactionInfo);
+  // console.log('Opening bukti with info:', transactionInfo);
 
   let folderPath = '';
   
@@ -142,6 +142,7 @@ const handleOpenBukti = (buktiTransfer, transactionInfo = null) => {
             summary={kasDataHook.summary}
             periodLabel={getPeriodLabel()}
             kategoriPemasukan={kategoriPemasukan}
+            selectedPeriod={selectedPeriod}
           />
         )}
 
