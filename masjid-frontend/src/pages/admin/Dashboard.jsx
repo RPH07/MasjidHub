@@ -41,8 +41,17 @@ const Dashboard = () => {
         ]);
 
         const summaryData = summaryRes.data.data;
-        const kegiatanData = kegiatanRes.data;
+        const kegiatanResponse = kegiatanRes.data;
         const userData = userRes.data;
+
+        let kegiatanData = [];
+        if(Array.isArray(kegiatanResponse)){
+          kegiatanData = kegiatanResponse;
+        } else if (kegiatanResponse && Array.isArray(kegiatanResponse.data)){
+          kegiatanData = kegiatanResponse.data;
+        } else{
+          console.warn('Data kegiatan tidak dalam format array:', kegiatanResponse)
+        }
 
         setStats({
           totalKas: summaryData?.totalSaldo || 0,
@@ -52,7 +61,7 @@ const Dashboard = () => {
           totalAnggota: userData?.length || 0,
         });
 
-        // Mengambil 5 kegiatan terbaru (API sudah mengurutkan dari yang terbaru)
+        // Mengambil 5 kegiatan terbaru
         setRecentActivities(kegiatanData.slice(0, 5));
         
       } catch (err) {
