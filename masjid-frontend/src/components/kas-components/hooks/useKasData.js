@@ -9,6 +9,7 @@ export const useKasData = (selectedPeriod) => {
     zakatData: [],
     infaqData: [],
     donasiData: [],
+    customDateRange: null, // Pindahkan ke state utama
     summary: {
       totalSaldo: 0,
       totalPemasukan: 0,
@@ -27,6 +28,13 @@ export const useKasData = (selectedPeriod) => {
       percentageChanges: null,
     },
   });
+
+  const setCustomDateRange = useCallback((startDate, endDate) => {
+    setState(prev => ({
+      ...prev,
+      customDateRange: { startDate, endDate }
+    }));
+  }, []);
 
   const getPreviousPeriod = useCallback((currentPeriod) => {
     const today = new Date();
@@ -82,8 +90,8 @@ export const useKasData = (selectedPeriod) => {
         return null;
     }
   }, []);
+
   const calculatePercentageChange = useCallback((current, previous) => {
-    // Handle edge cases to prevent NaN
     if (
       isNaN(current) ||
       isNaN(previous) ||
@@ -107,7 +115,6 @@ export const useKasData = (selectedPeriod) => {
 
   const fetchKasData = useCallback(async () => {
     setState((prev) => ({ ...prev, loading: true }));
-    // console.log("Fetching kas data for period:", selectedPeriod);
 
     try {
       const token = localStorage.getItem("token");
@@ -115,25 +122,25 @@ export const useKasData = (selectedPeriod) => {
         headers: { Authorization: `Bearer ${token}` },
       };
 
-      // const [summaryResponse, kasManualResponse, zakatResponse, infaqResponse, lelangResponse] = await Promise.all([
-      //   axios.get(`http://localhost:5000/api/kas/summary?period=${selectedPeriod}`, config),
-      //   axios.get(`http://localhost:5000/api/kas/manual?period=${selectedPeriod}`, config),
-      //   axios.get(`http://localhost:5000/api/kas/zakat?period=${selectedPeriod}`, config),
-      //   axios.get(`http://localhost:5000/api/kas/infaq?period=${selectedPeriod}`, config),
-      //   axios.get(`http://localhost:5000/api/kas/lelang?period=${selectedPeriod}`, config)
-      // ]);
-      const [summaryResponse, kasResponse] = await Promise.all([
-        axios.get(
-          `http://localhost:5000/api/kas/summary?period=${selectedPeriod}`,
-          config
-        ),
-        axios.get(
-          `http://localhost:5000/api/kas?period=${selectedPeriod}`,
-          config
-        ),
-      ]);
+      // Build API URLs
+      let summaryApiUrl = `http://localhost:5000/api/kas/summary`;
+      let kasApiUrl = `http://localhost:5000/api/kas`;
 
-      // console.log("Summary Response:", summaryResponse.data); // Debug log
+      if (state.customDateRange) {
+        const params = `?startDate=${state.customDateRange.startDate}&endDate=${state.customDateRange.endDate}`;
+        summaryApiUrl += params;
+        kasApiUrl += params;
+      } else {
+        const params = `?period=${selectedPeriod}`;
+        summaryApiUrl += params;
+        kasApiUrl += params;
+      }
+
+      // Fetch data dari kedua endpoint
+      const [summaryResponse, kasResponse] = await Promise.all([
+        axios.get(summaryApiUrl, config),
+        axios.get(kasApiUrl, config)
+      ]);
 
       // Add null checks untuk response structure
       const currentSummary = summaryResponse.data?.data || {};
@@ -151,7 +158,6 @@ export const useKasData = (selectedPeriod) => {
         totalPengeluaran: 0,
       };
 
-      // console.log("Previous Period:", previousPeriod); // Debug log
       if (previousPeriod) {
         try {
           const prevSummaryResponse = await axios.get(
@@ -164,18 +170,6 @@ export const useKasData = (selectedPeriod) => {
           console.log("Could not fetch previous period data, using defaults");
         }
       }
-
-      // console.log("Current values:", {
-      //   saldo: currentSummary.saldoBersih || currentSummary.totalSaldo,
-      //   pemasukan: currentSummary.totalPemasukan,
-      //   pengeluaran: currentSummary.totalPengeluaran,
-      // });
-
-      // console.log("Previous values:", {
-      //   saldo: previousSummary.saldoBersih || previousSummary.totalSaldo,
-      //   pemasukan: previousSummary.totalPemasukan,
-      //   pengeluaran: previousSummary.totalPengeluaran,
-      // });
 
       const percentageChanges = {
         saldo: calculatePercentageChange(
@@ -191,7 +185,7 @@ export const useKasData = (selectedPeriod) => {
           previousSummary.totalPengeluaran
         ),
       };
-      // console.log("Calculated Percentage Changes:", percentageChanges); // Debug log
+
       // Add null checks untuk Object.keys() calls
       const pemasukanKategori = currentSummary.pemasukanKategori || {};
       const pengeluaranKategori = currentSummary.pengeluaranKategori || {};
@@ -209,7 +203,6 @@ export const useKasData = (selectedPeriod) => {
           totalPengeluaran: currentSummary.totalPengeluaran || 0,
           percentageChanges,
           pemasukanKategori: {
-            // Gunakan breakdown dari response baru
             zakat: breakdown.zakat || 0,
             infaq: breakdown.infaq || 0,
             donasi: breakdown.kasManual || 0,
@@ -229,7 +222,6 @@ export const useKasData = (selectedPeriod) => {
       setState((prev) => ({
         ...prev,
         loading: false,
-        // Set default values on error
         summary: {
           totalSaldo: 0,
           totalPemasukan: 0,
@@ -250,20 +242,9 @@ export const useKasData = (selectedPeriod) => {
     selectedPeriod,
     getPreviousPeriod,
     calculatePercentageChange,
+    state.customDateRange,
     extractManualKategori,
   ]);
-
-  // Also fix extractManualKategori function
-  // const extractManualKategori = useCallback((pemasukanKategori) => {
-  //   const manualKategori = {};
-  //   // Add null check here too
-  //   if (pemasukanKategori && typeof pemasukanKategori === 'object') {
-  //     Object.keys(kategoriPemasukan).forEach(key => {
-  //       manualKategori[key] = pemasukanKategori[key] || 0;
-  //     });
-  //   }
-  //   return manualKategori;
-  // }, []);
 
   useEffect(() => {
     fetchKasData();
@@ -272,6 +253,7 @@ export const useKasData = (selectedPeriod) => {
   return {
     ...state,
     refreshData: fetchKasData,
+    setCustomDateRange, // Export function ini agar bisa digunakan
     kategoriPemasukan,
   };
 };
