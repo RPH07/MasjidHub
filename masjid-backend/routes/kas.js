@@ -25,16 +25,18 @@ const getPeriodFilter = (period) => {
       
     case 'minggu-ini':
       const dayOfWeek = today.getDay();
-      startDate = new Date(year, month, date - dayOfWeek);
-      endDate = new Date(year, month, date - dayOfWeek + 7);
+      const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Senin = 0
+      startDate = new Date(year, month, date - daysFromMonday);
+      endDate = new Date(year, month, date - daysFromMonday + 7);
       break;
       
     case 'minggu-lalu':
-      const lastWeekStart = new Date(year, month, date - today.getDay() - 7);
-      startDate = lastWeekStart;
-      endDate = new Date(year, month, date - today.getDay());
+      const lastWeekDay = today.getDay();
+      const daysFromLastMonday = lastWeekDay === 0 ? 6 : lastWeekDay - 1;
+      startDate = new Date(year, month, date - daysFromLastMonday - 7);
+      endDate = new Date(year, month, date - daysFromLastMonday);
       break;
-      
+    
     case 'bulan-ini':
       startDate = new Date(year, month, 1);
       endDate = new Date(year, month + 1, 1);
