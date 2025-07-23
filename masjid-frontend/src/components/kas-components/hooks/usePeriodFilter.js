@@ -5,16 +5,26 @@ export const usePeriodFilter = (initialPeriod = 'bulan-ini') => {
 
   const periodLabels = {
     'hari-ini': 'Hari Ini',
+    'kemarin': 'Kemarin',
     'minggu-ini': 'Minggu Ini',
+    'minggu-lalu': 'Minggu Lalu',
     'bulan-ini': 'Bulan Ini',
-    'tahun-ini': 'Tahun Ini'
+    'bulan-lalu': 'Bulan Lalu',
+    'tahun-ini': 'Tahun Ini',
+    'tahun-lalu': 'Tahun Lalu',
+    'custom': 'Periode Kustom'
   };
 
   const periodTexts = {
-    'hari-ini': 'day',
-    'minggu-ini': 'week',
-    'bulan-ini': 'month',
-    'tahun-ini': 'year'
+    'hari-ini': 'today',
+    'kemarin': 'yesterday',
+    'minggu-ini': 'this week',
+    'minggu-lalu': 'last week',
+    'bulan-ini': 'this month',
+    'bulan-lalu': 'last month',
+    'tahun-ini': 'this year',
+    'tahun-lalu': 'last year',
+    'custom': 'custom period'
   };
 
   const getPeriodLabel = () => periodLabels[selectedPeriod] || selectedPeriod;
