@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { formatCurrency } from '../../utils/formatters';
 import axios from 'axios';
+import Swal from 'sweetalert2';
 
 const formatKategori = (kategoriStr) => {
   if (!kategoriStr) return "Umum";
@@ -18,7 +19,7 @@ const KasRiwayat = ({
   onOpenBukti = [], 
   currentPeriod 
 }) => {
-  // ✅ STATE UNTUK SORTING
+  // STATE UNTUK SORTING
   const [sortConfig, setSortConfig] = useState({
     key: 'tanggal',
     direction: 'desc' // desc = terbaru, asc = terlama
@@ -29,7 +30,7 @@ const KasRiwayat = ({
     excel: false
   });
 
-  // ✅ FUNGSI SORTING
+  // FUNGSI SORTING
   const handleSort = (key) => {
     let direction = 'desc';
     if (sortConfig.key === key && sortConfig.direction === 'desc') {
@@ -38,7 +39,7 @@ const KasRiwayat = ({
     setSortConfig({ key, direction });
   };
 
-  // ✅ ICON UNTUK SORTING
+  // ICON UNTUK SORTING
   const SortIcon = ({ column }) => {
     if (sortConfig.key !== column) {
       return (
@@ -62,6 +63,52 @@ const KasRiwayat = ({
       );
     }
   };
+  // handle nama file
+  const generateFileName = (period, format) => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.toLocaleDateString('id-ID', { month: 'long' });
+    
+    let fileName = 'riwayat-transaksi-';
+    
+    switch (period) {
+      case 'hari-ini':
+        { const todayStr = today.toLocaleDateString('id-ID').replace(/\//g, '-');
+        fileName += `hari-ini-${todayStr}`;
+        break; }
+      case 'kemarin':
+        { const yesterday = new Date(today);
+        yesterday.setDate(today.getDate() - 1);
+        const yesterdayStr = yesterday.toLocaleDateString('id-ID').replace(/\//g, '-');
+        fileName += `kemarin-${yesterdayStr}`;
+        break; }
+      case 'minggu-ini':
+        fileName += `minggu-ini-${month.toLowerCase()}-${year}`;
+        break;
+      case 'minggu-lalu':
+        fileName += `minggu-lalu-${month.toLowerCase()}-${year}`;
+        break;
+      case 'bulan-ini':
+        fileName += `${month.toLowerCase()}-${year}`;
+        break;
+      case 'bulan-lalu':
+        { const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const lastMonthName = lastMonth.toLocaleDateString('id-ID', { month: 'long' });
+        const lastMonthYear = lastMonth.getFullYear();
+        fileName += `${lastMonthName.toLowerCase()}-${lastMonthYear}`;
+        break; }
+      case 'tahun-ini':
+        fileName += `tahun-${year}`;
+        break;
+      case 'tahun-lalu':
+        fileName += `tahun-${year - 1}`;
+        break;
+      default:
+        fileName += `${month.toLowerCase()}-${year}`;
+    }
+    
+    return fileName + `.${format === 'csv' ? 'csv' : 'xlsx'}`;
+  };
 
   // export function
   const handleExport = async (format = 'csv') => {
@@ -70,7 +117,18 @@ const KasRiwayat = ({
       const token = localStorage.getItem('token');
       console.log(`🚀 Starting ${format} export...`);
 
-      const response = await axios.get('https://api.masjidnurulilmi.my.id/api/kas/history/export', {
+      const loadingToast = Swal.fire({
+        title: `Memproses Export ${format.toUpperCase()}...`,
+        html: '<div class="flex items-center justify-center"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div><span>Mohon tunggu sebentar</span></div>',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+
+      const response = await axios.get('http://localhost:5000/api/kas/history/export', {
         params: {
           period: currentPeriod,
           type: 'all',
@@ -89,24 +147,79 @@ const KasRiwayat = ({
       const blob = new Blob([response.data],{
         type: format === 'csv' ? 'text/csv' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       });
-
+      const fileName = generateFileName(currentPeriod, format);
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = format === 'csv'
-      ? `riwayat-transaksi-${Date.now()}.csv`
-      : `riwayat-transaksi-${Date.now()}.xlsx`;
+      link.download = fileName;
 
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
 
-      console.log(`✅ ${format} export completed!`);
-      alert(`Export ${format.toUpperCase()} berhasil! File telah diunduh`);
+      loadingToast.close();
+
+      console.log(`✅ ${format} export completed with filename: ${fileName}`);
+      await Swal.fire({
+        icon: 'success',
+        title: 'Export Berhasil!',
+        html: `
+          <div class="text-left">
+            <p class="mb-2">File <strong>${format.toUpperCase()}</strong> berhasil diunduh:</p>
+            <p class="text-sm text-gray-600 bg-gray-100 p-2 rounded font-mono">${fileName}</p>
+          </div>
+        `,
+        confirmButtonText: 'OK',
+        confirmButtonColor: '#10B981',
+        timer: 5000,
+        timerProgressBar: true,
+        showClass: {
+          popup: 'animate__animated animate__fadeInDown'
+        },
+        hideClass: {
+          popup: 'animate__animated animate__fadeOutUp'
+        }
+      });
     } catch (error) {
       console.error('❌ Error exporting data:', error);
-      alert('Gagal export data: ' + (error.response?.data?.message || error.message));
+      Swal.close();
+      
+      let errorTitle = 'Export Gagal';
+      let errorMessage = 'Terjadi kesalahan saat export data';
+      
+      if (error.response) {
+        if (error.response.status === 404) {
+          errorTitle = 'Endpoint Tidak Ditemukan';
+          errorMessage = 'Fitur export belum tersedia. Hubungi administrator.';
+        } else if (error.response.status === 401) {
+          errorTitle = 'Akses Ditolak';
+          errorMessage = 'Sesi Anda telah berakhir. Silakan login ulang.';
+        } else if (error.response.status === 500) {
+          errorTitle = 'Server Error';
+          errorMessage = 'Terjadi kesalahan pada server. Coba lagi dalam beberapa saat.';
+        } else {
+          errorMessage = error.response.data?.message || `Error ${error.response.status}: ${error.response.statusText}`;
+        }
+      } else if (error.request) {
+        errorTitle = 'Koneksi Bermasalah';
+        errorMessage = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
+      } else {
+        errorMessage = error.message;
+      }
+
+      // Error alert 
+      await Swal.fire({
+        icon: 'error',
+        title: errorTitle,
+        text: errorMessage,
+        confirmButtonText: 'Tutup',
+        confirmButtonColor: '#EF4444',
+        footer: '<p class="text-xs text-gray-500">Jika masalah berlanjut, hubungi support</p>',
+        showClass: {
+          popup: 'animate__animated animate__shakeX'
+        }
+      });
     } finally{
       setExportLoading(prev => ({...prev, [format]: false}));
     }
@@ -186,7 +299,7 @@ const KasRiwayat = ({
     return allData;
   };
 
-  // ✅ FUNGSI UNTUK SORT DATA GABUNGAN
+  // FUNGSI UNTUK SORT DATA GABUNGAN
   const sortData = (data) => {
     if (!sortConfig.key) return data;
 
@@ -232,7 +345,7 @@ const KasRiwayat = ({
     });
   };
 
-  // ✅ GET ALL DATA DAN SORT
+  // GET ALL DATA DAN SORT
   const allData = normalizeAllData();
   const sortedAllTransactions = sortData(allData);
 
@@ -306,7 +419,7 @@ const KasRiwayat = ({
         </div>
       </div>
 
-      {/* ✅ INFO SORTING */}
+      {/* INFO SORTING */}
       {sortedAllTransactions.length > 0 && (
         <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
           <div className="flex items-center gap-2 text-sm text-blue-700">
@@ -336,7 +449,7 @@ const KasRiwayat = ({
           <table className="w-full min-w-[900px]">
             <thead className="bg-gray-50">
               <tr>
-                {/* ✅ SORTABLE HEADERS */}
+                {/* SORTABLE HEADERS */}
                 <th 
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort('tanggal')}
@@ -396,7 +509,7 @@ const KasRiwayat = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {/* ✅ RENDER DATA YANG SUDAH DI-SORT */}
+              {/* RENDER DATA YANG SUDAH DI-SORT */}
               {sortedAllTransactions.map((item, index) => {
                 return (
                   <tr key={`${item.source}-${item.id}-${index}`}>
@@ -479,7 +592,7 @@ const KasRiwayat = ({
       {/* Mobile View */}
       {sortedAllTransactions.length > 0 && (
       <div className="block sm:hidden space-y-4">
-        {/* ✅ Mobile sorting controls */}
+        {/*  Mobile sorting controls */}
         <div className="bg-white p-3 rounded-lg border">
           <div className="flex justify-between items-center">
             <span className="text-sm font-medium text-gray-700">Urutkan berdasarkan:</span>
@@ -503,7 +616,7 @@ const KasRiwayat = ({
           </div>
         </div>
 
-        {/* ✅ Mobile cards dengan data yang sudah di-sort */}
+        {/*  Mobile cards */}
         {sortedAllTransactions.map((item, index) => (
           <div key={`mobile-${item.source}-${item.id}-${index}`} className="bg-white border rounded-lg p-4 shadow-sm">
             <div className="flex justify-between items-start mb-2">
