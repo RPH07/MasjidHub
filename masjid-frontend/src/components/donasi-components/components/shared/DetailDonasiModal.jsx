@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react'
 import { formatRupiah } from '../../utils/formatters'
 import { formatKodeUnik, generateKodeUnikDonasi } from '.'
 import { useAuth } from '../../../../hooks/useAuth'
+import { API_ENDPOINTS, buildUploadUrl } from '../../../../config/api.config'
 
 const DetailDonasiModal = ({ program, onSubmit, onClose, loading = false }) => {
     const { user } =useAuth();
@@ -399,6 +400,11 @@ const DetailDonasiModal = ({ program, onSubmit, onClose, loading = false }) => {
         }
     }
 
+    const getImageUrl = (imagePath) => {
+        if (!imagePath) return 'https://via.placeholder.com/300x200?text=No+Image';
+        return buildUploadUrl(API_ENDPOINTS.UPLOADS.PROGRAM_IMAGES, imagePath);
+    };
+
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
@@ -418,7 +424,7 @@ const DetailDonasiModal = ({ program, onSubmit, onClose, loading = false }) => {
                         
                         {program.foto_barang && (
                             <img
-                                src={`http://localhost:5000/images/donasi-program/${program.foto_barang}`}
+                                src={getImageUrl(program.foto_barang)}
                                 alt={program.nama_barang}
                                 className="w-full h-40 object-cover rounded-lg mb-4"
                                 onError={(e) => {

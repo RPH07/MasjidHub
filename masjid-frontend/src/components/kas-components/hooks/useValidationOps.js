@@ -1,104 +1,85 @@
 import { useState } from 'react';
-import axios from 'axios';
+import apiService from '../../../services/apiServices'; 
+import { API_ENDPOINTS } from '../../../config/api.config'; 
+import Swal from 'sweetalert2';
 
-export const useValidationOps = (refreshCallback) => {
+const useValidationOps = () => {
   const [loading, setLoading] = useState(false);
 
-  const approveTransaction = async (type, id) => {
+  const approveTransaction = async (type, id, additionalData = {}) => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
       
-      // Tentukan endpoint berdasarkan tipe
-      let endpoint;
-      switch (type) {
-        case 'zakat':
-          endpoint = `http://localhost:5000/api/zakat/${id}/validate`;
-          break;
-        case 'infaq':
-          endpoint = `http://localhost:5000/api/infaq/${id}/validate`;
-          break;
-        case 'donasi':
-          endpoint = `http://localhost:5000/api/donasi/${id}/validate`;
-          break;
-        default:
-          throw new Error('Tipe transaksi tidak valid');
-      }
-      
-      const response = await axios.put(
-        endpoint,
-        { action: 'approve' },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const response = await apiService.post(API_ENDPOINTS.KAS.APPROVE, {
+        type,
+        id,
+        ...additionalData
+      });
 
-      if (response.data.success) {
-        if (refreshCallback) refreshCallback();
-        return { success: true, message: response.data.message };
-      }
-      
-      return { success: false, message: response.data.message };
+      await Swal.fire({
+        icon: 'success',
+        title: 'Berhasil!',
+        text: 'Transaksi berhasil disetujui',
+        timer: 2000,
+        showConfirmButton: false
+      });
+
+      return { success: true, data: response.data };
     } catch (error) {
-      console.error('Error approving transaction:', error);
-      return { 
-        success: false, 
-        message: error.response?.data?.message || 'Terjadi kesalahan saat approve' 
-      };
+      console.error('❌ Error approving transaction:', error);
+      
+      await Swal.fire({
+        icon: 'error',
+        title: 'Gagal!',
+        text: error.response?.data?.message || 'Gagal menyetujui transaksi',
+        confirmButtonColor: '#EF4444'
+      });
+
+      return { success: false, error: error.message };
     } finally {
       setLoading(false);
     }
   };
 
-  const rejectTransaction = async (type, id, reason) => {
+  const rejectTransaction = async (type, id, reason = '') => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
       
-      // Tentukan endpoint berdasarkan tipe
-      let endpoint;
-      switch (type) {
-        case 'zakat':
-          endpoint = `http://localhost:5000/api/zakat/${id}/validate`;
-          break;
-        case 'infaq':
-          endpoint = `http://localhost:5000/api/infaq/${id}/validate`;
-          break;
-        case 'donasi':
-          endpoint = `http://localhost:5000/api/donasi/${id}/validate`;
-          break;
-        default:
-          throw new Error('Tipe transaksi tidak valid');
-      }
-      
-      const response = await axios.put(
-        endpoint,
-        { 
-          action: 'reject', 
-          reason: reason || 'Tidak ada alasan yang diberikan' 
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const response = await apiService.post(API_ENDPOINTS.KAS.REJECT, {
+        type,
+        id,
+        reason
+      });
 
-      if (response.data.success) {
-        if (refreshCallback) refreshCallback();
-        return { success: true, message: response.data.message };
-      }
-      
-      return { success: false, message: response.data.message };
+      await Swal.fire({
+        icon: 'success',
+        title: 'Berhasil!',
+        text: 'Transaksi berhasil ditolak',
+        timer: 2000,
+        showConfirmButton: false
+      });
+
+      return { success: true, data: response.data };
     } catch (error) {
-      console.error('Error rejecting transaction:', error);
-      return { 
-        success: false, 
-        message: error.response?.data?.message || 'Terjadi kesalahan saat reject' 
-      };
+      console.error('❌ Error rejecting transaction:', error);
+      
+      await Swal.fire({
+        icon: 'error',
+        title: 'Gagal!',
+        text: error.response?.data?.message || 'Gagal menolak transaksi',
+        confirmButtonColor: '#EF4444'
+      });
+
+      return { success: false, error: error.message };
     } finally {
       setLoading(false);
     }
   };
 
   return {
+    loading,
     approveTransaction,
-    rejectTransaction,
-    loading
+    rejectTransaction
   };
 };
 

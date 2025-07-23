@@ -1,27 +1,37 @@
-/* eslint-disable no-undef */
 import axios from 'axios';
+import { API_CONFIG } from './api.config';
 
 const axiosInstance = axios.create({
-  // eslint-disable-next-line no-undef
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000',
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json'
-  }
+  baseURL: API_CONFIG.BASE_URL,
+  timeout: API_CONFIG.TIMEOUT,
+  headers: API_CONFIG.HEADERS
 });
 
-// Global error interceptor
+// Request interceptor
+axiosInstance.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (process.env.NODE_ENV === 'production') {
-      // Remove sensitive info in production
-      delete error.config;
-      delete error.request;
-      delete error.response?.headers;
-      delete error.response?.config;
-    } else {
-      // Log full error in development
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+    }
+    
+    if (import.meta.env.MODE === 'development') {
       console.error('API Error:', error);
     }
     return Promise.reject(error);

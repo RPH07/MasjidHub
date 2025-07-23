@@ -4,7 +4,8 @@ import Navbar from '../components/nav';
 import JadwalSholat from '../components/JadwalSholat';
 import Footer from '../components/footer';
 import { Button } from "@/components/ui/button";
-import axios from 'axios';
+import apiService from '../services/apiServices'; 
+import { API_ENDPOINTS } from '../config/api.config';
 
 const HomePage = () => {
   const [kegiatan, setKegiatan] = useState([]);
@@ -17,7 +18,7 @@ const HomePage = () => {
 
   const [selectedKegiatan, setSelectedKegiatan] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
-
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   const isLoggedIn = () => {
@@ -51,50 +52,51 @@ const HomePage = () => {
   };
 
 useEffect(() => {
+    fetchKegiatan();
+    fetchStats();
+  }, []);
+
   const fetchKegiatan = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/kegiatan');
-      console.log('Response data:', res.data); // Debug: lihat struktur data
+      const response = await apiService.get(API_ENDPOINTS.KEGIATAN.BASE);
       
-      // Validasi apakah res.data adalah array
-      if (Array.isArray(res.data)) {
-        const sortedKegiatan = res.data.sort((a, b) => {
-          return new Date(b.tanggal) - new Date(a.tanggal);
-        });
-        setKegiatan(sortedKegiatan);
-      } else if (res.data && Array.isArray(res.data.data)) {
-        // Jika data ada di dalam property 'data'
-        const sortedKegiatan = res.data.data.sort((a, b) => {
-          return new Date(b.tanggal) - new Date(a.tanggal);
-        });
-        setKegiatan(sortedKegiatan);
-      } else {
-        console.warn('Data kegiatan tidak dalam format array:', res.data);
-        setKegiatan([]); // Set empty array jika bukan array
-      }
-    } catch (err) {
-      console.error('Gagal mengambil data kegiatan:', err);
-      setKegiatan([]); // Set empty array saat error
+      const kegiatanData = response.data?.data || response.data || [];
+      
+      // Ambil 6 kegiatan terbaru untuk homepage
+      const recentKegiatan = Array.isArray(kegiatanData) 
+        ? kegiatanData.slice(0, 6)
+        : [];
+      
+      setKegiatan(recentKegiatan);
+    } catch (error) {
+      console.error('❌ Error fetching kegiatan:', error);
+      setKegiatan([]);
+    } finally {
+      setLoading(false);
     }
   };
 
   const fetchStats = async () => {
     try {
-      // Fetch basic stats - sesuaikan dengan API yang ada
+      const [kasRes, kegiatanRes] = await Promise.all([
+        apiService.get(API_ENDPOINTS.KAS.SUMMARY),
+        apiService.get(API_ENDPOINTS.KEGIATAN.BASE)
+      ]);
+
+      const kasData = kasRes.data?.data || {};
+      const kegiatanData = kegiatanRes.data?.data || kegiatanRes.data || [];
+      
       setStats({
-        totalDonasi: 25000000,
-        totalZakat: 15000000,
-        totalKegiatan: kegiatan.length,
-        totalJamaah: 350
+        totalDonasi: kasData.pemasukanKategori?.donasi || 0,
+        totalZakat: kasData.pemasukanKategori?.zakat || 0,
+        totalKegiatan: Array.isArray(kegiatanData) ? kegiatanData.length : 0,
+        totalJamaah: 150 // Static untuk sekarang
       });
-    } catch (err) {
-      console.error('Gagal mengambil statistik:', err);
+
+    } catch (error) {
+      console.error('❌ Error fetching stats:', error);
     }
   };
-
-  fetchKegiatan();
-  fetchStats();
-}, [kegiatan.length]);
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('id-ID', {
@@ -112,7 +114,7 @@ useEffect(() => {
     <>
       <Navbar />
 
-      {/* ✅ HERO SECTION - Modern with Gradient Overlay */}
+      {/* HERO SECTION */}
       <section
         className="relative bg-cover bg-center text-white py-32 min-h-screen flex items-center"
         style={{
@@ -148,7 +150,7 @@ useEffect(() => {
               </Button>
             </div>
 
-            {/* ✅ QUICK STATS */}
+            {/* QUICK STATS */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-16">
               <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
                 <div className="text-3xl font-bold text-yellow-300">{stats.totalJamaah}+</div>
@@ -178,7 +180,7 @@ useEffect(() => {
         </div>
       </section>
 
-      {/* ✅ TENTANG MASJID - Modern Layout */}
+      {/* TENTANG MASJID */}
       <section className="py-20 px-4 md:px-12 bg-gradient-to-br from-gray-50 to-green-50">
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
@@ -229,7 +231,7 @@ useEffect(() => {
         </div>
       </section>
 
-      {/* ✅ JADWAL SHOLAT - Enhanced */}
+      {/* JADWAL SHOLAT */}
       <section id="jadwal-sholat" className="py-20 px-4 md:px-12 bg-white">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
@@ -242,7 +244,7 @@ useEffect(() => {
         </div>
       </section>
 
-      {/* ✅ KEGIATAN MASJID - Modern Grid */}
+      {/* KEGIATAN MASJID */}
       <section id="kegiatan" className="py-20 px-4 md:px-12 bg-gradient-to-br from-green-50 to-blue-50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
@@ -254,61 +256,97 @@ useEffect(() => {
             </p>
           </div>
 
-          {kegiatan.length > 0 ? (
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+              <p className="text-gray-500 mt-4">Memuat kegiatan...</p>
+            </div>
+          ) : kegiatan.length > 0 ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {kegiatan.slice(0, 6).map((item) => (
-                <div key={item.id} className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2">
-                  {item.foto ? (
-                    <img
-                      src={`http://localhost:5000/uploads/${item.foto}`}
-                      alt={item.nama_kegiatan}
-                      className="w-full h-48 object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-48 bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center">
-                      <span className="text-white text-4xl">🕌</span>
-                    </div>
-                  )}
-                  
+              {kegiatan.map((item) => (
+                <div
+                  key={item.id}
+                  className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 cursor-pointer"
+                  onClick={() => handleDetailKegiatan(item)}
+                >
+                  {/* Image */}
+                  <div className="relative h-48 overflow-hidden">
+                    {item.foto ? (
+                      <img
+                        src={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/uploads/${item.foto}`}
+                        alt={item.nama_kegiatan}
+                        className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center">
+                        <span className="text-white text-4xl">🕌</span>
+                      </div>
+                    )}
+                    {/* Badge */}
+                    {item.kategori_nama && (
+                      <div className="absolute top-3 left-3">
+                        <span className="bg-green-600 text-white px-2 py-1 text-xs rounded-full font-medium">
+                          {item.kategori_nama}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Content */}
                   <div className="p-6">
-                    <h3 className="text-xl font-bold text-gray-800 mb-3 line-clamp-2">
+                    <h3 className="text-xl font-bold text-gray-800 mb-2 line-clamp-2">
                       {item.nama_kegiatan}
                     </h3>
-                    <div className="flex items-center text-sm text-gray-500 mb-3">
-                      <span className="mr-4">📅 {new Date(item.tanggal).toLocaleDateString('id-ID')}</span>
-                      <span>📍 {item.lokasi}</span>
+                    
+                    <div className="flex items-center text-gray-600 mb-2">
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 002 2z" />
+                      </svg>
+                      <span className="text-sm">
+                        {new Date(item.tanggal).toLocaleDateString('id-ID')}
+                      </span>
                     </div>
-                    <p className="text-gray-600 line-clamp-3 mb-4">{item.deskripsi}</p>
-                    <Button 
-                      variant="outline" 
-                      className="w-full border-green-500 text-green-600 hover:bg-green-50"
-                      onClick={() => handleDetailKegiatan(item)}
-                    >
-                      Selengkapnya
-                    </Button>
+
+                    <div className="flex items-center text-gray-600 mb-3">
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      <span className="text-sm">{item.lokasi}</span>
+                    </div>
+
+                    <p className="text-gray-600 text-sm mb-4 line-clamp-3">
+                      {item.deskripsi}
+                    </p>
+
+                    <button className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors">
+                      Lihat Detail
+                    </button>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-center py-12">
-              <div className="text-6xl mb-4">🕌</div>
-              <h3 className="text-xl font-semibold text-gray-600 mb-2">Belum Ada Kegiatan</h3>
-              <p className="text-gray-500">Kegiatan akan segera diumumkan</p>
+            <div className="text-center text-gray-500 py-12">
+              Belum ada kegiatan yang tersedia
             </div>
           )}
 
-          {kegiatan.length > 6 && (
+          {/* View All Button */}
+          {kegiatan.length > 0 && (
             <div className="text-center mt-12">
-              <Button className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 text-lg rounded-full">
-                Lihat Semua Kegiatan →
+              <Button
+                onClick={() => navigate('/dashboard/kegiatan')}
+                className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 text-lg"
+              >
+                Lihat Semua Kegiatan
               </Button>
             </div>
           )}
         </div>
       </section>
 
-      {/* ✅ CALL TO ACTION - Modern Design */}
+      {/* CALL TO ACTION - Modern Design */}
       <section className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 text-white py-20 px-4">
         <div className="max-w-6xl mx-auto text-center">
           <h2 className="text-4xl md:text-5xl font-bold mb-6">

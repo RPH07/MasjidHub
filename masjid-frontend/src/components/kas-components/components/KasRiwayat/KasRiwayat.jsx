@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { formatCurrency } from '../../utils/formatters';
-import axios from 'axios';
+import apiService from '../../../../services/apiServices';
 import Swal from 'sweetalert2';
 
 const formatKategori = (kategoriStr) => {
@@ -128,7 +128,7 @@ const KasRiwayat = ({
         }
       });
 
-      const response = await axios.get('http://localhost:5000/api/kas/history/export', {
+      const response = await apiService.get('/kas/history/export', {
         params: {
           period: currentPeriod,
           type: 'all',

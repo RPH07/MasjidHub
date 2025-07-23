@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../hooks/useAuth';
-import axios from 'axios';
+import { useAuth } from '../../hooks/useAuth'; 
+import apiService from '../../services/apiServices';
+import { API_ENDPOINTS } from '../../config/api.config';
 import {
   LineChart,
   Line,
@@ -25,191 +26,184 @@ const UserDashboard = () => {
     programAktif: 0
   });
 
-  // state for chart data
   const [chartData, setChartData] = useState({
     trenKeuangan: [],
     komposisiDana: []
-  })
+  });
 
   const [selectedDetail, setSelectedDetail] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
-
- const [aktivitasTerbaru, setAktivitasTerbaru] = useState([]);
+  const [aktivitasTerbaru, setAktivitasTerbaru] = useState([]);
   const [loadingAktivitas, setLoadingAktivitas] = useState(false);
-
   const [loading, setLoading] = useState(true);
 
 useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        const config = { headers: { Authorization: `Bearer ${token}` } };
-
-        // Fetch data paralel
-        const [kasRes, donasiRes, zakatRes, kegiatanRes, programRes] = await Promise.all([
-          axios.get('http://localhost:5000/api/kas/summary', config),
-          axios.get(`http://localhost:5000/api/donasi/history/user/${user?.id}`, config),
-          axios.get(`http://localhost:5000/api/zakat/history/${user?.id}`, config),
-          axios.get('http://localhost:5000/api/kegiatan', config),
-          axios.get('http://localhost:5000/api/donasi/program?status=aktif', config)
-        ]);
-
-        setStats({
-          saldoMasjid: kasRes.data.data?.totalSaldo || 0,
-          totalDonasiUser: donasiRes.data.data?.statistics?.total_nominal_approved || 0,
-          totalZakatUser: zakatRes.data.data?.reduce((sum, item) => 
-            item.status === 'approved' ? sum + item.jumlah : sum, 0) || 0,
-          totalKegiatan: kegiatanRes.data?.length || 0,
-          programAktif: programRes.data?.length || 0
-        });
-
-        processChartDataFromSummary(kasRes.data.data);
-
-        // ✅ FETCH AKTIVITAS SETELAH DATA UTAMA
-        await fetchAktivitasTerbaru(config, donasiRes.data, zakatRes.data, kegiatanRes.data);
-
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (user?.id) {
-      fetchDashboardData();
-    }
-  }, [user?.id]);
-
-  // FUNCTION FETCH AKTIVITAS MIX
-  const fetchAktivitasTerbaru = async (config, donasiUserData, zakatUserData, kegiatanData) => {
-    setLoadingAktivitas(true);
+  const fetchDashboardData = async () => {
+    if (!user?.id) return;
+    
     try {
-      // 1. Aktivitas Personal User (limit 3)
-      const personalActivities = [];
-      
-      // Donasi user (2 terbaru)
-      const userDonasi = donasiUserData?.data?.donations?.slice(0, 2) || [];
-      userDonasi.forEach(donasi => {
-        personalActivities.push({
-          id: `donasi-${donasi.id}`,
-          type: 'personal_donasi',
-          icon: '💝',
-          title: `Donasi "${donasi.nama_barang}"`,
-          description: `${formatRupiah(donasi.nominal)}`,
-          status: donasi.status,
-          timestamp: new Date(donasi.created_at),
-          isPersonal: true,
-          clickable: true,
-          data: donasi
-        });
+      // Fetch data paralel menggunakan apiService
+      const [kasRes, donasiRes, zakatRes, kegiatanRes, programRes] = await Promise.all([
+        apiService.get(API_ENDPOINTS.KAS.SUMMARY, { period: 'bulan-ini' }),
+        apiService.get(API_ENDPOINTS.DONASI.USER_HISTORY(user.id)),
+        apiService.get(API_ENDPOINTS.ZAKAT.HISTORY(user.id)),
+        apiService.get(API_ENDPOINTS.KEGIATAN.BASE),
+        apiService.get(API_ENDPOINTS.DONASI.PROGRAM, { status: 'aktif' })
+      ]);
+
+      // Handle response structure dengan null checks
+      const kasData = kasRes.data?.data || kasRes.data || {};
+      const donasiData = donasiRes.data?.data || donasiRes.data || {};
+      const zakatData = zakatRes.data?.data || zakatRes.data || [];
+      const kegiatanData = kegiatanRes.data?.data || kegiatanRes.data || [];
+      const programData = programRes.data?.data || programRes.data || [];
+
+      setStats({
+        saldoMasjid: kasData.totalSaldo || 0,
+        totalDonasiUser: donasiData.statistics?.total_nominal_approved || 0,
+        totalZakatUser: Array.isArray(zakatData) 
+          ? zakatData.reduce((sum, item) => item.status === 'approved' ? sum + item.jumlah : sum, 0) 
+          : 0,
+        totalKegiatan: Array.isArray(kegiatanData) ? kegiatanData.length : 0,
+        programAktif: Array.isArray(programData) ? programData.length : 0
       });
 
-      // Zakat user (1 terbaru)
-      const userZakat = zakatUserData?.data?.slice(0, 1) || [];
-      userZakat.forEach(zakat => {
-        personalActivities.push({
-          id: `zakat-${zakat.id}`,
-          type: 'personal_zakat',
-          icon: '🌙',
-          title: `Zakat ${zakat.jenis_zakat}`,
-          description: `${formatRupiah(zakat.jumlah)}`,
-          status: zakat.status,
-          timestamp: new Date(zakat.created_at),
-          isPersonal: true,
-          clickable: false,
-          data: zakat
-        });
-      });
+      processChartDataFromSummary(kasData);
 
-      // 2. Aktivitas Masjid Umum (limit 2)
-      const masjidActivities = [];
+      const fetchAktivitasTerbaru = async (donasiUserData, zakatUserData, kegiatanData) => {
+        setLoadingAktivitas(true);
+        try {
+          // 1. Aktivitas Personal User (limit 3)
+          const personalActivities = [];
+          
+          // Donasi user (2 terbaru)
+          const userDonasi = donasiUserData?.donations?.slice(0, 2) || [];
+          userDonasi.forEach(donasi => {
+            personalActivities.push({
+              id: `donasi-${donasi.id}`,
+              type: 'personal_donasi',
+              icon: '💝',
+              title: `Donasi "${donasi.nama_barang}"`,
+              description: `${formatRupiah(donasi.nominal)}`,
+              status: donasi.status,
+              timestamp: new Date(donasi.created_at),
+              isPersonal: true,
+              clickable: true,
+              data: donasi
+            });
+          });
 
-      // Donasi masuk dari user lain (menggunakan kas history)
-      const kasHistoryRes = await axios.get(
-        'http://localhost:5000/api/kas/history?type=donasi&limit=3',
-        config
-      );
-      
-      const recentDonations = kasHistoryRes?.data?.data?.transactions || [];
-      recentDonations.forEach(donation => {
-        // Skip donasi dari user sendiri
-        if (donation.user_id && donation.user_id == user.id) return;
-        
-        masjidActivities.push({
-          id: `public-donasi-${donation.id}`,
-          type: 'masjid_donasi',
-          icon: '🤝',
-          title: 'Donasi Masuk',
-          description: `${donation.nama_pemberi || 'Anonim'} • ${formatRupiah(donation.jumlah)}`,
-          status: 'approved',
-          timestamp: new Date(donation.created_at),
-          isPersonal: false,
-          clickable: false,
-          data: donation
-        });
-      });
+          // Zakat user (1 terbaru)
+          const userZakat = Array.isArray(zakatUserData) ? zakatUserData.slice(0, 1) : [];
+          userZakat.forEach(zakat => {
+            personalActivities.push({
+              id: `zakat-${zakat.id}`,
+              type: 'personal_zakat',
+              icon: '🌙',
+              title: `Zakat ${zakat.jenis_zakat}`,
+              description: `${formatRupiah(zakat.jumlah)}`,
+              status: zakat.status,
+              timestamp: new Date(zakat.created_at),
+              isPersonal: true,
+              clickable: false,
+              data: zakat
+            });
+          });
 
-      // debug struktur data kegiatan
-      // console.log('🔍 Debug kegiatanData structure:', kegiatanData);
+          // 2. Aktivitas Masjid Umum (limit 2)
+          const masjidActivities = [];
 
-      // Kegiatan terbaru masjid (1 terbaru)
-      let kegiatanArray = [];
-      
-      // Cek apakah kegiatanData sudah array atau masih dalam wrapper object
-      if (Array.isArray(kegiatanData)) {
-        kegiatanArray = kegiatanData;
-      } else if (kegiatanData?.data && Array.isArray(kegiatanData.data)) {
-        kegiatanArray = kegiatanData.data;
-      } 
+          // Donasi masuk dari user lain (menggunakan apiService)
+          try {
+            const kasHistoryRes = await apiService.get(API_ENDPOINTS.KAS.HISTORY, { 
+              type: 'donasi', 
+              limit: 3 
+            });
+            
+            const recentDonations = kasHistoryRes.data?.data?.transactions || kasHistoryRes.data || [];
+            recentDonations.forEach(donation => {
+              // Skip donasi dari user sendiri
+              if (donation.user_id && donation.user_id == user.id) return;
+              
+              masjidActivities.push({
+                id: `public-donasi-${donation.id}`,
+                type: 'masjid_donasi',
+                icon: '🤝',
+                title: 'Donasi Masuk',
+                description: `${donation.nama_pemberi || 'Anonim'} • ${formatRupiah(donation.jumlah)}`,
+                status: 'approved',
+                timestamp: new Date(donation.created_at),
+                isPersonal: false,
+                clickable: false,
+                data: donation
+              });
+            });
+          } catch (error) {
+            console.warn('Could not fetch kas history for activities:', error);
+          }
 
-      const recentKegiatan = kegiatanArray.slice(0, 1) || [];
-      recentKegiatan.forEach(kegiatan => {
-        masjidActivities.push({
-          id: `kegiatan-${kegiatan.id}`,
-          type: 'masjid_kegiatan',
-          icon: '🕌',
-          title: `Kegiatan: ${kegiatan.nama_kegiatan}`,
-          description: `${new Date(kegiatan.tanggal).toLocaleDateString('id-ID')} • ${kegiatan.lokasi}`,
-          status: 'info',
-          timestamp: new Date(kegiatan.created_at || kegiatan.tanggal), // Fallback ke tanggal jika created_at tidak ada
-          isPersonal: false,
-          clickable: true,
-          data: kegiatan
-        });
-      });
+          // Kegiatan terbaru masjid (1 terbaru)
+          let kegiatanArray = Array.isArray(kegiatanData) ? kegiatanData : [];
+          
+          const recentKegiatan = kegiatanArray.slice(0, 1) || [];
+          recentKegiatan.forEach(kegiatan => {
+            masjidActivities.push({
+              id: `kegiatan-${kegiatan.id}`,
+              type: 'masjid_kegiatan',
+              icon: '🕌',
+              title: `Kegiatan: ${kegiatan.nama_kegiatan}`,
+              description: `${new Date(kegiatan.tanggal).toLocaleDateString('id-ID')} • ${kegiatan.lokasi}`,
+              status: 'info',
+              timestamp: new Date(kegiatan.created_at || kegiatan.tanggal),
+              isPersonal: false,
+              clickable: true,
+              data: kegiatan
+            });
+          });
 
-      // 3. Gabungkan dan sort berdasarkan timestamp
-      const allActivities = [...personalActivities, ...masjidActivities]
-        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-        .slice(0, 5); // Limit 5 aktivitas
+          // 3. Gabungkan dan sort berdasarkan timestamp
+          const allActivities = [...personalActivities, ...masjidActivities]
+            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+            .slice(0, 5);
 
-      console.log('📋 All activities:', allActivities); // Debug
+          setAktivitasTerbaru(allActivities);
 
-      setAktivitasTerbaru(allActivities);
+        } catch (error) {
+          console.error('❌ Error fetching aktivitas:', error);
+          setAktivitasTerbaru([]);
+        } finally {
+          setLoadingAktivitas(false);
+        }
+      };
+
+      // FETCH AKTIVITAS SETELAH DATA UTAMA
+      await fetchAktivitasTerbaru(donasiData, zakatData, kegiatanData);
 
     } catch (error) {
-      console.error('Error fetching aktivitas:', error);
-      setAktivitasTerbaru([]);
+      console.error('❌ Error fetching dashboard data:', error);
     } finally {
-      setLoadingAktivitas(false);
+      setLoading(false);
     }
   };
 
-  // FUNCTION HANDLE CLICK AKTIVITAS
+  if (user?.id) {
+    fetchDashboardData();
+  }
+}, [user?.id]);
+
+
+
   const handleAktivitasClick = (aktivitas) => {
     if (!aktivitas.clickable) return;
-
     setSelectedDetail(aktivitas);
     setShowDetailModal(true);
   };
 
-  // FUNCTION HANDLE CLOSE MODAL
   const handleCloseDetailModal = () => {
     setShowDetailModal(false);
     setSelectedDetail(null);
   };
 
-    // Function render Detail
   const renderDetailContent = (aktivitas) => {
     if (aktivitas.type === 'personal_donasi') {
       return (
@@ -259,7 +253,7 @@ useEffect(() => {
               <div>
                 <span className="font-medium text-gray-600">Bukti Transfer:</span>
                 <img 
-                  src={`http://localhost:5000/uploads/bukti/${aktivitas.data.bukti_transfer}`}
+                  src={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/uploads/bukti/${aktivitas.data.bukti_transfer}`}
                   alt="Bukti Transfer"
                   className="mt-2 max-w-full h-auto rounded border"
                 />
@@ -275,10 +269,9 @@ useEffect(() => {
             Detail Kegiatan Masjid
           </h2>
           <div className="space-y-4">
-            {/* Foto Kegiatan */}
             {aktivitas.data.foto ? (
               <img
-                src={`http://localhost:5000/uploads/${aktivitas.data.foto}`}
+                src={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/uploads/${aktivitas.data.foto}`}
                 alt={aktivitas.data.nama_kegiatan}
                 className="w-full h-48 object-cover rounded-lg"
               />
@@ -332,7 +325,6 @@ useEffect(() => {
     }
   };
 
-  // FUNCTION GET STATUS COLOR
   const getStatusColor = (status) => {
     switch (status) {
       case 'approved': return 'text-green-600 bg-green-50';
@@ -343,7 +335,6 @@ useEffect(() => {
     }
   };
 
-  //  FUNCTION FORMAT WAKTU RELATIF
   const getRelativeTime = (timestamp) => {
     const now = new Date();
     const diffInHours = (now - new Date(timestamp)) / (1000 * 60 * 60);
@@ -356,10 +347,6 @@ useEffect(() => {
   };
 
   const processChartDataFromSummary = (kasData) => {
-    console.log('🔍 Processing from summary:', kasData);
-
-    // ✅ TREN KEUANGAN - DUMMY DATA + DATA REAL BULAN INI
-    // Karena API tidak punya historical monthly, kita buat dummy + real data
     const currentMonth = new Date().toLocaleDateString('id-ID', { month: 'short', year: '2-digit' });
     
     const trenKeuangan = [
@@ -369,13 +356,12 @@ useEffect(() => {
       { month: 'Nov 24', pemasukan: 15200000, pengeluaran: 900000 },
       { month: 'Des 24', pemasukan: 18700000, pengeluaran: 2100000 },
       { 
-        month: currentMonth, // Bulan saat ini
+        month: currentMonth,
         pemasukan: kasData?.totalPemasukan || 0, 
         pengeluaran: kasData?.totalPengeluaran || 0 
       }
     ];
 
-    // ✅ KOMPOSISI DANA - DARI SUMMARY YANG AKURAT
     const pemasukanKategori = kasData?.pemasukanKategori || {};
     
     const komposisiDana = [
@@ -400,9 +386,6 @@ useEffect(() => {
         color: '#10B981' 
       }
     ].filter(item => item.value > 0);
-
-    console.log('📊 Tren Keuangan (from summary):', trenKeuangan);
-    console.log('🥧 Komposisi Dana (from summary):', komposisiDana);
 
     setChartData({ trenKeuangan, komposisiDana });
   };
@@ -434,7 +417,10 @@ useEffect(() => {
   if (loading) {
     return (
       <div className="p-4 md:p-6">
-        <div className="text-center">Loading...</div>
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="text-gray-500 mt-4">Memuat dashboard...</p>
+        </div>
       </div>
     );
   }
@@ -445,9 +431,8 @@ useEffect(() => {
         Assalamualaikum, {user?.nama || 'Jamaah'}!
       </h1>
 
-      {/*  RINGKASAN DINAMIS */}
+      {/* RINGKASAN DINAMIS */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
-        {/* Saldo Masjid */}
         <div className="rounded-lg border bg-gradient-to-br from-green-50 to-green-100 p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
@@ -461,7 +446,6 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* Total Donasi User */}
         <div className="rounded-lg border bg-gradient-to-br from-blue-50 to-blue-100 p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
@@ -475,7 +459,6 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* Total Zakat User */}
         <div className="rounded-lg border bg-gradient-to-br from-purple-50 to-purple-100 p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
@@ -489,7 +472,6 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* Program Aktif */}
         <div className="rounded-lg border bg-gradient-to-br from-orange-50 to-orange-100 p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
@@ -504,9 +486,8 @@ useEffect(() => {
         </div>
       </div>
 
-      {/*  CHARTS SECTION */}
+      {/* CHARTS SECTION */}
       <div className="grid gap-6 md:grid-cols-2 mb-8">
-        {/* Tren Keuangan Line Chart */}
         <div className="rounded-lg border bg-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold mb-4">Tren Keuangan Masjid</h3>
           <ResponsiveContainer width="100%" height={300}>
@@ -534,7 +515,6 @@ useEffect(() => {
           </ResponsiveContainer>
         </div>
         
-        {/* Komposisi Dana Pie Chart */}
         <div className="rounded-lg border bg-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold mb-4">Komposisi Dana</h3>
           <ResponsiveContainer width="100%" height={300}>
@@ -585,12 +565,10 @@ useEffect(() => {
                 } ${aktivitas.isPersonal ? 'border-l-4 border-l-blue-500' : 'border-l-4 border-l-green-500'}`}
                 onClick={() => handleAktivitasClick(aktivitas)}
               >
-                {/* Icon */}
                 <div className="text-2xl mt-1">
                   {aktivitas.icon}
                 </div>
                 
-                {/* Content */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -601,7 +579,6 @@ useEffect(() => {
                         {aktivitas.description}
                       </p>
                       <div className="flex items-center gap-2 mt-2">
-                        {/* Status Badge */}
                         <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(aktivitas.status)}`}>
                           {aktivitas.status === 'approved' && '✅ Disetujui'}
                           {aktivitas.status === 'pending' && '⏳ Menunggu'}
@@ -609,7 +586,6 @@ useEffect(() => {
                           {aktivitas.status === 'info' && '📋 Info'}
                         </span>
                         
-                        {/* Personal/Public Badge */}
                         <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
                           aktivitas.isPersonal 
                             ? 'text-blue-600 bg-blue-50' 
@@ -620,14 +596,12 @@ useEffect(() => {
                       </div>
                     </div>
                     
-                    {/* Timestamp */}
                     <div className="text-xs text-gray-500 ml-2 shrink-0">
                       {getRelativeTime(aktivitas.timestamp)}
                     </div>
                   </div>
                 </div>
                 
-                {/* Click indicator */}
                 {aktivitas.clickable && (
                   <div className="text-gray-400 mt-1">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -640,10 +614,11 @@ useEffect(() => {
           </div>
         )}
       </div>
+
+      {/* Detail Modal */}
       {showDetailModal && selectedDetail && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            {/* Header Modal */}
             <div className="flex justify-between items-center p-6 border-b">
               <div className="flex items-center gap-3">
                 <span className="text-2xl">{selectedDetail.icon}</span>
@@ -659,12 +634,10 @@ useEffect(() => {
               </button>
             </div>
             
-            {/* Content Modal */}
             <div className="p-6">
               {renderDetailContent(selectedDetail)}
             </div>
 
-            {/* Footer Modal */}
             <div className="flex justify-end gap-3 p-6 border-t bg-gray-50">
               <button
                 onClick={handleCloseDetailModal}
@@ -675,7 +648,6 @@ useEffect(() => {
               {selectedDetail.type === 'personal_donasi' && selectedDetail.status === 'pending' && (
                 <button
                   onClick={() => {
-                    // Bisa navigate ke halaman edit atau upload bukti
                     console.log('Upload bukti untuk:', selectedDetail.data);
                     handleCloseDetailModal();
                   }}

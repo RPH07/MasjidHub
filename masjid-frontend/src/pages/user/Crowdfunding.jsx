@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
-import axios from 'axios';
+import apiService from '../../services/apiServices';
+import { API_ENDPOINTS, buildUploadUrl } from '../../config/api.config';
 import toast, { Toaster } from 'react-hot-toast';
 import DetailDonasiModal from '../../components/donasi-components/components/shared/DetailDonasiModal';
 import { useAuth } from '../../hooks/useAuth'
@@ -13,60 +14,58 @@ const Crowdfunding = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [filterStatus, setFilterStatus] = useState('all');
     const [downloadingPdf, setDownloadingPdf] = useState(null);
-    const API_URL = 'http://localhost:5000/api/donasi';
 
     const location = useLocation();
     const isLoggedIn = location.pathname.startsWith('/dashboard');
 
-    // ✅ FIX: Perbaiki fetch function
-    const fetchPrograms = async () => {
+    const fetchPrograms = useCallback(async () => {
         try {
             setLoading(true);
             console.log('🔍 Fetching programs with filter:', filterStatus);
             
-            let url = `${API_URL}/program`;
+            let params = {};
             if (filterStatus === 'all') {
-                url += '?status=aktif,selesai';
+                params.status = 'aktif,selesai';
             } else {
-                url += `?status=${filterStatus}`;
+                params.status = filterStatus;
             }
             
-            console.log('📡 Request URL:', url);
+            console.log('📡 Request params:', params);
             
-            const response = await axios.get(url);
+            const response = await apiService.get(API_ENDPOINTS.DONASI.PROGRAM, params);
             console.log('📊 Response data:', response.data);
             
             setPrograms(response.data);
         } catch (error) {
             console.error('❌ Error fetching programs:', error);
             console.error('Response:', error.response?.data);
-            // ✅ TOAST: Error saat fetch data
             toast.error('Gagal memuat data program donasi');
         } finally {
             setLoading(false);
         }
-    };
+    }, [filterStatus]);
 
     useEffect(() => {
         fetchPrograms();
-    }, [filterStatus]);
+    }, [fetchPrograms]);
 
-    // ✅ UPDATE: Function download PDF dengan Toast
     const handleDownloadPdf = async (programId, programName) => {
         try {
             setDownloadingPdf(programId);
             
-            // ✅ TOAST: Loading state
             const loadingToast = toast.loading('Sedang menyiapkan laporan PDF...');
             
             console.log('📄 Downloading PDF for program:', programId);
             
-            const response = await axios.get(`${API_URL}/program/${programId}/export/pdf`, {
-                responseType: 'blob',
-                timeout: 30000
-            });
+            const response = await apiService.get(
+                API_ENDPOINTS.DONASI.PROGRAM_EXPORT(programId), 
+                { format: 'pdf' },
+                {
+                    responseType: 'blob',
+                    timeout: 30000
+                }
+            );
             
-            // ✅ Create download link
             const blob = new Blob([response.data], { type: 'application/pdf' });
             const downloadUrl = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
@@ -83,7 +82,6 @@ const Crowdfunding = () => {
             
             console.log('✅ PDF downloaded successfully');
             
-            // ✅ TOAST: Success - dismiss loading toast dan show success
             toast.dismiss(loadingToast);
             toast.success(
                 `Laporan PDF "${programName}" berhasil diunduh!`,
@@ -96,7 +94,6 @@ const Crowdfunding = () => {
         } catch (error) {
             console.error('❌ Error downloading PDF:', error);
             
-            // ✅ TOAST: Error
             toast.error(
                 'Gagal mengunduh laporan. Silakan coba lagi.',
                 {
@@ -109,18 +106,16 @@ const Crowdfunding = () => {
         }
     };
 
-    // ✅ UPDATE: Submit donasi dengan Toast
     const handleSubmitDonasi = async (donasiData) => {
         try {
-            // ✅ TOAST: Loading saat submit
             const loadingToast = toast.loading('Sedang mengirim donasi...');
             
             if (user?.id && !donasiData.get('user_id')) {
                 donasiData.append('user_id', user.id);
             }
             
-            const response = await axios.post(
-                `${API_URL}/submit/${selectedProgram.id}`,
+            const response = await apiService.post(
+                `${API_ENDPOINTS.DONASI.BASE}/submit/${selectedProgram.id}`,
                 donasiData,
                 {
                     headers: {
@@ -129,7 +124,6 @@ const Crowdfunding = () => {
                 }
             );
 
-            // ✅ TOAST: Success
             toast.dismiss(loadingToast);
             toast.success(
                 response.data.message || 'Donasi berhasil dikirim!',
@@ -147,7 +141,6 @@ const Crowdfunding = () => {
         } catch (error) {
             console.error('Error submitting donasi:', error);
             
-            // ✅ TOAST: Error
             toast.error(
                 error.response?.data?.error || 'Gagal mengirim donasi',
                 {
@@ -163,28 +156,24 @@ const Crowdfunding = () => {
         }
     };
 
-    // Fungsi untuk membuka modal donasi
     const handleDonateClick = (program) => {
         if (program.status === 'aktif' || program.status_pengadaan === 'aktif') {
             setSelectedProgram(program);
             setIsModalOpen(true);
         } else {
-            // ✅ TOAST: Info ketika program tidak aktif
             toast('Program donasi ini sedang tidak aktif', {
-                icon: 'ℹ️',
+                icon: 'U+2139',
                 duration: 3000,
             });
         }
     };
 
-    // Fungsi untuk menutup modal
     const handleCloseModal = () => {
         setIsModalOpen(false);
         setSelectedProgram(null);
         fetchPrograms();
     };
 
-    // ✅ FIX: Perbaiki filtering
     const filteredPrograms = programs.filter(program => {
         if (filterStatus === 'all') return true;
         
@@ -204,11 +193,10 @@ const Crowdfunding = () => {
         }).format(angka);
     };
 
-    // Debug info
-    console.log('🎯 Current filter:', filterStatus);
-    console.log('📊 Total programs:', programs.length);
-    console.log('🔍 Filtered programs:', filteredPrograms.length);
-    console.log('📋 Programs data:', programs);
+    const getImageUrl = (imagePath) => {
+        if (!imagePath) return 'https://via.placeholder.com/400x300?text=No+Image';
+        return buildUploadUrl(API_ENDPOINTS.UPLOADS.PROGRAM_IMAGES, imagePath);
+    };
 
     if (loading) {
         return (
@@ -221,7 +209,6 @@ const Crowdfunding = () => {
 
     return (
         <div className={`${isLoggedIn ? '' : 'bg-gray-50 min-h-screen'}`}>
-            {/* ✅ TOAST CONTAINER - WAJIB ADA! */}
             <Toaster
                 position="top-right"
                 reverseOrder={false}
@@ -229,7 +216,6 @@ const Crowdfunding = () => {
                 containerClassName=""
                 containerStyle={{}}
                 toastOptions={{
-                    // Default options
                     className: '',
                     duration: 4000,
                     style: {
@@ -240,7 +226,6 @@ const Crowdfunding = () => {
                         fontSize: '14px',
                         maxWidth: '400px',
                     },
-                    // Success style
                     success: {
                         style: {
                             background: '#10b981',
@@ -251,7 +236,6 @@ const Crowdfunding = () => {
                             secondary: '#10b981',
                         },
                     },
-                    // Error style
                     error: {
                         style: {
                             background: '#ef4444',
@@ -262,7 +246,6 @@ const Crowdfunding = () => {
                             secondary: '#ef4444',
                         },
                     },
-                    // Loading style
                     loading: {
                         style: {
                             background: '#3b82f6',
@@ -289,7 +272,6 @@ const Crowdfunding = () => {
                         <button
                             onClick={() => {
                                 setFilterStatus('all');
-                                // ✅ TOAST: Feedback filter change (opsional)
                                 toast('Menampilkan semua program', { 
                                     icon: '📋', 
                                     duration: 2000 
@@ -338,7 +320,6 @@ const Crowdfunding = () => {
                     </div>
                 </div>
 
-                {/* Rest of the component remains the same... */}
                 {filteredPrograms.length === 0 ? (
                     <div className="text-center py-12">
                         <div className="text-gray-500 text-lg mb-4">
@@ -357,22 +338,16 @@ const Crowdfunding = () => {
                             
                             return (
                                 <div key={program.id} className="bg-white rounded-lg shadow-lg overflow-hidden transform hover:-translate-y-2 transition-transform duration-300">
-                                    {/* BADGE STATUS */}
                                     <div className="relative">
-                                        {program.foto_barang ? (
-                                            <img 
-                                                src={`http://localhost:5000/images/donasi-program/${program.foto_barang}`}
-                                                alt={program.nama_barang} 
-                                                className="w-full h-56 object-cover"
-                                                onError={(e) => {
-                                                    e.target.src = 'https://via.placeholder.com/400x300?text=No+Image';
-                                                }}
-                                            />
-                                        ) : (
-                                            <div className="w-full h-56 bg-gray-200 flex items-center justify-center">
-                                                <span className="text-gray-400">No Image</span>
-                                            </div>
-                                        )}
+                                        {/* getImageUrl helper */}
+                                        <img 
+                                            src={getImageUrl(program.foto_barang)}
+                                            alt={program.nama_barang} 
+                                            className="w-full h-56 object-cover"
+                                            onError={(e) => {
+                                                e.target.src = 'https://via.placeholder.com/400x300?text=No+Image';
+                                            }}
+                                        />
                                         
                                         {/* Badge Status */}
                                         {programStatus === 'selesai' && (
@@ -413,15 +388,12 @@ const Crowdfunding = () => {
                                             {program.total_donatur || 0} donatur • {progress.toFixed(1)}% tercapai
                                         </div>
 
-                                        {/* CONDITIONAL BUTTONS BERDASARKAN STATUS */}
                                         {programStatus === 'selesai' ? (
                                             <div className="space-y-2">
-                                                {/* Badge Selesai */}
                                                 <div className="w-full bg-green-100 text-green-800 font-bold py-2 px-4 rounded-lg text-center">
                                                     ✓ Program Telah Selesai
                                                 </div>
                                                 
-                                                {/* Download PDF Button */}
                                                 <button 
                                                     onClick={() => handleDownloadPdf(program.id, program.nama_barang)}
                                                     disabled={isDownloading}
@@ -444,7 +416,6 @@ const Crowdfunding = () => {
                                                 </button>
                                             </div>
                                         ) : (
-                                            /* Button untuk program aktif */
                                             <button 
                                                 onClick={() => handleDonateClick(program)}
                                                 className={`w-full font-bold py-2 px-4 rounded-lg transition-colors duration-300 ${
@@ -461,7 +432,6 @@ const Crowdfunding = () => {
                                             </button>
                                         )}
 
-                                        {/* INFO TANGGAL SELESAI */}
                                         {programStatus === 'selesai' && program.tanggal_selesai && (
                                             <div className="mt-2 text-center text-xs text-gray-500">
                                                 Diselesaikan pada: {new Date(program.tanggal_selesai).toLocaleDateString('id-ID')}
@@ -475,7 +445,6 @@ const Crowdfunding = () => {
                 )}
             </div>
 
-            {/* Modal */}
             {isModalOpen && selectedProgram && (
                 <DetailDonasiModal 
                     program={selectedProgram}

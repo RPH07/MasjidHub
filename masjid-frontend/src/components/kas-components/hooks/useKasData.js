@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import axios from "axios";
+import apiService from "../../../services/apiServices";
+import { API_ENDPOINTS } from "../../../config/api.config";
 import { kategoriPemasukan } from "../utils/constants";
 
 export const useKasData = (selectedPeriod) => {
@@ -9,7 +10,7 @@ export const useKasData = (selectedPeriod) => {
     zakatData: [],
     infaqData: [],
     donasiData: [],
-    customDateRange: null, // Pindahkan ke state utama
+    customDateRange: null,
     summary: {
       totalSaldo: 0,
       totalPemasukan: 0,
@@ -46,7 +47,17 @@ export const useKasData = (selectedPeriod) => {
         return {
           period: "custom",
           startDate: yesterday.toISOString().split("T")[0],
-          endDate: today.toISOString().split("T")[0],
+          endDate: yesterday.toISOString().split("T")[0],
+        };
+      }
+
+      case "kemarin": {
+        const dayBeforeYesterday = new Date(today);
+        dayBeforeYesterday.setDate(today.getDate() - 2);
+        return {
+          period: "custom",
+          startDate: dayBeforeYesterday.toISOString().split("T")[0],
+          endDate: dayBeforeYesterday.toISOString().split("T")[0],
         };
       }
 
@@ -62,17 +73,35 @@ export const useKasData = (selectedPeriod) => {
         };
       }
 
+      case "minggu-lalu": {
+        const twoWeeksAgoStart = new Date(today);
+        twoWeeksAgoStart.setDate(today.getDate() - today.getDay() - 14);
+        const twoWeeksAgoEnd = new Date(twoWeeksAgoStart);
+        twoWeeksAgoEnd.setDate(twoWeeksAgoStart.getDate() + 6);
+        return {
+          period: "custom",
+          startDate: twoWeeksAgoStart.toISOString().split("T")[0],
+          endDate: twoWeeksAgoEnd.toISOString().split("T")[0],
+        };
+      }
+
       case "bulan-ini": {
-        const lastMonth = new Date(
-          today.getFullYear(),
-          today.getMonth() - 1,
-          1
-        );
+        const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
         const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
         return {
           period: "custom",
           startDate: lastMonth.toISOString().split("T")[0],
           endDate: lastMonthEnd.toISOString().split("T")[0],
+        };
+      }
+
+      case "bulan-lalu": {
+        const twoMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 2, 1);
+        const twoMonthsAgoEnd = new Date(today.getFullYear(), today.getMonth() - 1, 0);
+        return {
+          period: "custom",
+          startDate: twoMonthsAgo.toISOString().split("T")[0],
+          endDate: twoMonthsAgoEnd.toISOString().split("T")[0],
         };
       }
 
@@ -83,6 +112,16 @@ export const useKasData = (selectedPeriod) => {
           period: "custom",
           startDate: lastYear.toISOString().split("T")[0],
           endDate: lastYearEnd.toISOString().split("T")[0],
+        };
+      }
+
+      case "tahun-lalu": {
+        const twoYearsAgo = new Date(today.getFullYear() - 2, 0, 1);
+        const twoYearsAgoEnd = new Date(today.getFullYear() - 2, 11, 31);
+        return {
+          period: "custom",
+          startDate: twoYearsAgo.toISOString().split("T")[0],
+          endDate: twoYearsAgoEnd.toISOString().split("T")[0],
         };
       }
 
@@ -117,29 +156,20 @@ export const useKasData = (selectedPeriod) => {
     setState((prev) => ({ ...prev, loading: true }));
 
     try {
-      const token = localStorage.getItem("token");
-      const config = {
-        headers: { Authorization: `Bearer ${token}` },
-      };
+      // Build parameters berdasarkan custom date range atau selected period
+      const params = state.customDateRange 
+        ? {
+            startDate: state.customDateRange.startDate,
+            endDate: state.customDateRange.endDate
+          }
+        : { period: selectedPeriod };
 
-      // Build API URLs
-      let summaryApiUrl = `http://localhost:5000/api/kas/summary`;
-      let kasApiUrl = `http://localhost:5000/api/kas`;
+      console.log('🔄 Fetching kas data with params:', params);
 
-      if (state.customDateRange) {
-        const params = `?startDate=${state.customDateRange.startDate}&endDate=${state.customDateRange.endDate}`;
-        summaryApiUrl += params;
-        kasApiUrl += params;
-      } else {
-        const params = `?period=${selectedPeriod}`;
-        summaryApiUrl += params;
-        kasApiUrl += params;
-      }
-
-      // Fetch data dari kedua endpoint
+      // Fetch data menggunakan API service yang baru
       const [summaryResponse, kasResponse] = await Promise.all([
-        axios.get(summaryApiUrl, config),
-        axios.get(kasApiUrl, config)
+        apiService.get(API_ENDPOINTS.KAS.SUMMARY, {params}),
+        apiService.get(API_ENDPOINTS.KAS.BASE, {params})
       ]);
 
       // Add null checks untuk response structure
@@ -151,6 +181,7 @@ export const useKasData = (selectedPeriod) => {
       const infaqData = kasResponseData.infaq || [];
       const donasiData = kasResponseData.donasi || [];
 
+      // Fetch previous period data untuk comparison
       const previousPeriod = getPreviousPeriod(selectedPeriod);
       let previousSummary = {
         totalSaldo: 0,
@@ -160,14 +191,15 @@ export const useKasData = (selectedPeriod) => {
 
       if (previousPeriod) {
         try {
-          const prevSummaryResponse = await axios.get(
-            `http://localhost:5000/api/kas/summary?startDate=${previousPeriod.startDate}&endDate=${previousPeriod.endDate}`,
-            config
-          );
-          previousSummary =
-            prevSummaryResponse.data?.data || prevSummaryResponse.data || {};
-        } catch {
-          console.log("Could not fetch previous period data, using defaults");
+          const prevParams = {
+            startDate: previousPeriod.startDate,
+            endDate: previousPeriod.endDate
+          };
+          
+          const prevSummaryResponse = await apiService.get(API_ENDPOINTS.KAS.SUMMARY, {params: prevParams});
+          previousSummary = prevSummaryResponse.data?.data || prevSummaryResponse.data || {};
+        } catch (error) {
+          console.log("Could not fetch previous period data, using defaults:", error);
         }
       }
 
@@ -217,8 +249,10 @@ export const useKasData = (selectedPeriod) => {
         },
         loading: false,
       }));
+
+      console.log('✅ Kas data fetched successfully');
     } catch (error) {
-      console.error("Error fetching kas data:", error);
+      console.error("❌ Error fetching kas data:", error);
       setState((prev) => ({
         ...prev,
         loading: false,
@@ -253,7 +287,8 @@ export const useKasData = (selectedPeriod) => {
   return {
     ...state,
     refreshData: fetchKasData,
-    setCustomDateRange, // Export function ini agar bisa digunakan
+    setCustomDateRange,
+    getPreviousPeriod,
     kategoriPemasukan,
   };
 };

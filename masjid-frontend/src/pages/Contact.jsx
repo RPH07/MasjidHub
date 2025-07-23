@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import Navbar from '../components/nav';
 import Footer from '../components/footer';
 import { Button } from "@/components/ui/button";
-// ✅ IMPORT ICONS - Lucide React
 import { 
   MapPin, 
   Phone, 
@@ -63,7 +62,7 @@ const Contact = () => {
         </div>
       </section>
 
-      {/* ✅ KONTAK INFO & FORM */}
+      {/* KONTAK INFO & FORM */}
       <section className="py-20 px-4 md:px-12 bg-gray-50">
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-16">
@@ -75,7 +74,7 @@ const Contact = () => {
               </h2>
               
               <div className="space-y-6">
-                {/* ✅ ALAMAT - Proper Icon */}
+                {/* ALAMAT */}
                 <div className="flex items-start space-x-4 bg-white p-6 rounded-xl shadow-md">
                   <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
                     <MapPin className="w-6 h-6 text-green-600" />
@@ -90,7 +89,7 @@ const Contact = () => {
                   </div>
                 </div>
 
-                {/* ✅ TELEPON - Proper Icon */}
+                {/* TELEPON */}
                 <div className="flex items-start space-x-4 bg-white p-6 rounded-xl shadow-md">
                   <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
                     <Phone className="w-6 h-6 text-blue-600" />
@@ -104,7 +103,7 @@ const Contact = () => {
                   </div>
                 </div>
 
-                {/* ✅ EMAIL - Proper Icon */}
+                {/* EMAIL */}
                 <div className="flex items-start space-x-4 bg-white p-6 rounded-xl shadow-md">
                   <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
                     <Mail className="w-6 h-6 text-purple-600" />
@@ -118,7 +117,7 @@ const Contact = () => {
                   </div>
                 </div>
 
-                {/* ✅ JAM OPERASIONAL - Proper Icon */}
+                {/* JAM OPERASIONAL */}
                 <div className="flex items-start space-x-4 bg-white p-6 rounded-xl shadow-md">
                   <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
                     <Clock className="w-6 h-6 text-yellow-600" />
@@ -134,7 +133,7 @@ const Contact = () => {
                 </div>
               </div>
 
-              {/* ✅ MEDIA SOSIAL - Proper Icons */}
+              {/* MEDIA SOSIAL */}
               <div className="mt-8">
                 <h3 className="text-xl font-semibold text-gray-800 mb-4">Ikuti Media Sosial Kami</h3>
                 <div className="flex space-x-4">
@@ -157,14 +156,14 @@ const Contact = () => {
               </div>
             </div>
 
-            {/* FORM KONTAK - sama seperti sebelumnya dengan proper send icon */}
+            {/* FORM KONTAK */}
             <div className="bg-white rounded-2xl shadow-xl p-8">
               <h2 className="text-3xl font-bold text-gray-800 mb-6">
                 Kirim <span className="text-green-600">Pesan</span>
               </h2>
               
               <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Form fields sama seperti sebelumnya */}
+                {/* Form fields */}
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -247,7 +246,6 @@ const Contact = () => {
                   ></textarea>
                 </div>
 
-                {/* ✅ BUTTON DENGAN PROPER ICON */}
                 <Button 
                   type="submit"
                   className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 text-lg rounded-lg transition-colors flex items-center justify-center gap-2"
@@ -265,7 +263,7 @@ const Contact = () => {
         </div>
       </section>
 
-      {/* ✅ HERO SECTION - Update Nama */}
+      {/* HERO SECTION */}
 <section className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 text-white py-20">
   <div className="max-w-6xl mx-auto px-4 text-center">
     <h1 className="text-5xl md:text-6xl font-bold mb-6">
@@ -278,7 +276,7 @@ const Contact = () => {
   </div>
 </section>
 
-{/* ✅ UPDATE ALAMAT */}
+{/* ALAMAT */}
 <div className="flex items-start space-x-4 bg-white p-6 rounded-xl shadow-md">
   <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
     <MapPin className="w-6 h-6 text-green-600" />
@@ -293,7 +291,7 @@ const Contact = () => {
   </div>
 </div>
 
-{/* ✅ UPDATE TELEPON */}
+{/* TELEPON */}
 <div className="flex items-start space-x-4 bg-white p-6 rounded-xl shadow-md">
   <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
     <Phone className="w-6 h-6 text-blue-600" />
@@ -307,7 +305,7 @@ const Contact = () => {
   </div>
 </div>
 
-{/* ✅ UPDATE EMAIL */}
+{/* EMAIL */}
 <div className="flex items-start space-x-4 bg-white p-6 rounded-xl shadow-md">
   <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
     <Mail className="w-6 h-6 text-purple-600" />
@@ -321,7 +319,7 @@ const Contact = () => {
   </div>
 </div>
 
-{/* ✅ PETA LOKASI - Real Google Maps */}
+{/* PETA LOKASI*/}
 <section className="py-20 px-4 md:px-12 bg-white">
   <div className="max-w-6xl mx-auto">
     <div className="text-center mb-12">

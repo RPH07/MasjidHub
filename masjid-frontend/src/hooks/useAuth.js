@@ -1,30 +1,23 @@
 import { useState, useEffect } from 'react';
+import authService from '../services/authService'; 
 
 export const useAuth = () => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Ambil data user dari localStorage
         const getUserFromLocalStorage = () => {
             try {
-                const token = localStorage.getItem('token');
-                const userData = localStorage.getItem('userData');
-                const userRole = localStorage.getItem('userRole');
+                const currentUser = authService.getCurrentUser();
+                const token = authService.getToken();
 
-                if (token && userData) {
-                    const parsedUserData = JSON.parse(userData);
-                    
-                    // Set user dengan data dari localStorage
-                    setUser({
-                        ...parsedUserData,
-                        role: userRole || parsedUserData.role
-                    });
+                if (token && currentUser) {
+                    setUser(currentUser);
                 } else {
                     setUser(null);
                 }
             } catch (error) {
-                console.error('Error parsing user data from localStorage:', error);
+                console.error('Error getting user data:', error);
                 setUser(null);
             } finally {
                 setLoading(false);
@@ -33,7 +26,7 @@ export const useAuth = () => {
 
         getUserFromLocalStorage();
 
-        // Listen for localStorage changes (jika login dari tab lain)
+        // Listen for localStorage changes
         const handleStorageChange = (e) => {
             if (e.key === 'userData' || e.key === 'token') {
                 getUserFromLocalStorage();
@@ -47,17 +40,17 @@ export const useAuth = () => {
         };
     }, []);
 
-    // Function untuk logout
-    const logout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('userData');
-        localStorage.removeItem('userRole');
+    //  Function logout pakai authService
+    const logout = async () => {
+        await authService.logout(); 
         setUser(null);
     };
 
     return { 
         user, 
         loading,
-        logout 
+        logout,
+        isAuthenticated: authService.isAuthenticated(),
+        isAdmin: authService.isAdmin()
     };
 };

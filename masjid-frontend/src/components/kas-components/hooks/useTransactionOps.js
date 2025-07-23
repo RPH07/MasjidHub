@@ -1,38 +1,26 @@
 import { useState } from 'react';
-import axios from 'axios';
+import apiService from '../../../services/apiServices';
+import { API_ENDPOINTS } from '../../../config/api.config';
 import { kategoriPemasukan } from '../utils/constants';
+// import Swal from 'sweetalert2';
 
 export const useTransactionOps = (onSuccess) => {
   const [loading, setLoading] = useState(false);
 
   const saveTransaction = async (formData, editId = null) => {
-    //  console.log('saveTransaction called:', { 
-    //   formData, 
-    //   editId, 
-    //   editIdType: typeof editId,
-    //   editIdValue: editId 
-    // }); // Debug log
-
     if (!formData.tanggal || !formData.keterangan || !formData.jenis || !formData.jumlah) {
       throw new Error('Semua field wajib diisi');
     }
 
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const config = {
-        headers: { Authorization: `Bearer ${token}` }
-      };
-
       let response;
       if (editId && editId !== null) {
-        // console.log('Updating transaction:', editId);
-        response = await axios.put(`http://localhost:5000/api/kas/${editId}`, formData, config);
+        response = await apiService.put(`${API_ENDPOINTS.KAS.BASE}/${editId}`, formData);
       } else {
-        // console.log('Creating new transaction');
-        response = await axios.post('http://localhost:5000/api/kas', formData, config);
+        response = await apiService.post(API_ENDPOINTS.KAS.BASE, formData);
       }
-      // console.log('Save response:', response.data);
+      
       if (onSuccess) onSuccess();
       return response.data;
     } catch (error) {
@@ -44,16 +32,10 @@ export const useTransactionOps = (onSuccess) => {
   };
 
   const deleteTransaction = async (id) => {
-    // console.log('deleteTransaction called with ID:', id); // Debug log
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const config = {
-        headers: { Authorization: `Bearer ${token}` }
-      };
-
-      // console.log('Sending DELETE request to:', `http://localhost:5000/api/kas/${id}`);
-      const response = await axios.delete(`http://localhost:5000/api/kas/${id}`, config);
+      // ✅ Delete transaction using apiService
+      const response = await apiService.delete(`${API_ENDPOINTS.KAS.BASE}/${id}`);
       
       console.log('Delete response:', response.data);
 
@@ -71,6 +53,6 @@ export const useTransactionOps = (onSuccess) => {
     loading,
     saveTransaction,
     deleteTransaction,
-    kategoriPemasukan
+    kategoriPemasukan 
   };
 };

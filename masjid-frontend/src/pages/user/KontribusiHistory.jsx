@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
-import axios from 'axios';
+import apiService from '../../services/apiServices';
+import { API_ENDPOINTS } from '../../config/api.config';
 
 const KontribusiHistory = () => {
   const { user } = useAuth();
@@ -10,13 +11,37 @@ const KontribusiHistory = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    if (!axios.defaults.baseURL) {
-      axios.defaults.baseURL = 'http://localhost:5000';
-    }
-  }, []);
+    const fetchHistory = async () => {
+      try {
+        setLoading(true);
+        console.log('🌐 Fetching URL:', response);
 
-  useEffect(() => {
-    console.log('🔍 Debug - User data:', user);
+        const response = await apiService.get(API_ENDPOINTS.KONTRIBUSI.HISTORY(user.id));
+
+        console.log('📊 API Response:', response.data);
+        setHistory(response.data.data || []);
+      } catch (error) {
+        console.error('❌ Error fetching history:', error);
+        console.error('❌ Error details:', error.response?.data);
+        setHistory([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const fetchSummary = async () => {
+      try {
+        const response = await apiService.get(API_ENDPOINTS.KONTRIBUSI.SUMMARY(user.id));
+        console.log('📈 Fetching Summary URL:', response);
+
+        console.log('📈 Summary Response:', response.data);
+        const summaryData = response.data.data || response.data;
+        setSummary(summaryData);
+      } catch (error) {
+        console.error('❌ Error fetching summary:', error);
+        console.error('❌ Summary error details:', error.response?.data);
+      }
+    };
     if (user?.id) {
       console.log('📞 Calling fetchHistory for user ID:', user.id);
       fetchHistory();
@@ -24,50 +49,7 @@ const KontribusiHistory = () => {
     }
   }, [user]);
 
-  const fetchHistory = async () => {
-    try {
-      setLoading(true);
-      const url = `http://localhost:5000/api/kontribusi/history/${user.id}`;
-      console.log('🌐 Fetching URL:', url);
 
-      const response = await axios.get(url, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      console.log('📊 API Response:', response.data);
-      setHistory(response.data.data || []);
-    } catch (error) {
-      console.error('❌ Error fetching history:', error);
-      console.error('❌ Error details:', error.response?.data);
-      setHistory([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchSummary = async () => {
-    try {
-      const url = `http://localhost:5000/api/kontribusi/summary/${user.id}`;
-      console.log('📈 Fetching Summary URL:', url);
-
-      const response = await axios.get(url, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      console.log('📈 Summary Response:', response.data);
-      const summaryData = response.data.data || response.data;
-      setSummary(summaryData);
-    } catch (error) {
-      console.error('❌ Error fetching summary:', error);
-      console.error('❌ Summary error details:', error.response?.data);
-    }
-  };
-
-  // ✅ FILTER: Search berdasarkan nama, detail program, metode pembayaran, status
   const filteredHistory = history.filter(item => {
     if (!searchTerm) return true;
     
@@ -85,7 +67,6 @@ const KontribusiHistory = () => {
   const safeNumber = (value) => {
     if (value === null || value === undefined || value === '') return 0;
     
-    // ✅ FIX: Handle concatenated strings like "1000000.00140000.00"
     if (typeof value === 'string' && value.includes('.00') && value.length > 10) {
       console.log('🔧 Detected concatenated string:', value);
       const parts = value.split('.00');
@@ -151,7 +132,7 @@ const KontribusiHistory = () => {
   const getBuktiTransferUrl = (buktiTransfer, type) => {
     if (!buktiTransfer) return null;
     
-    const baseUrl = axios.defaults.baseURL || 'http://localhost:5173';
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5173';
     let folderPath = '';
     
     if (type === 'zakat') {

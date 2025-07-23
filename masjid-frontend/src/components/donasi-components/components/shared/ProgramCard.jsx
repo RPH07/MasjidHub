@@ -1,5 +1,6 @@
 import React from 'react'
 import { formatRupiah, formatDate, getStatusBadge } from '../../utils'
+import { API_ENDPOINTS, buildUploadUrl } from '../../../../config/api.config'
 
 const ProgramCard = ({
     program,
@@ -28,14 +29,14 @@ const ProgramCard = ({
     const isCompleted = progressPercentage >= 100
 
     const getImageUrl = (filename) =>{
-        if(!filename) return null;
+        if (!filename) return 'https://via.placeholder.com/80x80?text=No+Image';
         
         const pathImg = [
-            `http://localhost:5000/images/donasi-program/${filename}`,
-            `http://localhost:5000/uploads/${filename}`,
-            `http://localhost:5000/public/images/donasi-program/${filename}`
+            API_ENDPOINTS.UPLOADS.PROGRAM_IMAGES,
+            API_ENDPOINTS.UPLOADS.BASE, 
+            'images/donasi-program'  
         ];
-        return pathImg[0];
+        return buildUploadUrl(pathImg[0], filename);
     };
 
     const imgUrl = getImageUrl(foto_barang);

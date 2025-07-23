@@ -4,7 +4,7 @@ import { usePeriodFilter } from '../../components/kas-components/hooks/usePeriod
 import { useModal } from '../../components/kas-components/hooks/useModal';
 import { useTransactionOps } from '../../components/kas-components/hooks/useTransactionOps';
 import { usePendingData } from '../../components/kas-components/hooks/usePendingData';
-import { useValidationOps } from '../../components/kas-components/hooks/useValidationOps';
+import useValidationOps  from '../../components/kas-components/hooks/useValidationOps';
 import {
   KasOverview,
   KasPemasukan,
@@ -15,6 +15,7 @@ import {
   BuktiModal
 } from '../../components/kas-components/components';
 import { TABS, kategoriPemasukan } from '../../components/kas-components/utils/constants';
+import { API_ENDPOINTS, buildUploadUrl } from '../../config/api.config'; 
 
 const Kas = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -52,6 +53,7 @@ const Kas = () => {
       setShowCustomDate(true);
     } else {
       setShowCustomDate(false);
+      kasDataHook.setCustomDateRange(null, null);
       setPeriod(value);
     }
   };
@@ -60,7 +62,11 @@ const Kas = () => {
     if (customStartDate && customEndDate) {
       // Update kasDataHook to accept custom dates
       kasDataHook.setCustomDateRange(customStartDate, customEndDate);
+      setPeriod('custom');
       setShowCustomDate(false);
+      setShowCustomDate(false);
+    } else {
+      alert('Mohon pilh tanggal mulai dan akhir');
     }
   };
 
@@ -70,27 +76,32 @@ const handleOpenBukti = (buktiTransfer, transactionInfo = null) => {
     return;
   }
 
-  // console.log('Opening bukti with info:', transactionInfo);
-
-  let folderPath = '';
+  let endpoint = '';
   
-  if (buktiTransfer.startsWith('zakat-')) {
-    folderPath = 'bukti-zakat';
-  } else if (buktiTransfer.startsWith('infaq-')) {
-    folderPath = 'bukti-infaq';
-  } else if (buktiTransfer.startsWith('donasi-')) {
-    folderPath = 'bukti-donasi';
-  } else {
-    // Fallback berdasarkan transaction type
-    switch (transactionInfo?.type) {
-      case 'zakat': folderPath = 'bukti-zakat'; break;
-      case 'infaq': folderPath = 'bukti-infaq'; break;
-      case 'donasi': folderPath = 'bukti-donasi'; break;
-      default: folderPath = 'uploads'; 
+ if (buktiTransfer.startsWith('zakat-')) {
+      endpoint = API_ENDPOINTS.UPLOADS.BUKTI_ZAKAT;
+    } else if (buktiTransfer.startsWith('infaq-')) {
+      endpoint = API_ENDPOINTS.UPLOADS.BUKTI_INFAQ;
+    } else if (buktiTransfer.startsWith('donasi-')) {
+      endpoint = API_ENDPOINTS.UPLOADS.BUKTI_DONASI;
+    } else {
+      // Fallback berdasarkan transaction type
+      switch (transactionInfo?.type) {
+        case 'zakat': 
+          endpoint = API_ENDPOINTS.UPLOADS.BUKTI_ZAKAT; 
+          break;
+        case 'infaq': 
+          endpoint = API_ENDPOINTS.UPLOADS.BUKTI_INFAQ; 
+          break;
+        case 'donasi': 
+          endpoint = API_ENDPOINTS.UPLOADS.BUKTI_DONASI; 
+          break;
+        default: 
+          endpoint = API_ENDPOINTS.UPLOADS.BASE;
+      }
     }
-  }
 
-  const imageUrl = `http://localhost:5000/uploads/${folderPath}/${buktiTransfer}`;
+    const imageUrl = buildUploadUrl(endpoint, buktiTransfer);
   
   console.log('Generated image URL:', imageUrl);
   console.log('File prefix detection:', buktiTransfer.split('-')[0]);

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { formatRupiah } from '../../utils';
-import { API_BASE_URL } from '../../utils/constants';
 import { donasiService } from '../../services';
+import apiService from '../../../../services/apiServices';
+import { API_ENDPOINTS } from '../../../../config/api.config';
 
 const ViewDonations = ({ program, onClose }) => {
     const [donations, setDonations] = useState([]);
@@ -30,17 +31,48 @@ const ViewDonations = ({ program, onClose }) => {
         try {
             setIsExporting(true);
             
-            // Create download link
+            console.log('📄 Starting PDF export for program:', program.id);
+            
+            const response = await apiService.get(
+                API_ENDPOINTS.DONASI.PROGRAM_EXPORT_PDF(program.id),
+                {},
+                {
+                    responseType: 'blob',
+                    timeout: 30000
+                }
+            );
+            
+            // Create blob and download
+            const blob = new Blob([response.data], { type: 'application/pdf' });
+            const downloadUrl = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
-            link.href = `${API_BASE_URL}/api/donasi/program/${program.id}/export/pdf`;
+            link.href = downloadUrl;
             link.download = `laporan-donasi-${program.nama_barang}-${Date.now()}.pdf`;
             
-            // Add authorization header by opening in new tab
-            window.open(link.href, '_blank');
+            // Trigger download
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // Cleanup
+            window.URL.revokeObjectURL(downloadUrl);
+            
+            console.log('✅ PDF export completed successfully');
             
         } catch (error) {
-            console.error('Error exporting PDF:', error);
-            alert('Gagal export PDF. Silakan coba lagi.');
+            console.error('❌ Error exporting PDF:', error);
+            
+            // Better error messages
+            let errorMessage = 'Gagal export PDF. Silakan coba lagi.';
+            if (error.response?.status === 404) {
+                errorMessage = 'Laporan tidak ditemukan.';
+            } else if (error.response?.status === 403) {
+                errorMessage = 'Anda tidak memiliki akses untuk export laporan ini.';
+            } else if (error.code === 'ECONNABORTED') {
+                errorMessage = 'Export memakan waktu terlalu lama. Silakan coba lagi.';
+            }
+            
+            alert(errorMessage);
         } finally {
             setIsExporting(false);
         }

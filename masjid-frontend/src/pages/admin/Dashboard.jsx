@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import apiService from '../../services/apiServices';
+import { API_ENDPOINTS } from '../../config/api.config';
 
-// Helper function untuk format currency, bisa juga diimpor dari utils jika sudah ada
+// Helper function untuk format currency
 const formatCurrency = (amount) => {
   if (typeof amount !== 'number') {
     return 'Rp 0';
@@ -28,16 +29,12 @@ const Dashboard = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const token = localStorage.getItem('token');
-        const config = {
-          headers: { Authorization: `Bearer ${token}` },
-        };
 
         // Mengambil semua data yang dibutuhkan secara paralel
         const [summaryRes, kegiatanRes, userRes] = await Promise.all([
-          axios.get('http://localhost:5000/api/kas/summary', config),
-          axios.get('http://localhost:5000/api/kegiatan', config),
-          axios.get('http://localhost:5000/api/user', config) 
+          apiService.get(API_ENDPOINTS.KAS.SUMMARY),
+          apiService.get(API_ENDPOINTS.KEGIATAN.BASE),
+          apiService.get(API_ENDPOINTS.USER.BASE)
         ]);
 
         const summaryData = summaryRes.data.data;

@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { FloatingInput, FloatingSelect, FloatingTextarea } from '../components/form';
 import toast, { Toaster } from 'react-hot-toast';
-import { useAuth } from '../hooks/useAuth'
+import { useAuth } from '../hooks/useAuth';
+import apiService from '../services/apiServices';
+import { API_ENDPOINTS } from '../config/api.config';
 
 const ZakatForm = () => {
   const { user } = useAuth();
@@ -33,7 +35,7 @@ const ZakatForm = () => {
   });
 
   const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingKode, setIsLoadingKode] = useState(false); // ✅ FIX: Add missing state
+  const [isLoadingKode, setIsLoadingKode] = useState(false);
   
   const zakatSettings = {
     fitrah: 35000,
@@ -102,20 +104,11 @@ const ZakatForm = () => {
     { number: 5, title: 'Konfirmasi', icon: '✅' }
   ];
 
-  // ✅ FIX: Generate kode unik dari backend
   const generateKodeUnikFromBackend = async () => {
     setIsLoadingKode(true);
     try {
-      console.log('🔄 Generating kode unik from backend...');
-      
-      const response = await fetch('http://localhost:5173/api/zakat/generate-kode', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          nominal: formData.nominal_zakat
-        }),
+      const response = await apiService.post(API_ENDPOINTS.ZAKAT.GENERATE_KODE, {
+        nominal: formData.nominal_zakat
       });
 
       const result = await response.json();
@@ -189,7 +182,6 @@ const ZakatForm = () => {
     }
   };
 
-  // ✅ FIX: Update kalkulasi dan auto-generate kode unik
   useEffect(() => {
     if (currentStep >= 3) {
       const nominal = hitungZakat();
@@ -203,7 +195,7 @@ const ZakatForm = () => {
     if (currentStep === 5 && formData.nominal_zakat > 0 && !formData.kode_unik) {
       generateKodeUnikFromBackend();
     }
-  }, [formData.jenisZakat, formData.jumlah_jiwa, formData.total_harta, formData.gaji_kotor, currentStep]); // ✅ FIX: Add proper dependencies
+  }, [formData.jenisZakat, formData.jumlah_jiwa, formData.total_harta, formData.gaji_kotor, currentStep]);
 
   // Navigation functions
   const nextStep = () => {
@@ -263,8 +255,6 @@ const ZakatForm = () => {
   // Handle submit
   const handleSubmit = async () => {
     setIsLoading(true);
-    console.log('👤 Current user:', user); // ✅ DEBUG
-    console.log('💳 Submitting zakat with token...');
 
     const submitData = new FormData();
     submitData.append('nama', formData.nama);
@@ -297,10 +287,10 @@ const ZakatForm = () => {
         headers['Authorization'] = `Bearer ${token}`;
       }
       
-      const response = await fetch('http://localhost:5173/api/zakat', {
-        method: 'POST',
-        headers: headers, 
-        body: submitData,
+      const response = await apiService.post(API_ENDPOINTS.ZAKAT.SUBMIT, submitData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
       });
 
       const result = await response.json();

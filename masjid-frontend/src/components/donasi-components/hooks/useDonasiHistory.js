@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react'
 import { donasiService } from '../services/DonasiService'
 import { createFormData } from '../utils/helpers'
+import apiService from '../../../services/apiServices'
+import { API_ENDPOINTS } from '../../../config/api.config'
 
 export const useDonasiHistory = () => {    
     const [state, setState] = useState({
@@ -76,24 +78,23 @@ export const useDonasiHistory = () => {
     const exportLaporanDonasi = useCallback(async (programId, format = 'csv') => {
         try {
             setState(prev => ({ ...prev, loading: true, error: null }));
-            const token = localStorage.getItem('token');
             
             let endpoint;
             if (format === 'pdf') {
-                endpoint = `http://localhost:5000/api/donasi/program/${programId}/export/pdf`;
+                endpoint = API_ENDPOINTS.DONASI.PROGRAM_EXPORT_PDF(programId);
             } else {
-                endpoint = `http://localhost:5000/api/donasi/program/${programId}/export?format=${format}`;
+                endpoint = API_ENDPOINTS.DONASI.PROGRAM_EXPORT(programId);
             }
 
             console.log('📡 Fetching from:', endpoint);
 
-            const response = await fetch(endpoint, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
+            const response = await apiService.get(endpoint, 
+                format !== 'pdf' ? { format } : {},
+                {
+                    responseType: 'blob',
+                    timeout: 30000
                 }
-            });
+            );
 
             // Handle PDF differently
             if (format === 'pdf') {

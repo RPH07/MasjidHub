@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import apiService from '../../services/apiServices'; 
+import { API_ENDPOINTS } from '../../config/api.config';
 
 const UserKegiatan = () => {
   const [kegiatan, setKegiatan] = useState([]);
@@ -15,11 +16,10 @@ const UserKegiatan = () => {
 const fetchKegiatan = async () => {
     try {
       console.log('🔍 Fetching kegiatan data...');
-      const response = await axios.get('http://localhost:5000/api/kegiatan');
+      const response = await apiService.get(API_ENDPOINTS.KEGIATAN.BASE);
       
       console.log('📊 Response:', response.data);
       
-      // ✅ FIX: Backend mengirim response.data.data, bukan langsung response.data
       const kegiatanData = response.data.data || response.data || [];
       
       console.log('📋 Kegiatan data:', kegiatanData);
