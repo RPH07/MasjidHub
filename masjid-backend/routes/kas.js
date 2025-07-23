@@ -5,13 +5,9 @@ const XLSX = require('xlsx')
 
 // Helper function untuk filter berdasarkan periode
 const getPeriodFilter = (period) => {
-  // timezone Indonesia (UTC+7)
-  const now = new Date();
-  
-  // Gunakan Date lokal Indonesia tanpa manipulasi UTC yang rumit
   const today = new Date();
   const year = today.getFullYear();
-  const month = today.getMonth(); // 0-11
+  const month = today.getMonth();
   const date = today.getDate();
   
   let startDate, endDate;
@@ -22,11 +18,21 @@ const getPeriodFilter = (period) => {
       endDate = new Date(year, month, date + 1);
       break;
       
+    case 'kemarin':
+      startDate = new Date(year, month, date - 1);
+      endDate = new Date(year, month, date);
+      break;
+      
     case 'minggu-ini':
-      const dayOfWeek = today.getDay(); // 0 = Sunday
-      const startOfWeek = new Date(year, month, date - dayOfWeek);
-      startDate = startOfWeek;
+      const dayOfWeek = today.getDay();
+      startDate = new Date(year, month, date - dayOfWeek);
       endDate = new Date(year, month, date - dayOfWeek + 7);
+      break;
+      
+    case 'minggu-lalu':
+      const lastWeekStart = new Date(year, month, date - today.getDay() - 7);
+      startDate = lastWeekStart;
+      endDate = new Date(year, month, date - today.getDay());
       break;
       
     case 'bulan-ini':
@@ -34,9 +40,19 @@ const getPeriodFilter = (period) => {
       endDate = new Date(year, month + 1, 1);
       break;
       
+    case 'bulan-lalu':
+      startDate = new Date(year, month - 1, 1);
+      endDate = new Date(year, month, 1);
+      break;
+      
     case 'tahun-ini':
       startDate = new Date(year, 0, 1);
       endDate = new Date(year + 1, 0, 1);
+      break;
+      
+    case 'tahun-lalu':
+      startDate = new Date(year - 1, 0, 1);
+      endDate = new Date(year, 0, 1);
       break;
       
     default:
@@ -44,14 +60,10 @@ const getPeriodFilter = (period) => {
       endDate = new Date(year, month + 1, 1);
   }
 
-  // Format ke YYYY-MM-DD
-  const result = {
+  return {
     startDate: startDate.toISOString().split('T')[0],
     endDate: endDate.toISOString().split('T')[0]
   };
-  
-  console.log(`Period filter for "${period}":`, result); // Debug log
-  return result;
 };
 
 router.get('/', async (req, res) => {
@@ -185,8 +197,8 @@ router.get('/summary', async (req, res) => {
     }
 
     const { startDate: sDate, endDate: eDate } = dateFilter;
-    
-    console.log('Summary filter dates:', { sDate, eDate }); // Debug log
+    // Debug log
+    // console.log('Summary filter dates:', { sDate, eDate }); 
 
     // 1. HITUNG SALDO TOTAL (dari awal sampai sekarang)
     const [totalSaldoRows] = await db.query(`
@@ -201,7 +213,7 @@ router.get('/summary', async (req, res) => {
     const totalKeluar = Number(totalSaldoRows[0].total_keluar);
     const totalSaldo = totalMasuk - totalKeluar;
 
-    console.log('Total saldo calculation:', { totalMasuk, totalKeluar, totalSaldo }); // Debug log
+    // console.log('Total saldo calculation:', { totalMasuk, totalKeluar, totalSaldo }); // Debug log
 
     // 2. HITUNG TRANSAKSI PERIODE SAAT INI
     const [periodRows] = await db.query(`
@@ -216,7 +228,7 @@ router.get('/summary', async (req, res) => {
     const periodMasuk = Number(periodRows[0].period_masuk);
     const periodKeluar = Number(periodRows[0].period_keluar);
 
-    console.log('Period calculation:', { periodMasuk, periodKeluar }); // Debug log
+    // console.log('Period calculation:', { periodMasuk, periodKeluar }); // Debug log
 
     // 3. KODE UNIK STATS
     const [kodeUnikSummary] = await db.query(`
@@ -259,7 +271,7 @@ router.get('/summary', async (req, res) => {
       pemasukanKategori[row.kategori_grouped] = Number(row.total);
     });
 
-    console.log('Pemasukan kategori:', pemasukanKategori); // Debug log
+    // console.log('Pemasukan kategori:', pemasukanKategori); // Debug log
 
     // 5. BREAKDOWN KATEGORI PENGELUARAN
     const [pengeluaranKategoriRows] = await db.query(`
@@ -278,7 +290,7 @@ router.get('/summary', async (req, res) => {
       pengeluaranKategori[row.kategori] = Number(row.total);
     });
 
-    console.log('Pengeluaran kategori:', pengeluaranKategori); // Debug log
+    // console.log('Pengeluaran kategori:', pengeluaranKategori); // Debug log
 
     // 6. HITUNG PERIODE SEBELUMNYA UNTUK PERSENTASE
     const getPreviousPeriod = (period) => {
@@ -390,8 +402,8 @@ router.get('/summary', async (req, res) => {
         totalKodeUnik: Number(kodeUnikSummary[0]?.total_kode_unik_terkumpul || 0)
       }
     };
-
-    console.log('Final response data:', responseData); // Debug log
+    // Debug log
+    // console.log('Final response data:', responseData); 
 
     res.json({
       success: true,
@@ -657,12 +669,12 @@ router.get('/pending', async (req, res) => {
       new Date(b.created_at) - new Date(a.created_at)
     );
 
-    console.log('Pending transactions found:', {
-      zakat: zakatRows.length,
-      infaq: infaqRows.length,
-      donasi: donasiRows.length,
-      total: allPending.length
-    });
+    // console.log('Pending transactions found:', {
+    //   zakat: zakatRows.length,
+    //   infaq: infaqRows.length,
+    //   donasi: donasiRows.length,
+    //   total: allPending.length
+    // });
 
     res.json({
       success: true,
@@ -884,6 +896,8 @@ router.get('/history', async (req, res) => {
 // GET - Export history to Excel/CSV
 router.get('/history/export', async (req, res) => {
   try {
+    console.log('📊 Export request received:', req.query);
+    
     const { 
       period = 'bulan-ini',
       startDate,
@@ -900,6 +914,8 @@ router.get('/history/export', async (req, res) => {
     } else {
       dateFilter = getPeriodFilter(period);
     }
+
+    console.log('🗓️ Date filter:', dateFilter);
 
     let transactions = [];
 
@@ -1017,83 +1033,65 @@ router.get('/history/export', async (req, res) => {
       }
     }
 
-    //  5. PENDING TRANSACTIONS (jika status = pending atau all)
-    if (status === 'pending' || status === 'all') {
-      // Pending Zakat
-      if (type === 'all' || type === 'zakat') {
-        const [pendingZakat] = await db.query(`
-          SELECT 
-            id,
-            nama as nama_pemberi,
-            jumlah,
-            jenis_zakat as kategori,
-            bukti_transfer,
-            metode_pembayaran,
-            status,
-            created_at,
-            'zakat' as type,
-            'Zakat' as type_label,
-            NULL as kode_unik,
-            NULL as keterangan
-          FROM zakat 
-          WHERE DATE(created_at) >= ? AND DATE(created_at) < ?
-            AND status = 'pending'
-        `, [dateFilter.startDate, dateFilter.endDate]);
-        transactions.push(...pendingZakat);
-      }
-
-      // Pending Infaq
-      if (type === 'all' || type === 'infaq') {
-        const [pendingInfaq] = await db.query(`
-          SELECT 
-            id,
-            nama_pemberi,
-            jumlah,
-            kategori_infaq as kategori,
-            bukti_transfer,
-            metode_pembayaran,
-            status,
-            tanggal as created_at,
-            'infaq' as type,
-            'Infaq' as type_label,
-            NULL as kode_unik,
-            keterangan
-          FROM infaq 
-          WHERE DATE(tanggal) >= ? AND DATE(tanggal) < ?
-            AND status = 'pending'
-        `, [dateFilter.startDate, dateFilter.endDate]);
-        transactions.push(...pendingInfaq);
-      }
-
-      // Pending Donasi
-      if (type === 'all' || type === 'donasi') {
-        const [pendingDonasi] = await db.query(`
-          SELECT 
-            d.id,
-            d.nama_donatur as nama_pemberi,
-            d.nominal as jumlah,
-            p.nama_barang as kategori,
-            d.bukti_transfer,
-            d.metode_pembayaran,
-            d.status,
-            d.created_at,
-            'donasi' as type,
-            'Donasi Program' as type_label,
-            d.kode_unik,
-            CONCAT('Program: ', p.nama_barang) as keterangan
-          FROM donasi_pengadaan d
-          JOIN barang_pengadaan p ON d.barang_id = p.id
-          WHERE DATE(d.created_at) >= ? AND DATE(d.created_at) < ?
-            AND d.status = 'pending'
-        `, [dateFilter.startDate, dateFilter.endDate]);
-        transactions.push(...pendingDonasi);
-      }
-    }
-
     // Sort by date
     transactions.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
+    console.log(`📋 Total transactions found: ${transactions.length}`);
+
     if (format === 'csv') {
+      const generateFileName = (period, format) => {
+        const today = new Date();
+        const year = today.getFullYear();
+        const mont = today.toLocaleDateString('id-ID', {mont: 'long'});
+
+        let fileName = 'Riwayat-transaksi-'
+
+        switch (period) {
+          case 'hari-ini':
+            const todayStr = today.toLocaleDateString('id-ID').replace(/\//g, '-');
+            fileName += `hari-ini-${todayStr}`;
+            break;
+          case 'kemarin':
+            const yesterday = new Date(today);
+            yesterday.setDate(today.getDate() - 1);
+            const yesterdayStr = yeesterday.toLocaleDateString('id-ID').replace(/\//g, '-');
+            fileName += `kemarin-${yesterdayStr}`;
+            break;
+          case 'minggu-ini':
+            fileName += `minggu-ini-${month}-${year}`;
+            break;
+          case 'bulan-ini':
+            fileName += `${month.toLowerCase()}-${year}`;
+            break;
+          case 'bulan-lalu':
+            const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+            const lastMonthName = lastMonth.toLocaleDateString('id-ID', {month: 'long'});
+            const lastMontYear = lastMonth.getFullYear();
+            fileName += `${lastMontName.toLowerCase()}-${lastMontYear}`;
+            break;
+          case 'tahun-ini':
+            fileName += `tahun-${year}`;
+            break;
+          case 'tahun-lalu':
+            fileName += `tahun-${year - 1}`;
+            break;
+          default:
+            if (startDate && endDate) {
+              const start = new Date(startDate);
+              const end = new Date(endDate);
+              const startStr = start.toLocaleDateString('id-ID').replace(/\//g, '-');
+              const endStr = end.toLocaleDateString('id-ID').replace(/\//g, '-');
+              fileName += `periode-${startStr}-sampai-${endStr}`;
+            } else {
+              fileName += `${month.toLowerCase()}-${year}`;
+            }
+        }
+        
+        return fileName + `.${format}`;
+      };
+
+      const fileName = generateFileName(period, 'csv');
+
       const csvHeader = 'Tanggal,Jenis,Nama/Donatur,Program/Kategori,Metode,Jumlah,Kode Unik,Status,Keterangan,Bukti Transfer\n';
       const csvData = transactions.map(t => {
         const tanggal = new Date(t.created_at).toLocaleDateString('id-ID');
@@ -1113,186 +1111,254 @@ router.get('/history/export', async (req, res) => {
         return `"${tanggal}","${jenis}","${nama}","${kategori}","${metode}","${jumlah}","${kodeUnik}","${status}","${keterangan}","${bukti}"`;
       }).join('\n');
       
-      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename="riwayat-transaksi-${Date.now()}.csv"`);
-      res.send(csvHeader + csvData);
-
+      res.send('\uFEFF' + csvHeader + csvData);
     } else if (format === 'excel') {
-  const excelData = transactions.map(t => ({
-    'Tanggal': new Date(t.created_at).toLocaleDateString('id-ID'),
-    'Jenis': t.type_label || t.type,
-    'Nama/Donatur': t.nama_pemberi || 'Hamba Allah',
-    'Program/Kategori': t.kategori || '-',
-    'Metode': t.metode_pembayaran === 'qris' ? 'QRIS' : 
-             t.metode_pembayaran === 'cash' || t.metode_pembayaran === 'tunai' ? 'Tunai' :
-             t.metode_pembayaran === 'transfer_bank' ? 'Transfer Bank' : 'Manual',
-    'Jumlah': Number(t.jumlah),
-    'Kode Unik': t.kode_unik ? `+${t.kode_unik}` : '-',
-    'Status': t.status === 'approved' ? 'Approved' : 
-             t.status === 'pending' ? 'Pending' : 'Rejected',
-    'Keterangan': t.keterangan || '-',
-    'Bukti Transfer': t.bukti_transfer ? 'Ada' : 'Tidak Ada'
-  }));
-
-  const workbook = XLSX.utils.book_new();
-  
-  // BUAT WORKSHEET KOSONG DULU
-  const worksheet = XLSX.utils.aoa_to_sheet([]);
-
-  // TAMBAH HEADER YANG DI-MERGE
-  const currentMonth = new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
-  const headerTitle = `Data Export Bulan: ${currentMonth}`;
-
-  // Baris 1-4: Kosong untuk spacing
-  XLSX.utils.sheet_add_aoa(worksheet, [
-    [''], // Row 1
-    [''], // Row 2  
-    [''], // Row 3
-    [''], // Row 4
-    ['','','','','','','','',''], // Row 5 
-    [''], // Row 6
-    [''], // Row 7
-    // Row 8 - Headers
-    ['Tanggal', 'Jenis', 'Nama/Donatur', 'Program/Kategori', 'Metode', 'Jumlah', 'Kode Unik', 'Status', 'Keterangan', 'Bukti Transfer']
-  ], { origin: 'A1' });
-
-  //  TAMBAH DATA MULAI DARI ROW 9
-  const dataRows = excelData.map(item => [
-    item['Tanggal'],
-    item['Jenis'], 
-    item['Nama/Donatur'],
-    item['Program/Kategori'],
-    item['Metode'],
-    item['Jumlah'],
-    item['Kode Unik'],
-    item['Status'],
-    item['Keterangan'],
-    item['Bukti Transfer']
-  ]);
-
-  XLSX.utils.sheet_add_aoa(worksheet, dataRows, { origin: 'A9' });
-
-  worksheet['C5'] = { v: headerTitle, t: 's'};
-
-  //  MERGE HEADER TITLE (C5:H5)
-  if (!worksheet['!merges']) worksheet['!merges'] = [];
-  worksheet['!merges'].push({
-    s: { r: 4, c: 2 }, // Start: Row 5 (index 4), Column C (index 2)
-    e: { r: 4, c: 7 }  // End: Row 5 (index 4), Column H (index 7)
-  });
-
-  //  STYLING HEADER TITLE
-  worksheet['C5'].s = {
-    font: { bold: true, sz: 14 },
-    alignment: { horizontal: 'center', vertical: 'center' },
-    fill: { fgColor: { rgb: 'E3F2FD' } }
-  };
-
-  //  STYLING TABLE HEADERS (ROW 8)
-  const headerCells = ['A8', 'B8', 'C8', 'D8', 'E8', 'F8', 'G8', 'H8', 'I8', 'J8'];
-  headerCells.forEach(cell => {
-    if (worksheet[cell]) {
-      worksheet[cell].s = {
-        font: { bold: true, color: { rgb: 'FFFFFF' } },
-        fill: { fgColor: { rgb: '1976D2' } },
-        alignment: { horizontal: 'center', vertical: 'center' },
-        border: {
-          top: { style: 'thin', color: { rgb: '000000' } },
-          bottom: { style: 'thin', color: { rgb: '000000' } },
-          left: { style: 'thin', color: { rgb: '000000' } },
-          right: { style: 'thin', color: { rgb: '000000' } }
+      console.log('📊 Creating Excel file...');
+      const generateFileName = (period, format) => {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = today.toLocaleDateString('id-ID', { month: 'long' });
+        
+        let fileName = 'riwayat-transaksi-';
+        
+        switch (period) {
+          case 'hari-ini':
+            const todayStr = today.toLocaleDateString('id-ID').replace(/\//g, '-');
+            fileName += `hari-ini-${todayStr}`;
+            break;
+          case 'kemarin':
+            const yesterday = new Date(today);
+            yesterday.setDate(today.getDate() - 1);
+            const yesterdayStr = yesterday.toLocaleDateString('id-ID').replace(/\//g, '-');
+            fileName += `kemarin-${yesterdayStr}`;
+            break;
+          case 'minggu-ini':
+            fileName += `minggu-ini-${month.toLowerCase()}-${year}`;
+            break;
+          case 'minggu-lalu':
+            fileName += `minggu-lalu-${month.toLowerCase()}-${year}`;
+            break;
+          case 'bulan-ini':
+            fileName += `${month.toLowerCase()}-${year}`;
+            break;
+          case 'bulan-lalu':
+            const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+            const lastMonthName = lastMonth.toLocaleDateString('id-ID', { month: 'long' });
+            const lastMonthYear = lastMonth.getFullYear();
+            fileName += `${lastMonthName.toLowerCase()}-${lastMonthYear}`;
+            break;
+          case 'tahun-ini':
+            fileName += `tahun-${year}`;
+            break;
+          case 'tahun-lalu':
+            fileName += `tahun-${year - 1}`;
+            break;
+          default:
+            if (startDate && endDate) {
+              const start = new Date(startDate);
+              const end = new Date(endDate);
+              const startStr = start.toLocaleDateString('id-ID').replace(/\//g, '-');
+              const endStr = end.toLocaleDateString('id-ID').replace(/\//g, '-');
+              fileName += `periode-${startStr}-sampai-${endStr}`;
+            } else {
+              fileName += `${month.toLowerCase()}-${year}`;
+            }
         }
+        
+        return fileName + `.${format === 'excel' ? 'xlsx' : format}`;
       };
-    }
-  });
 
-  //  STYLING DATA ROWS
-  for (let i = 0; i < dataRows.length; i++) {
-    const rowNum = i + 9; // Data starts from row 9
-    const rowCells = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'].map(col => `${col}${rowNum}`);
-    
-    rowCells.forEach(cell => {
-      if (worksheet[cell]) {
-        worksheet[cell].s = {
-          border: {
-            top: { style: 'thin', color: { rgb: 'CCCCCC' } },
-            bottom: { style: 'thin', color: { rgb: 'CCCCCC' } },
-            left: { style: 'thin', color: { rgb: 'CCCCCC' } },
-            right: { style: 'thin', color: { rgb: 'CCCCCC' } }
-          },
-          alignment: { vertical: 'center' }
+      const fileName = generateFileName(period, 'excel');
+      
+      // Memastikan Data ada
+      if (transactions.length === 0) {
+        transactions = [{
+          created_at: new Date(),
+          type_label: 'Tidak ada data',
+          nama_pemberi: '-',
+          kategori: '-',
+          metode_pembayaran: '-',
+          jumlah: 0,
+          kode_unik: null,
+          status: '-',
+          keterangan: 'Tidak ada transaksi pada periode ini',
+          bukti_transfer: null
+        }];
+      }
+
+      // Generate period label untuk header
+      const getPeriodLabel = (period) => {
+        const today = new Date();
+        const options = { 
+          year: 'numeric', 
+          month: 'long',
+          day: 'numeric',
+          timeZone: 'Asia/Jakarta'
         };
         
-        // Special styling for status column
-        if (cell.startsWith('H')) { // Status column
-          const statusValue = worksheet[cell].v;
-          if (statusValue === 'Approved') {
-            worksheet[cell].s.fill = { fgColor: { rgb: 'E8F5E8' } };
-            worksheet[cell].s.font = { color: { rgb: '2E7D32' } };
-          } else if (statusValue === 'Pending') {
-            worksheet[cell].s.fill = { fgColor: { rgb: 'FFF3E0' } };
-            worksheet[cell].s.font = { color: { rgb: 'F57C00' } };
-          } else if (statusValue === 'Rejected') {
-            worksheet[cell].s.fill = { fgColor: { rgb: 'FFEBEE' } };
-            worksheet[cell].s.font = { color: { rgb: 'C62828' } };
-          }
+        switch (period) {
+          case 'hari-ini':
+            return `Hari Ini - ${today.toLocaleDateString('id-ID', options)}`;
+          case 'kemarin':
+            const yesterday = new Date(today);
+            yesterday.setDate(today.getDate() - 1);
+            return `Kemarin - ${yesterday.toLocaleDateString('id-ID', options)}`;
+          case 'minggu-ini':
+            return `Minggu Ini - ${today.toLocaleDateString('id-ID', { year: 'numeric', month: 'long' })}`;
+          case 'minggu-lalu':
+            return `Minggu Lalu - ${today.toLocaleDateString('id-ID', { year: 'numeric', month: 'long' })}`;
+          case 'bulan-ini':
+            return `Bulan ${today.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}`;
+          case 'bulan-lalu':
+            const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+            return `Bulan ${lastMonth.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}`;
+          case 'tahun-ini':
+            return `Tahun ${today.getFullYear()}`;
+          case 'tahun-lalu':
+            return `Tahun ${today.getFullYear() - 1}`;
+          default:
+            if (startDate && endDate) {
+              const start = new Date(startDate);
+              const end = new Date(endDate);
+              return `Periode ${start.toLocaleDateString('id-ID', options)} - ${end.toLocaleDateString('id-ID', options)}`;
+            }
+            return `Bulan ${today.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}`;
+        }
+      };
+
+      const periodLabel = getPeriodLabel(period);
+      const exportDate = new Date().toLocaleDateString('id-ID', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'Asia/Jakarta'
+      });
+
+      // Hitung total untuk summary
+      const totalApproved = transactions.filter(t => t.status === 'approved').length;
+      const totalRejected = transactions.filter(t => t.status === 'rejected').length;
+      const totalPending = transactions.filter(t => t.status === 'pending').length;
+      const totalAmount = transactions.reduce((sum, t) => sum + Number(t.jumlah || 0), 0);
+
+      // Create header data dengan informasi periode
+      const headerData = [
+        ['LAPORAN RIWAYAT TRANSAKSI MASJID'],
+        ['Data Export: ' + periodLabel],
+        ['Tanggal Export: ' + exportDate],
+        [''],
+        ['RINGKASAN:'],
+        ['Total Transaksi: ' + transactions.length],
+        ['Transaksi Approved: ' + totalApproved],
+        ['Transaksi Rejected: ' + totalRejected],
+        ['Transaksi Pending: ' + totalPending],
+        ['Total Amount: Rp ' + new Intl.NumberFormat('id-ID').format(totalAmount)],
+        [''],
+        ['DETAIL TRANSAKSI:'],
+        [''] // Empty row sebelum table headers
+      ];
+
+      // Convert transaction data
+      const excelData = transactions.map(t => ({
+        'Tanggal': new Date(t.created_at).toLocaleDateString('id-ID'),
+        'Jenis': t.type_label || t.type,
+        'Nama/Donatur': t.nama_pemberi || 'Hamba Allah',
+        'Program/Kategori': t.kategori || '-',
+        'Metode': t.metode_pembayaran === 'qris' ? 'QRIS' : 
+                 t.metode_pembayaran === 'cash' || t.metode_pembayaran === 'tunai' ? 'Tunai' :
+                 t.metode_pembayaran === 'transfer_bank' ? 'Transfer Bank' : 'Manual',
+        'Jumlah': Number(t.jumlah),
+        'Kode Unik': t.kode_unik ? `+${t.kode_unik}` : '-',
+        'Status': t.status === 'approved' ? 'Approved' : 
+                 t.status === 'pending' ? 'Pending' : 'Rejected',
+        'Keterangan': t.keterangan || '-',
+        'Bukti Transfer': t.bukti_transfer ? 'Ada' : 'Tidak Ada'
+      }));
+
+      console.log('📋 Excel data prepared, rows:', excelData.length);
+
+      try {
+        const workbook = XLSX.utils.book_new();
+        
+        // Create worksheet dengan header info
+        const worksheet = XLSX.utils.aoa_to_sheet(headerData);
+        
+        // Append transaction data ke worksheet
+        XLSX.utils.sheet_add_json(worksheet, excelData, {
+          origin: 'A' + (headerData.length + 1), // Start after header
+          skipHeader: false
+        });
+
+        // Set column widths
+        const colWidth = [
+          { wch: 12 }, // Tanggal
+          { wch: 15 }, // Jenis
+          { wch: 20 }, // Nama/Donatur
+          { wch: 20 }, // Program/Kategori
+          { wch: 12 }, // Metode
+          { wch: 15 }, // Jumlah
+          { wch: 10 }, // Kode Unik
+          { wch: 10 }, // Status
+          { wch: 30 }, // Keterangan
+          { wch: 12 }  // Bukti Transfer
+        ];
+        worksheet['!cols'] = colWidth;
+
+        // Set cell styles untuk header (bold dan centered)
+        const headerRowStart = 1;
+        const headerRowEnd = headerData.length;
+        
+        // Make title row bold and centered
+        if (worksheet['A1']) {
+          worksheet['A1'].s = {
+            font: { bold: true, size: 14 },
+            alignment: { horizontal: 'center' }
+          };
         }
         
-        // Special styling for amount column (Right align)
-        if (cell.startsWith('F')) { // Jumlah column
-          worksheet[cell].s.alignment = { horizontal: 'right', vertical: 'center' };
-          worksheet[cell].s.numFmt = '#,##0';
+        // Make period info bold
+        if (worksheet['A2']) {
+          worksheet['A2'].s = {
+            font: { bold: true },
+            alignment: { horizontal: 'left' }
+          };
         }
+
+        // Merge cells for title
+        if (!worksheet['!merges']) worksheet['!merges'] = [];
+        worksheet['!merges'].push({
+          s: { r: 0, c: 0 }, // Start: A1
+          e: { r: 0, c: 9 }  // End: J1 (across all columns)
+        });
+
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Riwayat Transaksi');
+
+        console.log('📊 Workbook created, writing buffer...');
         
-        // Special styling for kode unik column (Center align)
-        if (cell.startsWith('G')) { // Kode Unik column
-          worksheet[cell].s.alignment = { horizontal: 'center', vertical: 'center' };
-          if (worksheet[cell].v !== '-') {
-            worksheet[cell].s.fill = { fgColor: { rgb: 'FFFDE7' } };
-            worksheet[cell].s.font = { color: { rgb: 'F57F17' }, bold: true };
-          }
-        }
+        const buffer = XLSX.write(workbook, {
+          type: 'buffer',
+          bookType: 'xlsx'
+        });
+
+        console.log('📦 Buffer created, size:', buffer.length);
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="riwayat-transaksi-${Date.now()}.xlsx"`);
+        res.setHeader('Content-Length', buffer.length);
+        
+        res.send(buffer);
+        console.log('✅ Excel file sent successfully');
+
+      } catch (xlsxError) {
+        console.error('❌ XLSX Error:', xlsxError);
+        res.status(500).json({
+          success: false,
+          message: 'Error creating Excel file: ' + xlsxError.message
+        });
       }
-    });
-  }
-
-  //  UPDATE COLUMN WIDTH - TAMBAH KODE UNIK
-  const colWidth = [
-    { wch: 12 }, // Tanggal (A)
-    { wch: 15 }, // Jenis (B)
-    { wch: 20 }, // Nama/Donatur (C)
-    { wch: 20 }, // Program/Kategori (D)
-    { wch: 12 }, // Metode (E)
-    { wch: 15 }, // Jumlah (F)
-    { wch: 10 }, // Kode Unik (G)
-    { wch: 10 }, // Status (H)
-    { wch: 30 }, // Keterangan (I)
-    { wch: 12 }  // Bukti Transfer (J)
-  ];
-  worksheet['!cols'] = colWidth;
-
-  //  SET ROW HEIGHTS
-  worksheet['!rows'] = [
-    { hpx: 20 }, // Row 1
-    { hpx: 20 }, // Row 2
-    { hpx: 20 }, // Row 3
-    { hpx: 20 }, // Row 4
-    { hpx: 30 }, // Row 5 - Header title (taller)
-    { hpx: 20 }, // Row 6
-    { hpx: 20 }, // Row 7
-    { hpx: 25 }, // Row 8 - Table headers (taller)
-  ];
-
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Riwayat Transaksi');
-
-  const buffer = XLSX.write(workbook, {
-    type: 'buffer',
-    bookType: 'xlsx'
-  });
-
-  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  res.setHeader('Content-Disposition', `attachment; filename="riwayat-transaksi-${Date.now()}.xlsx"`);
-  res.send(buffer);
 
     } else {
       res.status(400).json({
@@ -1302,10 +1368,10 @@ router.get('/history/export', async (req, res) => {
     }
 
   } catch (error) {
-    console.error('Error exporting transaction history:', error);
+    console.error('❌ Error exporting transaction history:', error);
     res.status(500).json({
       success: false,
-      message: 'Terjadi kesalahan saat export data'
+      message: 'Terjadi kesalahan saat export data: ' + error.message
     });
   }
 });
