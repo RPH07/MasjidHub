@@ -316,32 +316,6 @@ const KasValidation = ({
                     </div>
                   </div>
                 )}
-
-                
-                {/* {transaction.type === 'donasi' && transaction.kode_unik && (
-                  <div className="col-span-full">
-                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
-                      <p className="text-sm font-medium text-purple-800 mb-3">🎁 Detail Donasi:</p>
-                      
-                      <div className="space-y-2 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-4">
-                        <div className="flex justify-between py-1 border-b border-purple-200 sm:border-b-0">
-                          <span className="text-sm">Nominal Donasi:</span>
-                          <span className="font-medium text-sm">{formatCurrency(transaction.jumlah)}</span>
-                        </div>
-                        <div className="flex justify-between py-1 border-b border-purple-200 sm:border-b-0">
-                          <span className="text-sm">Kode Unik:</span>
-                          <span className="font-mono text-orange-600 text-sm">+{transaction.kode_unik}</span>
-                        </div>
-                        {transaction.total_transfer && (
-                          <div className="flex justify-between py-2 border-t border-purple-300 font-semibold sm:col-span-2 sm:border-t-2">
-                            <span className="text-sm">Total Transfer:</span>
-                            <span className="text-purple-600 text-sm">{formatCurrency(transaction.total_transfer)}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )} */}
               </div>
 
               {/*BUKTI TRANSFER - MOBILE RESPONSIVE */}
