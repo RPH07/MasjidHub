@@ -19,6 +19,11 @@ import { TABS, kategoriPemasukan } from '../../components/kas-components/utils/c
 const Kas = () => {
   const [activeTab, setActiveTab] = useState('overview');
   
+  // State untuk custom date range
+  const [showCustomDate, setShowCustomDate] = useState(false);
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+  
   // Custom hooks
   const { selectedPeriod, setPeriod, getPeriodLabel } = usePeriodFilter('bulan-ini');
   const kasDataHook = useKasData(selectedPeriod);
@@ -41,6 +46,23 @@ const Kas = () => {
     openBuktiModal,
     closeBuktiModal
   } = useModal();
+
+  const handlePeriodChange = (value) => {
+    if (value === 'custom') {
+      setShowCustomDate(true);
+    } else {
+      setShowCustomDate(false);
+      setPeriod(value);
+    }
+  };
+
+  const applyCustomDate = () => {
+    if (customStartDate && customEndDate) {
+      // Update kasDataHook to accept custom dates
+      kasDataHook.setCustomDateRange(customStartDate, customEndDate);
+      setShowCustomDate(false);
+    }
+  };
 
 const handleOpenBukti = (buktiTransfer, transactionInfo = null) => {
   if (!buktiTransfer) {
@@ -107,15 +129,59 @@ const handleOpenBukti = (buktiTransfer, transactionInfo = null) => {
           <select
             className="border rounded-md px-3 py-2 text-sm"
             value={selectedPeriod}
-            onChange={(e) => setPeriod(e.target.value)}
+            onChange={(e) => handlePeriodChange(e.target.value)}
           >
             <option value="hari-ini">Hari Ini</option>
+            <option value="kemarin">Kemarin</option>
             <option value="minggu-ini">Minggu Ini</option>
+            <option value="minggu-lalu">Minggu Lalu</option>
             <option value="bulan-ini">Bulan Ini</option>
+            <option value="bulan-lalu">Bulan Lalu</option>
             <option value="tahun-ini">Tahun Ini</option>
+            <option value="tahun-lalu">Tahun Lalu</option>
+            <option value="custom">Periode Kustom</option>
           </select>
         </div>
       </div>
+
+      {/* Custom Date Range Picker */}
+      {showCustomDate && (
+        <div className="bg-white p-4 rounded-lg border shadow-sm">
+          <h3 className="text-sm font-medium mb-3">Pilih Periode Kustom</h3>
+          <div className="flex gap-3 items-end">
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Tanggal Mulai</label>
+              <input
+                type="date"
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                className="border rounded-md px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Tanggal Selesai</label>
+              <input
+                type="date"
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                className="border rounded-md px-3 py-2 text-sm"
+              />
+            </div>
+            <button
+              onClick={applyCustomDate}
+              className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700"
+            >
+              Terapkan
+            </button>
+            <button
+              onClick={() => setShowCustomDate(false)}
+              className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm hover:bg-gray-400"
+            >
+              Batal
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Tab Navigation */}
       <div className="border-b border-gray-200 overflow-x-auto no-scrollbar">
