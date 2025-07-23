@@ -19,9 +19,14 @@ export const kategoriPengeluaran = {
 
 export const PERIOD_OPTIONS = [
   { value: 'hari-ini', label: 'Hari Ini' },
+  { value: 'kemarin', label: 'Kemarin' },
   { value: 'minggu-ini', label: 'Minggu Ini' },
+  { value: 'minggu-lalu', label: 'Minggu Lalu' },
   { value: 'bulan-ini', label: 'Bulan Ini' },
-  { value: 'tahun-ini', label: 'Tahun Ini' }
+  { value: 'bulan-lalu', label: 'Bulan Lalu' },
+  { value: 'tahun-ini', label: 'Tahun Ini' },
+  { value: 'tahun-lalu', label: 'Tahun Lalu' },
+  { value: 'custom', label: 'Periode Kustom' }
 ];
 
 // export const TABS = [
