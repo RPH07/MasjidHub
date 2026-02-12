@@ -1,6 +1,7 @@
 const KategoriKegiatan = require('../KategoriModels');
 const Kegiatan = require('../KegiatanModels');
 const User = require('../UserModels');
+const {cloudinary} = require('../../config/cloudinary')
 
 // get all kegaiatan untuk public
 exports.getKegiatan = async(req, res) => {
@@ -58,7 +59,17 @@ exports.deleteKegiatan = async(req, res) => {
     if(!kegiatan) return res.status(404).json({msg: 'Kegiatan tidak ditemukan!'});
 
     try {
-        // todo: hapus gambar dari cdn/storage
+        // hapus gambar dari cdn/storage
+        if (kegiatan.image_url) {
+            const urlParts = kegiatan.image_url.split('/');
+            const folderIndex = urlParts.findIndex(part => part === 'masjidhub');
+            if (folderIndex) {
+                const publicIdWithExtension = urlParts.slice(folderIndex).join('/');
+                const publicId = publicIdWithExtension.split('.')[0]; // menghapus entensi file
+
+                await cloudinary.uploader.destroy(publicId);
+            }
+        }
 
         // hapus kegiatan dari database
         await Kegiatan.destroy({
