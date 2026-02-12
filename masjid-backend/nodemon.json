@@ -1,0 +1,7 @@
+{
+  "verbose": true,
+  "ignore": ["node_modules", ".git"],
+  "events": {
+    "restart": "printf '\\033[2J\\033[32m\\n\\n🚀 ========================================= 🚀\\n🚀        RESTARTING BACKEND SERVER        🚀\\n🚀 ========================================= 🚀\\n\\n\\033[0m'"
+  }
+}
