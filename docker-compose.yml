@@ -1,0 +1,57 @@
+services:
+  # Service 1: Database (MariaDB)
+  db:
+    image: mariadb:10.11
+    container_name: masjid_db
+    restart: always
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_PASSWORD}
+      MARIADB_DATABASE: ${DB_NAME}
+      MARIADB_USER: ${DB_USER}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - masjid_network
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p${DB_PASSWORD} || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s # Kasih waktu 30 detik buat booting awal
+
+  # Service 2: Backend Node.js
+  backend:
+    build: ./masjid-backend
+    container_name: masjid_backend
+    restart: always
+    ports:
+      - "${PORT}:${PORT}"
+    environment:
+      - DB_HOST=db
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - ADMIN_SECRET=${ADMIN_SECRET}
+      - JWT_SECRET=${JWT_SECRET}
+      - PORT=${PORT}
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - masjid_network
+    volumes:
+      - ./masjid-backend/public/images:/app/public/images
+      - ./masjid-backend:/app
+      - /app/node_modules
+    command: npm run dev
+
+volumes:
+  mysql_data:
+
+networks:
+  masjid_network:
+    driver: bridge
