@@ -135,7 +135,7 @@ exports.verifyZakat = async(req, res) => {
         } else if (action === 'rejected') {
             await zakat.update({
                 status: 'rejected',
-                rejected_status: rejected_status || 'Bukti Tidak Sesuai',
+                reject_reason: reject_reason || 'Bukti Tidak Sesuai',
                 validated_at: new Date()
             });
         }
