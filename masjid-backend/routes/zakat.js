@@ -6,7 +6,7 @@ const {verifyToken} = require('../models/middleware/auth');
 router.get('/', zakatController.getZakat);
 
 // POST
-router.post('/generate-kode', zakatController.generateKodeUnik);
+// router.post('/generate-kode', zakatController.generateKodeUnik);
 router.post('/', zakatController.createZakat); 
 // router.post('/', verifyToken, zakatController.createZakat);
 
