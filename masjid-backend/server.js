@@ -14,7 +14,8 @@ const kategoriKegiatanRoutes = require('./routes/kategori-kegiatan');
 // const { publicAccess } = require('./middleware');
 
 dotenv.config();
-console.log('Testing CI/CD asli')
+console.log('Testing CI/CD asli');
+console.log('Testing CI/CD asli 2');
 
 const app = express();
 app.use(express.static('public'));
