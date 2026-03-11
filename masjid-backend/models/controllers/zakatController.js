@@ -3,8 +3,42 @@ const BankMasjid = require('../BankModels');
 const {Op} = require('sequelize');
 const cloudinary = require('../../config/cloudinary');
 
+exports.getZakat = async(req, res) => {
+    // todo: bikin get zakat.
+    try {
+        const {status, jenis_zakat} = req.query;
+
+        let condition = {};
+        if (status) {
+            condition.status = status;
+        }
+        if (jenis_zakat) {
+            condition.jenis_zakat = jenis_zakat;
+        }
+
+        const zakatList = await Zakat.findAll({
+            where: condition,
+            order: [['createdAt', 'DESC']],
+        });
+
+        res.status(200).json({
+            success: true,
+            msg: "Berhasil mengambil data zakat",
+            total_data: zakatList.length,
+            data: zakatList
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            msg: "Server error saat mengambil data zakat",
+            error: error.message
+        });
+    }
+}
+
 // create zakat(hitung + generate kode unik)
-exports.createZakat = async (data) => {
+exports.createZakat = async (req, res) => {
     const {
         nama, email, no_telepon, jenis_zakat,
         jumlah_jiwa, total_harta, gaji_kotor,
@@ -72,16 +106,51 @@ exports.createZakat = async (data) => {
     }
 }
 
-exports.getZakat = async(req, res) => {
-    // todo: bikin get zakat.
-}
-
 exports.uploadBuktiZakat = async(req, res) => {
     // todo: bikin upload bukti transfer zakat
 }
 
 exports.verifyZakat = async(req, res) => {
     // todo: bikin verifikasi zakat (approve/reject)
+    try {
+        const {id} = req.params;
+        const {action, reject_reason} = req.body;
+
+        const zakat = await Zakat.findByPk(id);
+
+        if (!zakat) {
+            return res.status(404).json({ msg: "Data Zakat tidak ditemukan." });
+        }
+
+        if (zakat.status !== 'pending') {
+            return res.status(400).json({msg: "Data zakat ini sudah divalidasi sebelumnya"})
+        }
+
+
+        if (action === 'approve') {
+            await zakat.update({
+                status: 'approved',
+                validated_at: new Date()
+            });
+        } else if (action === 'rejected') {
+            await zakat.update({
+                status: 'rejected',
+                rejected_status: rejected_status || 'Bukti Tidak Sesuai',
+                validated_at: new Date()
+            });
+        }
+
+        res.json({
+            success: true,
+            msg: `Zakat berhasil di-${action}`
+        })
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            msg: "Server error saat memverifikasi zakat",
+            error: error.message
+        });
+    }
 }
 
 exports.deleteZakat = async(req, res) => {
