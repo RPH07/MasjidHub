@@ -18,7 +18,7 @@ exports.getZakat = async(req, res) => {
 
         const zakatList = await Zakat.findAll({
             where: condition,
-            order: [['createdAt', 'DESC']],
+            order: [['created_at', 'DESC']],
         });
 
         res.status(200).json({
