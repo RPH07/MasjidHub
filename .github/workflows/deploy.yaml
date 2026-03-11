@@ -22,5 +22,5 @@ jobs:
           cp ~/.env .env
           
           # Matiin docker lama, build ulang, dan nyalain lagi
-          docker-compose down
-          docker-compose up -d --build
+          docker compose down
+          docker compose up -d --build
