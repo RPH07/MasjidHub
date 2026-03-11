@@ -7,15 +7,13 @@ const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
 const kegiatanRoutes = require('./routes/kegiatan');
 // const kasRoutes = require('./routes/kas');
-// const zakatRoutes = require('./routes/zakat');
+const zakatRoutes = require('./routes/zakat');
 // const donasiRoutes = require('./routes/donasi');
 const kategoriKegiatanRoutes = require('./routes/kategori-kegiatan');
 // const KontribusiHistoryRotes = require('./routes/kontribusi')
 // const { publicAccess } = require('./middleware');
 
 dotenv.config();
-console.log('Testing CI/CD asli');
-console.log('Testing CI/CD asli 2');
 
 const app = express();
 app.use(express.static('public'));
@@ -45,7 +43,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/kegiatan', kegiatanRoutes);
 // app.use('/api/kas', kasRoutes);
-// app.use('/api/zakat', zakatRoutes);
+app.use('/api/zakat', zakatRoutes);
 // app.use('/api/donasi', donasiRoutes);
 app.use('/api/kategori-kegiatan', kategoriKegiatanRoutes);
 // app.use('/api/kontribusi', KontribusiHistoryRotes)
