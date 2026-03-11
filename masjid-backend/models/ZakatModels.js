@@ -70,4 +70,4 @@ const Zakat = sequelize.define('Zakat', {
 
 Zakat.belongsTo(User, {foreignKey: 'user_id', as: 'user'});
 
-modules.exports = Zakat;
+module.exports = Zakat;
