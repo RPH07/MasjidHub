@@ -60,6 +60,14 @@ const Zakat = sequelize.define('Zakat', {
         type: DataTypes.ENUM('pending', 'approved', 'rejected'),
         defaultValue: 'pending'
     },
+    reject_reason: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    validated_at: {
+        type: DataTypes.DATE,
+        allowNull: true
+    }
 }, {
     freezeTableName: true,
     tableName: 'zakat',
