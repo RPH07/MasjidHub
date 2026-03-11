@@ -33,7 +33,14 @@ app.use(express.json());
 // app.use('/images', express.static(path.join(__dirname, 'public/images')));
 // Tambahkan static file serving untuk bukti transfer
 // app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
+// Health Check Route
+app.get('/', (req, res) => {
+  res.status(200).json({
+    status: 'success',
+    message: 'MasjidHub API is Running',
+    developer: 'Rey'
+  });
+});
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/kegiatan', kegiatanRoutes);
