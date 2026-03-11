@@ -1,0 +1,26 @@
+name: Deploy Backend ke VPS NAT
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'masjid-backend/**' 
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Pull kodingan terbaru (Checkout)
+        uses: actions/checkout@v3
+
+      - name: Build & Restart Docker Compose
+        run: |
+          cd masjid-backend
+          
+          cp ~/.env .env
+          
+          # Matiin docker lama, build ulang, dan nyalain lagi
+          docker-compose down
+          docker-compose up -d --build
