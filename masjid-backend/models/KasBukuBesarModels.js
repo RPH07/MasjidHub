@@ -1,53 +1,70 @@
-const {dataTypes} = require('sequelize');
+const {DataTypes} = require('sequelize');
 const sequelize = require('../config/db');
 
 const KasBukuBesar = sequelize.define('KasBukuBesar', {
     id: {
-        type: dataTypes.INTEGER,
+        type: DataTypes.INTEGER,
         primaryKey: true,
         autoIncrement: true
     },
-    tangal: {
-        type: dataTypes.DATE,
+    tanggal: {
+        type: DataTypes.DATE,
         allowNull: false
     },
     deskripsi: {
-        type: dataTypes.TEXT,
+        type: DataTypes.TEXT,
         allowNull: false
     },
     jenis: {
-        type: dataTypes.ENUM('masuk', 'keluar'),
+        type: DataTypes.ENUM('masuk', 'keluar'),
         allowNull: false
     },
     jumlah: {
-        type: dataTypes.DECIMAL(15, 2),
+        type: DataTypes.DECIMAL(15, 2),
         allowNull: false
     },
     kategori: {
-        type: dataTypes.STRING,
+        type: DataTypes.STRING,
         allowNull: false
     },
-    source_tabel: {
-        type: dataTypes.STRING,
+    source_table: {
+        type: DataTypes.STRING,
         allowNull: true
     },
     source_id:{
-        type: dataTypes.INTEGER,
+        type: DataTypes.INTEGER,
         allowNull: true
     },
     kode_unik: {
-        type: dataTypes.INTEGER,
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    metode_input: {
+        type: DataTypes.ENUM('online', 'manual'),
+        defaultValue: 'manual'
+    },
+    metode_pembayaran: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    bukti_transfer: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    nama_pemberi: {
+        type: DataTypes.STRING,
         allowNull: true
     },
     deleted_at: {
-        type: dataTypes.DATE,
+        type: DataTypes.DATE,
         allowNull: true
     }
 }, {
+    tableName: 'kas_buku_besar',
     freezeTableName: true,
     timestamps: true,
     createdAt: 'created_at',
-    updatedAt: false
+    updatedAt: 'updated_at'
 });
 
 
