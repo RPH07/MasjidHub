@@ -1,49 +1,50 @@
-const {dataTypes} = require('sequelize');
+const {DataTypes} = require('sequelize');
 const sequelize = require('../config/db');
 
 const KasManual = sequelize.define('KasManual', {
     id: {
-        type: dataTypes.INTEGER,
+        type: DataTypes.INTEGER,
         primaryKey: true,
         autoIncrement: true
     },
-    tangal: {
-        type: dataTypes.DATE,
+    tanggal: {
+        type: DataTypes.DATE,
         allowNull: false
     },
-    ketearangan: {
-        type: dataTypes.TEXT,
+    keterangan: {
+        type: DataTypes.TEXT,
         allowNull: false
     },
     jenis: {
-        type: dataTypes.ENUM('masuk', 'keluar'),
+        type: DataTypes.ENUM('masuk', 'keluar'),
         allowNull: false
     },
     jumlah: {
-        type: dataTypes.DECIMAL(15, 2),
+        type: DataTypes.DECIMAL(15, 2),
         allowNull: false
     },
     kategori: {
-        type: dataTypes.STRING,
+        type: DataTypes.STRING,
         defaultValue: 'operasional'
     },
     kategori_pemasukan: {
-        type: dataTypes.STRING,
+        type: DataTypes.STRING,
         allowNull: true
     },
     nama_pemberi: {
-        type: dataTypes.STRING,
+        type: DataTypes.STRING,
         allowNull: true
     },
     deleted_at: {
-        type: dataTypes.DATE,
+        type: DataTypes.DATE,
         allowNull: true
     }
 }, {
+    tableName: 'kas_manual',
     freezeTableName: true,
     timestamps: true,
     createdAt: 'created_at',
-    updatedAt: 'updated_at'
+    updatedAt: false
 });
 
 module.exports = KasManual;
