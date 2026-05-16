@@ -5,69 +5,69 @@ const XLSX = require('xlsx');
 const kasController = require('../models/controllers/kasController')
 
 // Helper function untuk filter berdasarkan periode
-const getPeriodFilter = (period) => {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = today.getMonth();
-  const date = today.getDate();
+// const getPeriodFilter = (period) => {
+//   const today = new Date();
+//   const year = today.getFullYear();
+//   const month = today.getMonth();
+//   const date = today.getDate();
   
-  let startDate, endDate;
+//   let startDate, endDate;
 
-  switch (period) {
-    case 'hari-ini':
-      startDate = new Date(year, month, date);
-      endDate = new Date(year, month, date + 1);
-      break;
+//   switch (period) {
+//     case 'hari-ini':
+//       startDate = new Date(year, month, date);
+//       endDate = new Date(year, month, date + 1);
+//       break;
       
-    case 'kemarin':
-      startDate = new Date(year, month, date - 1);
-      endDate = new Date(year, month, date);
-      break;
+//     case 'kemarin':
+//       startDate = new Date(year, month, date - 1);
+//       endDate = new Date(year, month, date);
+//       break;
       
-    case 'minggu-ini':
-      const dayOfWeek = today.getDay();
-      const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Senin = 0
-      startDate = new Date(year, month, date - daysFromMonday);
-      endDate = new Date(year, month, date - daysFromMonday + 7);
-      break;
+//     case 'minggu-ini':
+//       const dayOfWeek = today.getDay();
+//       const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Senin = 0
+//       startDate = new Date(year, month, date - daysFromMonday);
+//       endDate = new Date(year, month, date - daysFromMonday + 7);
+//       break;
       
-    case 'minggu-lalu':
-      const lastWeekDay = today.getDay();
-      const daysFromLastMonday = lastWeekDay === 0 ? 6 : lastWeekDay - 1;
-      startDate = new Date(year, month, date - daysFromLastMonday - 7);
-      endDate = new Date(year, month, date - daysFromLastMonday);
-      break;
+//     case 'minggu-lalu':
+//       const lastWeekDay = today.getDay();
+//       const daysFromLastMonday = lastWeekDay === 0 ? 6 : lastWeekDay - 1;
+//       startDate = new Date(year, month, date - daysFromLastMonday - 7);
+//       endDate = new Date(year, month, date - daysFromLastMonday);
+//       break;
     
-    case 'bulan-ini':
-      startDate = new Date(year, month, 1);
-      endDate = new Date(year, month + 1, 1);
-      break;
+//     case 'bulan-ini':
+//       startDate = new Date(year, month, 1);
+//       endDate = new Date(year, month + 1, 1);
+//       break;
       
-    case 'bulan-lalu':
-      startDate = new Date(year, month - 1, 1);
-      endDate = new Date(year, month, 1);
-      break;
+//     case 'bulan-lalu':
+//       startDate = new Date(year, month - 1, 1);
+//       endDate = new Date(year, month, 1);
+//       break;
       
-    case 'tahun-ini':
-      startDate = new Date(year, 0, 1);
-      endDate = new Date(year + 1, 0, 1);
-      break;
+//     case 'tahun-ini':
+//       startDate = new Date(year, 0, 1);
+//       endDate = new Date(year + 1, 0, 1);
+//       break;
       
-    case 'tahun-lalu':
-      startDate = new Date(year - 1, 0, 1);
-      endDate = new Date(year, 0, 1);
-      break;
+//     case 'tahun-lalu':
+//       startDate = new Date(year - 1, 0, 1);
+//       endDate = new Date(year, 0, 1);
+//       break;
       
-    default:
-      startDate = new Date(year, month, 1);
-      endDate = new Date(year, month + 1, 1);
-  }
+//     default:
+//       startDate = new Date(year, month, 1);
+//       endDate = new Date(year, month + 1, 1);
+//   }
 
-  return {
-    startDate: startDate.toISOString().split('T')[0],
-    endDate: endDate.toISOString().split('T')[0]
-  };
-};
+//   return {
+//     startDate: startDate.toISOString().split('T')[0],
+//     endDate: endDate.toISOString().split('T')[0]
+//   };
+// };
 
 
 router.get('/', async (req, res) => {
@@ -189,241 +189,241 @@ router.get('/', async (req, res) => {
 });
 
 // summary endpoint
+router.get('/summary', kasController.getKasSummary);
+// router.get('/summary', async (req, res) => {
+//   try {
+//     const { period = 'bulan-ini', startDate, endDate } = req.query;
 
-router.get('/summary', async (req, res) => {
-  try {
-    const { period = 'bulan-ini', startDate, endDate } = req.query;
+//     let dateFilter;
+//     if (startDate && endDate) {
+//       dateFilter = { startDate, endDate };
+//     } else {
+//       dateFilter = getPeriodFilter(period);
+//     }
 
-    let dateFilter;
-    if (startDate && endDate) {
-      dateFilter = { startDate, endDate };
-    } else {
-      dateFilter = getPeriodFilter(period);
-    }
+//     const { startDate: sDate, endDate: eDate } = dateFilter;
+//     // Debug log
+//     // console.log('Summary filter dates:', { sDate, eDate }); 
 
-    const { startDate: sDate, endDate: eDate } = dateFilter;
-    // Debug log
-    // console.log('Summary filter dates:', { sDate, eDate }); 
-
-    // 1. HITUNG SALDO TOTAL (dari awal sampai sekarang)
-    const [totalSaldoRows] = await db.query(`
-      SELECT 
-        COALESCE(SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END), 0) as total_masuk,
-        COALESCE(SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END), 0) as total_keluar
-      FROM kas_buku_besar
-      WHERE deleted_at IS NULL
-    `);
+//     // 1. HITUNG SALDO TOTAL (dari awal sampai sekarang)
+//     const [totalSaldoRows] = await db.query(`
+//       SELECT 
+//         COALESCE(SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END), 0) as total_masuk,
+//         COALESCE(SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END), 0) as total_keluar
+//       FROM kas_buku_besar
+//       WHERE deleted_at IS NULL
+//     `);
     
-    const totalMasuk = Number(totalSaldoRows[0].total_masuk);
-    const totalKeluar = Number(totalSaldoRows[0].total_keluar);
-    const totalSaldo = totalMasuk - totalKeluar;
+//     const totalMasuk = Number(totalSaldoRows[0].total_masuk);
+//     const totalKeluar = Number(totalSaldoRows[0].total_keluar);
+//     const totalSaldo = totalMasuk - totalKeluar;
 
-    // console.log('Total saldo calculation:', { totalMasuk, totalKeluar, totalSaldo }); // Debug log
+//     // console.log('Total saldo calculation:', { totalMasuk, totalKeluar, totalSaldo }); // Debug log
 
-    // 2. HITUNG TRANSAKSI PERIODE SAAT INI
-    const [periodRows] = await db.query(`
-      SELECT 
-        COALESCE(SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END), 0) as period_masuk,
-        COALESCE(SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END), 0) as period_keluar
-      FROM kas_buku_besar
-      WHERE tanggal >= ? AND tanggal < ?
-        AND deleted_at IS NULL
-    `, [sDate, eDate]);
+//     // 2. HITUNG TRANSAKSI PERIODE SAAT INI
+//     const [periodRows] = await db.query(`
+//       SELECT 
+//         COALESCE(SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END), 0) as period_masuk,
+//         COALESCE(SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END), 0) as period_keluar
+//       FROM kas_buku_besar
+//       WHERE tanggal >= ? AND tanggal < ?
+//         AND deleted_at IS NULL
+//     `, [sDate, eDate]);
 
-    const periodMasuk = Number(periodRows[0].period_masuk);
-    const periodKeluar = Number(periodRows[0].period_keluar);
+//     const periodMasuk = Number(periodRows[0].period_masuk);
+//     const periodKeluar = Number(periodRows[0].period_keluar);
 
-    // console.log('Period calculation:', { periodMasuk, periodKeluar }); // Debug log
+//     // console.log('Period calculation:', { periodMasuk, periodKeluar }); // Debug log
 
-    // 3. KODE UNIK STATS
-    const [kodeUnikSummary] = await db.query(`
-      SELECT 
-        COUNT(kode_unik) as total_transaksi_kode_unik,
-        COALESCE(SUM(kode_unik), 0) as total_kode_unik_terkumpul
-      FROM kas_buku_besar
-      WHERE jenis = 'masuk'
-        AND kode_unik IS NOT NULL
-        AND tanggal >= ? AND tanggal < ?
-        AND deleted_at IS NULL
-    `, [sDate, eDate]);
+//     // 3. KODE UNIK STATS
+//     const [kodeUnikSummary] = await db.query(`
+//       SELECT 
+//         COUNT(kode_unik) as total_transaksi_kode_unik,
+//         COALESCE(SUM(kode_unik), 0) as total_kode_unik_terkumpul
+//       FROM kas_buku_besar
+//       WHERE jenis = 'masuk'
+//         AND kode_unik IS NOT NULL
+//         AND tanggal >= ? AND tanggal < ?
+//         AND deleted_at IS NULL
+//     `, [sDate, eDate]);
 
-    // 4. BREAKDOWN KATEGORI PEMASUKAN
-    const [pemasukanKategoriRows] = await db.query(`
-      SELECT 
-        CASE 
-          WHEN source_table = 'zakat' THEN 'zakat'
-          WHEN source_table = 'infaq' THEN 'infaq' 
-          WHEN source_table = 'donasi_pengadaan' THEN 'donasi'
-          WHEN source_table = 'manual' OR source_table IS NULL THEN 'kas_manual'
-          ELSE 'kas_manual'
-        END as kategori_grouped,
-        COALESCE(SUM(jumlah), 0) as total
-      FROM kas_buku_besar
-      WHERE jenis = 'masuk'
-        AND tanggal >= ? AND tanggal < ?
-        AND deleted_at IS NULL
-      GROUP BY kategori_grouped
-    `, [sDate, eDate]);
+//     // 4. BREAKDOWN KATEGORI PEMASUKAN
+//     const [pemasukanKategoriRows] = await db.query(`
+//       SELECT 
+//         CASE 
+//           WHEN source_table = 'zakat' THEN 'zakat'
+//           WHEN source_table = 'infaq' THEN 'infaq' 
+//           WHEN source_table = 'donasi_pengadaan' THEN 'donasi'
+//           WHEN source_table = 'manual' OR source_table IS NULL THEN 'kas_manual'
+//           ELSE 'kas_manual'
+//         END as kategori_grouped,
+//         COALESCE(SUM(jumlah), 0) as total
+//       FROM kas_buku_besar
+//       WHERE jenis = 'masuk'
+//         AND tanggal >= ? AND tanggal < ?
+//         AND deleted_at IS NULL
+//       GROUP BY kategori_grouped
+//     `, [sDate, eDate]);
 
-    const pemasukanKategori = {
-      zakat: 0,
-      infaq: 0,
-      donasi: 0,
-      kas_manual: 0
-    };
+//     const pemasukanKategori = {
+//       zakat: 0,
+//       infaq: 0,
+//       donasi: 0,
+//       kas_manual: 0
+//     };
 
-    pemasukanKategoriRows.forEach(row => {
-      pemasukanKategori[row.kategori_grouped] = Number(row.total);
-    });
+//     pemasukanKategoriRows.forEach(row => {
+//       pemasukanKategori[row.kategori_grouped] = Number(row.total);
+//     });
 
-    // console.log('Pemasukan kategori:', pemasukanKategori); // Debug log
+//     // console.log('Pemasukan kategori:', pemasukanKategori); // Debug log
 
-    // 5. BREAKDOWN KATEGORI PENGELUARAN
-    const [pengeluaranKategoriRows] = await db.query(`
-      SELECT 
-        COALESCE(kategori, 'operasional') as kategori,
-        COALESCE(SUM(jumlah), 0) as total
-      FROM kas_buku_besar
-      WHERE jenis = 'keluar'
-        AND tanggal >= ? AND tanggal < ?
-        AND deleted_at IS NULL
-      GROUP BY kategori
-    `, [sDate, eDate]);
+//     // 5. BREAKDOWN KATEGORI PENGELUARAN
+//     const [pengeluaranKategoriRows] = await db.query(`
+//       SELECT 
+//         COALESCE(kategori, 'operasional') as kategori,
+//         COALESCE(SUM(jumlah), 0) as total
+//       FROM kas_buku_besar
+//       WHERE jenis = 'keluar'
+//         AND tanggal >= ? AND tanggal < ?
+//         AND deleted_at IS NULL
+//       GROUP BY kategori
+//     `, [sDate, eDate]);
 
-    const pengeluaranKategori = {};
-    pengeluaranKategoriRows.forEach(row => {
-      pengeluaranKategori[row.kategori] = Number(row.total);
-    });
+//     const pengeluaranKategori = {};
+//     pengeluaranKategoriRows.forEach(row => {
+//       pengeluaranKategori[row.kategori] = Number(row.total);
+//     });
 
-    // console.log('Pengeluaran kategori:', pengeluaranKategori); // Debug log
+//     // console.log('Pengeluaran kategori:', pengeluaranKategori); // Debug log
 
-    // 6. HITUNG PERIODE SEBELUMNYA UNTUK PERSENTASE
-    const getPreviousPeriod = (period) => {
-      const today = new Date();
-      const jakartaOffset = 7 * 60;
-      const localOffset = today.getTimezoneOffset();
-      const jakartaTime = new Date(today.getTime() + (localOffset + jakartaOffset) * 60000);
+//     // 6. HITUNG PERIODE SEBELUMNYA UNTUK PERSENTASE
+//     const getPreviousPeriod = (period) => {
+//       const today = new Date();
+//       const jakartaOffset = 7 * 60;
+//       const localOffset = today.getTimezoneOffset();
+//       const jakartaTime = new Date(today.getTime() + (localOffset + jakartaOffset) * 60000);
       
-      let prevStartDate, prevEndDate;
+//       let prevStartDate, prevEndDate;
 
-      switch (period) {
-        case 'hari-ini':
-          const yesterday = new Date(jakartaTime);
-          yesterday.setDate(jakartaTime.getDate() - 1);
-          prevStartDate = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
-          prevEndDate = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate() + 1);
-          break;
-        case 'minggu-ini':
-          const prevWeekStart = new Date(jakartaTime);
-          prevWeekStart.setDate(jakartaTime.getDate() - jakartaTime.getDay() - 7);
-          prevStartDate = new Date(prevWeekStart.getFullYear(), prevWeekStart.getMonth(), prevWeekStart.getDate());
-          prevEndDate = new Date(prevStartDate.getTime() + 7 * 24 * 60 * 60 * 1000);
-          break;
-        case 'bulan-ini':
-          const prevMonth = new Date(jakartaTime.getFullYear(), jakartaTime.getMonth() - 1, 1);
-          prevStartDate = prevMonth;
-          prevEndDate = new Date(jakartaTime.getFullYear(), jakartaTime.getMonth(), 1);
-          break;
-        case 'tahun-ini':
-          const prevYear = new Date(jakartaTime.getFullYear() - 1, 0, 1);
-          prevStartDate = prevYear;
-          prevEndDate = new Date(jakartaTime.getFullYear(), 0, 1);
-          break;
-        default:
-          const prevMonthDefault = new Date(jakartaTime.getFullYear(), jakartaTime.getMonth() - 1, 1);
-          prevStartDate = prevMonthDefault;
-          prevEndDate = new Date(jakartaTime.getFullYear(), jakartaTime.getMonth(), 1);
-      }
+//       switch (period) {
+//         case 'hari-ini':
+//           const yesterday = new Date(jakartaTime);
+//           yesterday.setDate(jakartaTime.getDate() - 1);
+//           prevStartDate = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
+//           prevEndDate = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate() + 1);
+//           break;
+//         case 'minggu-ini':
+//           const prevWeekStart = new Date(jakartaTime);
+//           prevWeekStart.setDate(jakartaTime.getDate() - jakartaTime.getDay() - 7);
+//           prevStartDate = new Date(prevWeekStart.getFullYear(), prevWeekStart.getMonth(), prevWeekStart.getDate());
+//           prevEndDate = new Date(prevStartDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+//           break;
+//         case 'bulan-ini':
+//           const prevMonth = new Date(jakartaTime.getFullYear(), jakartaTime.getMonth() - 1, 1);
+//           prevStartDate = prevMonth;
+//           prevEndDate = new Date(jakartaTime.getFullYear(), jakartaTime.getMonth(), 1);
+//           break;
+//         case 'tahun-ini':
+//           const prevYear = new Date(jakartaTime.getFullYear() - 1, 0, 1);
+//           prevStartDate = prevYear;
+//           prevEndDate = new Date(jakartaTime.getFullYear(), 0, 1);
+//           break;
+//         default:
+//           const prevMonthDefault = new Date(jakartaTime.getFullYear(), jakartaTime.getMonth() - 1, 1);
+//           prevStartDate = prevMonthDefault;
+//           prevEndDate = new Date(jakartaTime.getFullYear(), jakartaTime.getMonth(), 1);
+//       }
 
-      return {
-        startDate: prevStartDate.toISOString().split('T')[0],
-        endDate: prevEndDate.toISOString().split('T')[0]
-      };
-    };
+//       return {
+//         startDate: prevStartDate.toISOString().split('T')[0],
+//         endDate: prevEndDate.toISOString().split('T')[0]
+//       };
+//     };
 
-    const prevPeriod = getPreviousPeriod(period);
+//     const prevPeriod = getPreviousPeriod(period);
     
-    // Saldo sampai akhir periode sebelumnya
-    const [prevTotalSaldoRows] = await db.query(`
-      SELECT 
-        COALESCE(SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END), 0) as prev_total_masuk,
-        COALESCE(SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END), 0) as prev_total_keluar
-      FROM kas_buku_besar
-      WHERE tanggal < ?
-        AND deleted_at IS NULL
-    `, [sDate]);
+//     // Saldo sampai akhir periode sebelumnya
+//     const [prevTotalSaldoRows] = await db.query(`
+//       SELECT 
+//         COALESCE(SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END), 0) as prev_total_masuk,
+//         COALESCE(SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END), 0) as prev_total_keluar
+//       FROM kas_buku_besar
+//       WHERE tanggal < ?
+//         AND deleted_at IS NULL
+//     `, [sDate]);
 
-    const prevTotalMasuk = Number(prevTotalSaldoRows[0].prev_total_masuk);
-    const prevTotalKeluar = Number(prevTotalSaldoRows[0].prev_total_keluar);
-    const prevTotalSaldo = prevTotalMasuk - prevTotalKeluar;
+//     const prevTotalMasuk = Number(prevTotalSaldoRows[0].prev_total_masuk);
+//     const prevTotalKeluar = Number(prevTotalSaldoRows[0].prev_total_keluar);
+//     const prevTotalSaldo = prevTotalMasuk - prevTotalKeluar;
 
-    // Transaksi pada periode sebelumnya
-    const [prevPeriodRows] = await db.query(`
-      SELECT 
-        COALESCE(SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END), 0) as prev_period_masuk,
-        COALESCE(SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END), 0) as prev_period_keluar
-      FROM kas_buku_besar
-      WHERE tanggal >= ? AND tanggal < ?
-        AND deleted_at IS NULL
-    `, [prevPeriod.startDate, prevPeriod.endDate]);
+//     // Transaksi pada periode sebelumnya
+//     const [prevPeriodRows] = await db.query(`
+//       SELECT 
+//         COALESCE(SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE 0 END), 0) as prev_period_masuk,
+//         COALESCE(SUM(CASE WHEN jenis = 'keluar' THEN jumlah ELSE 0 END), 0) as prev_period_keluar
+//       FROM kas_buku_besar
+//       WHERE tanggal >= ? AND tanggal < ?
+//         AND deleted_at IS NULL
+//     `, [prevPeriod.startDate, prevPeriod.endDate]);
 
-    const prevPeriodMasuk = Number(prevPeriodRows[0].prev_period_masuk);
-    const prevPeriodKeluar = Number(prevPeriodRows[0].prev_period_keluar);
+//     const prevPeriodMasuk = Number(prevPeriodRows[0].prev_period_masuk);
+//     const prevPeriodKeluar = Number(prevPeriodRows[0].prev_period_keluar);
 
-    // 7. HITUNG PERSENTASE PERUBAHAN
-    const calculatePercentageChange = (current, previous) => {
-      const curr = parseFloat(current) || 0;
-      const prev = parseFloat(previous) || 0;
+//     // 7. HITUNG PERSENTASE PERUBAHAN
+//     const calculatePercentageChange = (current, previous) => {
+//       const curr = parseFloat(current) || 0;
+//       const prev = parseFloat(previous) || 0;
 
-      if (curr === prev) return 0;
+//       if (curr === prev) return 0;
       
-      if (prev === 0) {
-        if (curr === 0) return 0;
-        return curr > 0 ? 100 : -100;
-      }
+//       if (prev === 0) {
+//         if (curr === 0) return 0;
+//         return curr > 0 ? 100 : -100;
+//       }
 
-      let percentage = ((curr - prev) / Math.abs(prev)) * 100;
-      percentage = Math.max(-100, Math.min(100, percentage));
+//       let percentage = ((curr - prev) / Math.abs(prev)) * 100;
+//       percentage = Math.max(-100, Math.min(100, percentage));
       
-      return Math.round(percentage * 10) / 10;
-    };
+//       return Math.round(percentage * 10) / 10;
+//     };
 
-    const percentageChanges = {
-      saldo: calculatePercentageChange(totalSaldo, prevTotalSaldo),
-      pemasukan: calculatePercentageChange(periodMasuk, prevPeriodMasuk),
-      pengeluaran: calculatePercentageChange(periodKeluar, prevPeriodKeluar)
-    };
+//     const percentageChanges = {
+//       saldo: calculatePercentageChange(totalSaldo, prevTotalSaldo),
+//       pemasukan: calculatePercentageChange(periodMasuk, prevPeriodMasuk),
+//       pengeluaran: calculatePercentageChange(periodKeluar, prevPeriodKeluar)
+//     };
 
-    const responseData = {
-      totalPemasukan: periodMasuk,
-      totalPengeluaran: periodKeluar,
-      saldoBersih: periodMasuk - periodKeluar,
-      totalSaldo: totalSaldo,
-      pemasukanKategori,
-      pengeluaranKategori,
-      percentageChanges,
-      kodeUnikStats: {
-        totalTransaksi: Number(kodeUnikSummary[0]?.total_transaksi_kode_unik || 0),
-        totalKodeUnik: Number(kodeUnikSummary[0]?.total_kode_unik_terkumpul || 0)
-      }
-    };
-    // Debug log
-    // console.log('Final response data:', responseData); 
+//     const responseData = {
+//       totalPemasukan: periodMasuk,
+//       totalPengeluaran: periodKeluar,
+//       saldoBersih: periodMasuk - periodKeluar,
+//       totalSaldo: totalSaldo,
+//       pemasukanKategori,
+//       pengeluaranKategori,
+//       percentageChanges,
+//       kodeUnikStats: {
+//         totalTransaksi: Number(kodeUnikSummary[0]?.total_transaksi_kode_unik || 0),
+//         totalKodeUnik: Number(kodeUnikSummary[0]?.total_kode_unik_terkumpul || 0)
+//       }
+//     };
+//     // Debug log
+//     // console.log('Final response data:', responseData); 
 
-    res.json({
-      success: true,
-      data: responseData
-    });
+//     res.json({
+//       success: true,
+//       data: responseData
+//     });
 
-  } catch (err) {
-    console.error('Error fetching kas summary:', err);
-    res.status(500).json({
-      success: false,
-      message: 'Terjadi kesalahan saat mengambil ringkasan kas',
-      error: err.message
-    });
-  }
-});
+//   } catch (err) {
+//     console.error('Error fetching kas summary:', err);
+//     res.status(500).json({
+//       success: false,
+//       message: 'Terjadi kesalahan saat mengambil ringkasan kas',
+//       error: err.message
+//     });
+//   }
+// });
 
 // GET zakat berdasarkan periode
 router.get('/zakat', async (req, res) => {
