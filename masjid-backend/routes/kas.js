@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
-const XLSX = require('xlsx')
+const XLSX = require('xlsx');
+const kasController = require('../models/controllers/kasController')
 
 // Helper function untuk filter berdasarkan periode
 const getPeriodFilter = (period) => {
@@ -67,6 +68,7 @@ const getPeriodFilter = (period) => {
     endDate: endDate.toISOString().split('T')[0]
   };
 };
+
 
 router.get('/', async (req, res) => {
   try {
@@ -187,6 +189,7 @@ router.get('/', async (req, res) => {
 });
 
 // summary endpoint
+
 router.get('/summary', async (req, res) => {
   try {
     const { period = 'bulan-ini', startDate, endDate } = req.query;
@@ -489,139 +492,146 @@ router.get('/infaq', async (req, res) => {
 
 // ===== CRUD OPERATIONS untuk kas manual =====
 // POST tambah transaksi kas manual
-router.post('/', async (req, res) => {
-  const { tanggal, keterangan, jenis, jumlah, kategori, kategori_pemasukan, nama_pemberi } = req.body; // Tambah nama_pemberi
+router.post('/', kasController.createKasManual);
+router.put('/:id', kasController.updateKasManual);
+router.delete('/:id', kasController.deleteKasManual);
 
-  if (!tanggal || !keterangan || !jenis || !jumlah) {
-    return res.status(400).json({ message: 'Semua field wajib diisi' });
-  }
+// router.post('/', async (req, res) => {
+//   const { tanggal, keterangan, jenis, jumlah, kategori, kategori_pemasukan, nama_pemberi } = req.body; // Tambah nama_pemberi
 
-  if (!['masuk', 'keluar'].includes(jenis)) {
-    return res.status(400).json({ message: 'Jenis harus masuk atau keluar' });
-  }
+//   if (!tanggal || !keterangan || !jenis || !jumlah) {
+//     return res.status(400).json({ message: 'Semua field wajib diisi' });
+//   }
 
-  try {
-    const jumlahInt = parseInt(jumlah, 10);
-    // Insert ke kas_manual, trigger akan otomatis insert ke kas_buku_besar
-    const [result] = await db.query(
-      'INSERT INTO kas_manual (tanggal, keterangan, jenis, jumlah, kategori, kategori_pemasukan, nama_pemberi) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [tanggal, keterangan, jenis, jumlahInt, kategori || 'operasional', kategori_pemasukan || null, nama_pemberi || null] // Tambah nama_pemberi
-    );
+//   if (!['masuk', 'keluar'].includes(jenis)) {
+//     return res.status(400).json({ message: 'Jenis harus masuk atau keluar' });
+//   }
+
+//   try {
+//     const jumlahInt = parseInt(jumlah, 10);
+//     // Insert ke kas_manual, trigger akan otomatis insert ke kas_buku_besar
+//     const [result] = await db.query(
+//       'INSERT INTO kas_manual (tanggal, keterangan, jenis, jumlah, kategori, kategori_pemasukan, nama_pemberi) VALUES (?, ?, ?, ?, ?, ?, ?)',
+//       [tanggal, keterangan, jenis, jumlahInt, kategori || 'operasional', kategori_pemasukan || null, nama_pemberi || null] // Tambah nama_pemberi
+//     );
     
-    res.status(201).json({ 
-      message: 'Transaksi kas berhasil ditambahkan', 
-      id: result.insertId 
-    });
-  } catch (err) {
-    console.error('Gagal menambahkan transaksi kas:', err);
-    res.status(500).json({ message: 'Terjadi kesalahan saat menyimpan transaksi kas' });
-  }
-});
+//     res.status(201).json({ 
+//       message: 'Transaksi kas berhasil ditambahkan', 
+//       id: result.insertId 
+//     });
+//   } catch (err) {
+//     console.error('Gagal menambahkan transaksi kas:', err);
+//     res.status(500).json({ message: 'Terjadi kesalahan saat menyimpan transaksi kas' });
+//   }
+// });
 
 // PUT update transaksi kas manual
-router.put('/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { tanggal, keterangan, jenis, jumlah, kategori, kategori_pemasukan, nama_pemberi } = req.body; // Tambah nama_pemberi
 
-    const[kbbResult] = await db.query(`
-      SELECT source_id FROM kas_buku_besar
-      WHERE id = ? AND source_table = 'manual'
-      `, [id]);
+// router.put('/:id', async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const { tanggal, keterangan, jenis, jumlah, kategori, kategori_pemasukan, nama_pemberi } = req.body; // Tambah nama_pemberi
+
+//     const[kbbResult] = await db.query(`
+//       SELECT source_id FROM kas_buku_besar
+//       WHERE id = ? AND source_table = 'manual'
+//       `, [id]);
     
-    if (kbbResult.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Transaksi tidak ditemukan'
-      });
-    }
+//     if (kbbResult.length === 0) {
+//       return res.status(404).json({
+//         success: false,
+//         message: 'Transaksi tidak ditemukan'
+//       });
+//     }
 
-    const jumlahInt = parseInt(jumlah, 10);
-    const manualId = kbbResult[0].source_id;
+//     const jumlahInt = parseInt(jumlah, 10);
+//     const manualId = kbbResult[0].source_id;
     
-    // Update ke kas_manual
-    const [result] = await db.query(
-      `UPDATE kas_manual SET 
-      tanggal = ?, keterangan = ?, jenis = ?, 
-      jumlah = ?, kategori = ?, kategori_pemasukan = ?, nama_pemberi = ?
-      WHERE id = ?`,
-      [tanggal, keterangan, jenis, jumlahInt, kategori, kategori_pemasukan, nama_pemberi || null, manualId] // Tambah nama_pemberi
-    );
+//     // Update ke kas_manual
+//     const [result] = await db.query(
+//       `UPDATE kas_manual SET 
+//       tanggal = ?, keterangan = ?, jenis = ?, 
+//       jumlah = ?, kategori = ?, kategori_pemasukan = ?, nama_pemberi = ?
+//       WHERE id = ?`,
+//       [tanggal, keterangan, jenis, jumlahInt, kategori, kategori_pemasukan, nama_pemberi || null, manualId] // Tambah nama_pemberi
+//     );
 
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: 'Transaksi tidak ditemukan' });
-    }
+//     if (result.affectedRows === 0) {
+//       return res.status(404).json({ message: 'Transaksi tidak ditemukan' });
+//     }
 
-    res.json({ 
-      success: true, 
-      message: 'Transaksi berhasil diperbarui' 
-    });
-  } catch (err) {
-    console.error('Error updating transaction:', err);
-    res.status(500).json({ message: 'Terjadi kesalahan saat memperbarui transaksi' });
-  }
-});
+//     res.json({ 
+//       success: true, 
+//       message: 'Transaksi berhasil diperbarui' 
+//     });
+//   } catch (err) {
+//     console.error('Error updating transaction:', err);
+//     res.status(500).json({ message: 'Terjadi kesalahan saat memperbarui transaksi' });
+//   }
+// });
+
 
 // DELETE transaksi kas manual (SOFT DELETE)
-router.delete('/:id', async (req, res) => {
-  const { id } = req.params;
+// router.delete('/:id', async (req, res) => {
+//   const { id } = req.params;
 
-  try {
-    // console.log('Soft deleting kas transaction with kas_buku_besar ID:', id);
+//   try {
+//     // console.log('Soft deleting kas transaction with kas_buku_besar ID:', id);
 
-    //Cek di kas_buku_besar untuk dapat source_id
-    const [kbbResult] = await db.query(`
-      SELECT * FROM kas_buku_besar 
-      WHERE id = ? AND source_table = 'manual' AND deleted_at IS NULL
-    `, [id]);
+//     //Cek di kas_buku_besar untuk dapat source_id
+//     const [kbbResult] = await db.query(`
+//       SELECT * FROM kas_buku_besar 
+//       WHERE id = ? AND source_table = 'manual' AND deleted_at IS NULL
+//     `, [id]);
     
-    if (kbbResult.length === 0) {
-      // console.log('Transaction not found or already deleted:', id);
-      return res.status(404).json({ 
-        success: false,
-        message: 'Transaksi kas tidak ditemukan' 
-      });
-    }
+//     if (kbbResult.length === 0) {
+//       // console.log('Transaction not found or already deleted:', id);
+//       return res.status(404).json({ 
+//         success: false,
+//         message: 'Transaksi kas tidak ditemukan' 
+//       });
+//     }
 
-    const manualId = kbbResult[0].source_id;
-    // console.log('Found manual transaction ID:', manualId);
+//     const manualId = kbbResult[0].source_id;
+//     // console.log('Found manual transaction ID:', manualId);
 
-    // Soft delete kas_manual
-    const [result] = await db.query(
-      'UPDATE kas_manual SET deleted_at = NOW() WHERE id = ? AND deleted_at IS NULL', 
-      [manualId]
-    );
+//     // Soft delete kas_manual
+//     const [result] = await db.query(
+//       'UPDATE kas_manual SET deleted_at = NOW() WHERE id = ? AND deleted_at IS NULL', 
+//       [manualId]
+//     );
     
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ 
-        success: false,
-        message: 'Transaksi kas manual tidak ditemukan atau sudah dihapus' 
-      });
-    }
+//     if (result.affectedRows === 0) {
+//       return res.status(404).json({ 
+//         success: false,
+//         message: 'Transaksi kas manual tidak ditemukan atau sudah dihapus' 
+//       });
+//     }
 
-    // Soft delete kas_buku_besar (jika trigger tidak jalan)
-    await db.query(
-      'UPDATE kas_buku_besar SET deleted_at = NOW() WHERE source_table = ? AND source_id = ? AND deleted_at IS NULL', 
-      ['manual', manualId]
-    );
+//     // Soft delete kas_buku_besar (jika trigger tidak jalan)
+//     await db.query(
+//       'UPDATE kas_buku_besar SET deleted_at = NOW() WHERE source_table = ? AND source_id = ? AND deleted_at IS NULL', 
+//       ['manual', manualId]
+//     );
 
-    // console.log('Soft delete completed for manual ID:', manualId);
+//     // console.log('Soft delete completed for manual ID:', manualId);
 
-    res.json({ 
-      success: true,
-      message: 'Transaksi kas berhasil dihapus' 
-    });
+//     res.json({ 
+//       success: true,
+//       message: 'Transaksi kas berhasil dihapus' 
+//     });
 
-  } catch (err) {
-    console.error('Gagal menghapus transaksi kas:', err);
-    res.status(500).json({ 
-      success: false,
-      message: 'Terjadi kesalahan saat menghapus transaksi kas' 
-    });
-  }
-});
+//   } catch (err) {
+//     console.error('Gagal menghapus transaksi kas:', err);
+//     res.status(500).json({ 
+//       success: false,
+//       message: 'Terjadi kesalahan saat menghapus transaksi kas' 
+//     });
+//   }
+// });
 
 // ===== GET pembayaran pending untuk validasi admin =====
+
 router.get('/pending', async (req, res) => {
   try {
     // Get pending zakat
