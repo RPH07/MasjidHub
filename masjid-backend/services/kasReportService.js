@@ -161,6 +161,84 @@ const getPemasukanKategori = async (where) => {
     return result;
 };
 
+const getPengeluaranKategori = async (where) => {
+    const rows = await KasBukuBesar.findAll({
+        attributes: [
+            [fn('COALESCE', col('kategori'), 'operasional'), 'kategori_grouped'],
+            [fn('COALESCE', fn('SUM', col('jumlah')), 0), 'total']
+        ],
+        where: {
+            ...where,
+            jenis: 'keluar'
+        },
+        group: [fn('COALESCE', col('kategori'), 'operasional')],
+        raw: true
+    });
+
+    const result = {};
+    rows.forEach(row => {
+        result[row.kategori_grouped] = Number(row.total || 0);
+    });
+    return result;
+};
+
+const getPreviousPeriod = (period) => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    const date = today.getDate();
+
+    let startDate, endDate;
+
+    switch (period) {
+        case 'hari-ini':
+            startDate = new Date(year, month, date - 1);
+            endDate = new Date(year, month, date);
+            break;
+
+        case 'minggu-ini': {
+            const dayOfWeek = today.getDay();
+            const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+            startDate = new Date(year, month, date - daysFromMonday - 7);
+            endDate = new Date(year, month, date - daysFromMonday);
+            break;
+        }
+
+        case 'bulan-ini':
+            startDate = new Date(year, month - 1, 1);
+            endDate = new Date(year, month, 1);
+            break;
+
+        case 'tahun-ini':
+            startDate = new Date(year - 1, 0, 1);
+            endDate = new Date(year, 0, 1);
+            break;
+    
+        default:
+            startDate = new Date(year, month - 1, 1);
+            endDate = new Date(year, month, 1);
+    }
+    return { 
+        startDate: formatDateLocal(startDate),
+        endDate: formatDateLocal(endDate)
+    };
+}
+
+const calculatePercentageChanges = (current, previous) => {
+    const curr = Number(current || 0);
+    const prev = Number(previous || 0);
+
+    if(curr ===  prev) return 0;
+    if(prev === 0) {
+        if (curr === 0) return 0;
+        return curr > 0 ? 100 : -100;
+    }
+
+    const percentage = ((curr - prev) / Math.abs(prev)) * 100;
+    const limited = Math.max(-100, Math.min(100, percentage));
+
+    return Math.round(limited);
+}
 
 // ======== main function ========
 
@@ -172,8 +250,30 @@ const getKasSummary = async ({period = 'bulan-ini', startDate, endDate}) => {
     const periodWhere = buildDateWhere(dateFilter.startDate, dateFilter.endDate);
     const kodeUnikStats = await getKodeUnikStats(periodWhere);
     const pemasukanKategori = await getPemasukanKategori(periodWhere);
+    const pengeluaranKategori = await getPengeluaranKategori(periodWhere);
 
     const periodRows = await getTotalByJenis(periodWhere);
+    const prevPeriod = await getPreviousPeriod(period);
+
+    const prevTotalSaldoRows = await getTotalByJenis({
+        tanggal: {
+            [Op.lt]: dateFilter.startDate
+        },
+        deleted_at: null
+    });
+
+    const prevPeriodRows = await getTotalByJenis(
+        buildDateWhere(prevPeriod.startDate, prevPeriod.endDate)
+    );
+
+    const currentTotalSaldo = totalSaldoRows.totalMasuk - totalSaldoRows.totalKeluar;
+    const prevTotalSaldo = prevTotalSaldoRows.totalMasuk - prevTotalSaldoRows.totalKeluar;
+
+    const percentageChanges = {
+        saldo: calculatePercentageChanges(currentTotalSaldo, prevTotalSaldo),
+        pemasukan: calculatePercentageChanges(periodRows.totalMasuk, prevPeriodRows.totalMasuk),
+        pengeluaran: calculatePercentageChanges(periodRows.totalKeluar, prevPeriodRows.totalKeluar)
+    };
 
     return {
         totalPemasukan: periodRows.totalMasuk,
@@ -182,7 +282,9 @@ const getKasSummary = async ({period = 'bulan-ini', startDate, endDate}) => {
         totalSaldo: totalSaldoRows.totalMasuk - totalSaldoRows.totalKeluar,
         dateFilter,
         kodeUnikStats,
-        pemasukanKategori
+        pemasukanKategori,
+        pengeluaranKategori,
+        percentageChanges
     };
 };
 
