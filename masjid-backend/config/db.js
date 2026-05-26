@@ -10,7 +10,7 @@ const sequelize = new Sequelize(
   {
     host: process.env.DB_HOST, 
     dialect: 'mysql',
-    logging: true, 
+    logging: console.log, 
     pool: {
       max: 5,
       min: 0,
@@ -29,7 +29,6 @@ const checkConnection = async () => {
     console.error('Unable to connect to the database:', error);
   }
 };
-console.log('Testing CI/CD asli'); // --- IGNORE ---
 
 checkConnection();
 
