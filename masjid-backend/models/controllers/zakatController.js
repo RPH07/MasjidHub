@@ -2,6 +2,7 @@ const Zakat = require('../ZakatModels');
 const BankMasjid = require('../BankModels');
 const {Op} = require('sequelize');
 const cloudinary = require('../../config/cloudinary').v2;
+const zakatService = require('../../services/zakatService');
 
 exports.getZakat = async(req, res) => {
     // todo: bikin get zakat.
@@ -133,38 +134,23 @@ exports.uploadBuktiZakat = async (req, res) => {
 
 exports.verifyZakat = async(req, res) => {
     try {
-        const { id } = req.params;
-        const { action, reject_reason } = req.body;
-
-        const zakat = await Zakat.findByPk(id);
-
-        if (!zakat) return res.status(404).json({ msg: "Data Zakat tidak ditemukan." });
-
-        // Proteksi: Biar gak verifikasi data yang udah approved/rejected
-        if (zakat.status !== 'pending') {
-            return res.status(400).json({ msg: "Data zakat ini sudah divalidasi sebelumnya" });
-        }
-
-        if (action === 'approve') {
-            await zakat.update({
-                status: 'approved',
-                reject_reason: null, // Bersihin alesan reject kalau sebelumnya pernah di-reject
-                validated_at: new Date()
-            });
-        } else if (action === 'rejected') {
-            await zakat.update({
-                status: 'rejected',
-                reject_reason: reject_reason || 'Bukti Tidak Sesuai',
-                validated_at: new Date()
-            });
-        }
+        const zakat = await zakatService.verifyZakat({
+            id: req.params.id,
+            action: req.body.action,
+            reject_reason: req.body.reject_reason,
+            validateBy: req.userId
+        });
 
         res.json({
             success: true,
-            msg: `Zakat berhasil di-${action === 'approve' ? 'setujui' : 'tolak'}`
+            msg: `Zakat berhasil di-${req.body.action === 'approve' ? 'setujui' : 'tolak'}`,
+            data: zakat
         });
     } catch (error) {
-        res.status(500).json({ success: false, msg: error.message });
+        res.status(error.statusCode || 500).json({
+            success: false,
+            msg: error.message
+        });
     }
 };
 
