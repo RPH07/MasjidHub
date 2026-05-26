@@ -40,6 +40,14 @@ const Zakat = sequelize.define('Zakat', {
         type: DataTypes.INTEGER,
         allowNull: false
     },
+    jenis_zakat: {
+        type: DataTypes.ENUM('maal', 'fitrah', 'profesi'),
+        allowNull: false
+    },
+    metode_pembayaran: {
+        type: DataTypes.STRING,
+        defaultValue: 'transfer_bank'
+    },
     kode_unik: {
         type: DataTypes.INTEGER,
         allowNull: true
@@ -66,6 +74,10 @@ const Zakat = sequelize.define('Zakat', {
     },
     validated_at: {
         type: DataTypes.DATE,
+        allowNull: true
+    },
+    validated_by: {
+        type: DataTypes.INTEGER,
         allowNull: true
     }
 }, {
