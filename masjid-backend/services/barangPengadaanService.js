@@ -87,8 +87,40 @@ const updateProgramPengadaan = async(id, payload) => {
     return program;
 };
 
+const changeProgramStatus = async(id, status) => {
+    const program = await BarangPengadaan.findByPk(id);
+
+    if (!program) {
+        const error = new Error(`Barang Pengadaan dengan ID ${id} tidak ditemukan`);
+        error.status = 404;
+        throw error;
+    }
+
+    const allowedTransition = {
+        draft: ['aktif', 'batal'],
+        aktif: ['selesai', 'batal'],
+        selesai: [],
+        batal: []
+    };
+
+    const allowedStatuses = allowedTransition[program.status] || [];
+    if (!allowedStatuses.includes(status)) {
+        const error = new Error(`Status tidak valid. Program dengan status '${program.status}' hanya bisa diubah ke: ${allowedStatuses.join(', ')}`);
+        error.status = 400;
+        throw error;
+    }
+
+    await program.update({
+        status,
+        tanggal_selesai: status === 'selesai' ? new Date() : null
+    });
+
+    return program;
+};
+
 module.exports = {
     updateProgramPengadaan,
     createBarangPengadaan,
-    calculateProgramFunding
+    calculateProgramFunding,
+    changeProgramStatus
 };
