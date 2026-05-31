@@ -57,3 +57,23 @@ exports.updateProgramPengadaan = async (req, res) => {
         });
     }
 };
+
+exports.changeProgramStatus = async(req, res) => {
+    try {
+        const data = await barangPengadaanService.changeProgramStatus(
+            req.params.id, 
+            req.body.status
+        );
+        res.json({
+            success: true, 
+            msg: "Status Program Pengadaan berhasil diubah",
+            data,
+        });
+    } catch (error) {
+        res.status(error.status || 500).json({
+            success: false,
+            msg: "Gagal mengubah status Program Pengadaan",
+            error: error.message,
+        })
+    }
+}
