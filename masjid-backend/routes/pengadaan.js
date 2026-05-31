@@ -4,6 +4,16 @@ const barangPengadaanController = require('../models/controllers/barangPengadaan
 const { verifyToken, dkmOrAdmin } = require('../models/middleware/auth');
 const { upload } = require('../config/cloudinary');
 
+router.get(
+    '/',
+    barangPengadaanController.getProgramPengadaanList
+);
+
+router.get(
+    '/:id',
+    barangPengadaanController.getProgramPengadaanById
+);
+
 router.post(
     '/',
     verifyToken,
