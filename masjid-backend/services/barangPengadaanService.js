@@ -118,9 +118,40 @@ const changeProgramStatus = async(id, status) => {
     return program;
 };
 
+const getProgramPengadaanList = async ({status, kategori_barang} = {}) => {
+    const where = {};
+
+    if (status) {
+        where.status = status;
+    }
+
+    if (kategori_barang) {
+        where.kategori_barang = kategori_barang;
+    }
+
+    return BarangPengadaan.findAll({ 
+        where,
+        order: [['created_at', 'DESC']]
+    });
+};
+
+const getProgramPengadaanById = async(id) => {
+    const program = await BarangPengadaan.findByPk(id);
+
+    if (!program) {
+        const error = new Error(`Barang Pengadaan dengan ID ${id} tidak ditemukan`);
+        error.status = 404;
+        throw error;
+    }
+
+    return program;
+}
+
 module.exports = {
     updateProgramPengadaan,
     createBarangPengadaan,
     calculateProgramFunding,
-    changeProgramStatus
+    changeProgramStatus,
+    getProgramPengadaanList,
+    getProgramPengadaanById
 };
