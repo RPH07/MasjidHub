@@ -76,4 +76,39 @@ exports.changeProgramStatus = async(req, res) => {
             error: error.message,
         })
     }
-}
+};
+
+exports.getProgramPengadaanList = async(req, res) => {
+    try {
+        const data = await barangPengadaanService.getProgramPengadaanList(req.query);
+        res.json({
+            success: true,
+            msg: "Daftar Program Pengadaan berhasil diambil",
+            data,
+        });
+    } catch (error) {
+        res.status(error.status || 500).json({
+            success: false,
+            msg: "Gagal mengambil daftar Program Pengadaan",
+            error: error.message,
+        });
+    }
+};
+
+exports.getProgramPengadaanById = async(req, res) => {
+    try {
+        const data = await barangPengadaanService.getProgramPengadaanById(req.params.id);
+
+        res.json({
+            success: true,
+            msg: "Program Pengadaan berhasil diambil",
+            data,
+        });
+    } catch (error) {
+        res.status(error.status || 500).json({
+            success: false,
+            msg: "Gagal mengambil Program Pengadaan",
+            error: error.message,
+        });
+    }
+};
