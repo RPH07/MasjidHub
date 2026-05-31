@@ -15,7 +15,7 @@ const DonasiPengadaan = sequelize.define('DonasiPengadaan', {
     },
     user_id:{
         type: DataTypes.INTEGER,
-        allowNull: false
+        allowNull: true
     },
     nama_donatur: {
         type: DataTypes.STRING,
@@ -41,7 +41,7 @@ const DonasiPengadaan = sequelize.define('DonasiPengadaan', {
         type: DataTypes.ENUM('pending', 'approved', 'rejected'),
         defaultValue: 'pending'
     },
-    rejected_reason: {
+    reject_reason: {
         type: DataTypes.TEXT,
         allowNull: true
     },
@@ -81,7 +81,7 @@ const DonasiPengadaan = sequelize.define('DonasiPengadaan', {
     updatedAt: 'updated_at'
 });
 
-BarangPengadaan.belongsTo(BarangPengadaan, {
+DonasiPengadaan.belongsTo(BarangPengadaan, {
     foreignKey: 'barang_id',
     as: 'barang'
 });
