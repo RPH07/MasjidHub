@@ -20,4 +20,11 @@ router.put(
     barangPengadaanController.updateProgramPengadaan
 );
 
+router.patch(
+    '/:id',
+    verifyToken,
+    dkmOrAdmin,
+    barangPengadaanController.changeProgramStatus
+);
+
 module.exports = router;
