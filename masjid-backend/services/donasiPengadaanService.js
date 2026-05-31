@@ -1,7 +1,7 @@
-const sequelize = require('sequelize');
+const sequelize = require('../config/db');
 const KasBukuBesar = require('../models/KasBukuBesarModels');
-const donasiPengadaan = require('../models/DonasiPengadaanModels');
-const barangPengadaan = require('../models/BarangPengadaanModels');
+const DonasiPengadaan = require('../models/DonasiPengadaanModels');
+const BarangPengadaan = require('../models/BarangPengadaanModels');
 
 
 const toNumber = (value) => {
@@ -16,7 +16,7 @@ const toNumber = (value) => {
     return parsed;
 };
 
-const createLedgerFromDonasi = async(donasi) => {
+const createLedgerFromDonasi = async(donasi, program, transaction   ) => {
     const existingLedger = await KasBukuBesar.findOne({
         where: {
             source_table: 'donasi_pengadaan',
@@ -29,7 +29,7 @@ const createLedgerFromDonasi = async(donasi) => {
     if(existingLedger) return existingLedger;
 
     return KasBukuBesar.create({
-        tanggal: donasi.create_a || new Date(),
+        tanggal: donasi.create_at || new Date(),
         deskripsi: `Donasi untuk program ${program.nama_barang} (ID: ${donasi.id})`,
         jenis: 'masuk',
         jumlah: donasi.nominal,
@@ -70,7 +70,8 @@ const refreshProgramDonationFunding = async(barangId, transaction) => {
     await program.update({
         dana_donasi: danaDonasi,
         dana_terkumpul: danaTerkumpul,
-        status_donasi: danaTerkumpul >= targetDana ? 'terpenuhi' : 'belum_terpenuhi'
+        status_donasi: danaTerkumpul >= targetDana ? 'terpenuhi' : 'belum_terpenuhi',
+        total_donatur: totalDonatur
     }, {transaction});
 
     return program;
@@ -80,8 +81,8 @@ const verifyDonasiPengadaan = async({id, action, reject_reason, validateBy}) => 
     const transaction = await sequelize.transaction();
 
     try {
-        const donasi = await donasiPengadaan.findByPk(id, {
-            include: [{model: barangPengadaan, as:'barang'}],
+        const donasi = await DonasiPengadaan.findByPk(id, {
+            include: [{model: BarangPengadaan, as:'barang'}],
 
             transaction
         });
@@ -102,18 +103,18 @@ const verifyDonasiPengadaan = async({id, action, reject_reason, validateBy}) => 
             await donasi.update({
                 status: 'approved',
                 reject_reason: null,
-                validate_by: validateBy || null,
-                validate_at: new Date()
+                validated_by: validateBy || null,
+            validated_at: new Date()
             }, {transaction});
 
-            await createLedgerFromDonasi(donasi, transaction);
+            await createLedgerFromDonasi(donasi, donasi.barang, transaction);
             await refreshProgramDonationFunding(donasi.barang_id, transaction);
         } else if (action === 'reject') {
             await donasi.update({
                 status: 'rejected',
                 reject_reason: reject_reason || null,
-                validate_by: validateBy || null,
-                validate_at: new Date()
+                validated_by: validateBy || null,
+                validated_at: new Date()
             }, {transaction});
 
             await KasBukuBesar.update({
@@ -141,8 +142,10 @@ const verifyDonasiPengadaan = async({id, action, reject_reason, validateBy}) => 
     }
 }
 
+
+
 const generatedKodeUnik = async(nominal, barangId) => {
-    const pendingDonasi = await donasiPengadaan.findAll({
+    const pendingDonasi = await DonasiPengadaan.findAll({
         where: {
             status: 'pending',
             nominal,
@@ -170,7 +173,7 @@ const generatedKodeUnik = async(nominal, barangId) => {
 };
 
 const createDonasiPengadaan = async(payload) => {
-    const program = await barangPengadaan.findByPk(payload.barang_id);
+    const program = await BarangPengadaan.findByPk(payload.barang_id);
 
     if(!program) {
         const error = new Error('Program pengadaan tidak ditemukan');
@@ -188,7 +191,7 @@ const createDonasiPengadaan = async(payload) => {
     const kodeUnik = await generatedKodeUnik(nominal, payload.barang_id);
     const totalTransfer = nominal + kodeUnik;
 
-    return donasiPengadaan.create({
+    return DonasiPengadaan.create({
         barang_id: payload.barang_id,
         user_id: payload.user_id ||  null,
         nama_donatur: payload.nama_donatur,
