@@ -38,6 +38,13 @@ router.put(
     barangPengadaanController.updateProgramPengadaan
 );
 
+router.put(
+    '/donasi/:id/validate',
+    verifyToken,
+    dkmOrAdmin,
+    donasiPengadaanController.verifyDonasiPengadaan
+)
+
 router.patch(
     '/:id',
     verifyToken,
