@@ -40,3 +40,25 @@ exports.createDonasiPengadaan = async(req, res) => {
         });
     }
 };
+
+exports.verifyDonasiPengadaan = async(req, res) => {
+    try {
+        const data = await donasiPengadaanService.verifyDonasiPengadaan({
+            id: req.params.id,
+            action: req.body.action,
+            reject_reason: req.body.reject_reason,
+            validateBy: req.userId
+        });
+        res.status(200).json({
+            success: true,
+            msg: 'Donasi pengadaan berhasil diverifikasi',
+            data
+        });
+    } catch (error) {
+        res.status(error.statusCode || 500).json({
+            success: false,
+            msg: 'Gagal memverifikasi donasi pengadaan',
+            error: error.message
+        });
+    }
+}
