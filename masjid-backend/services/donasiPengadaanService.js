@@ -1,5 +1,8 @@
+const sequelize = require('sequelize');
+const KasBukuBesar = require('../models/KasBukuBesarModels');
 const donasiPengadaan = require('../models/DonasiPengadaanModels');
 const barangPengadaan = require('../models/BarangPengadaanModels');
+
 
 const toNumber = (value) => {
     const parsed = Number(value);
@@ -12,6 +15,131 @@ const toNumber = (value) => {
 
     return parsed;
 };
+
+const createLedgerFromDonasi = async(donasi) => {
+    const existingLedger = await KasBukuBesar.findOne({
+        where: {
+            source_table: 'donasi_pengadaan',
+            source_id: donasi.id,
+            deleted_at: null
+        },
+        transaction
+    });
+
+    if(existingLedger) return existingLedger;
+
+    return KasBukuBesar.create({
+        tanggal: donasi.create_a || new Date(),
+        deskripsi: `Donasi untuk program ${program.nama_barang} (ID: ${donasi.id})`,
+        jenis: 'masuk',
+        jumlah: donasi.nominal,
+        kategori: 'donasi',
+        source_table: 'donasi_pengadaan',
+        source_id: donasi.id,
+        kode_unik: donasi.kode_unik,
+        nama_pemberi: donasi.nama_donatur,
+        metode_pembayaran: donasi.metode_pembayaran,
+        bukti_transfer: donasi.bukti_transfer,
+        metode_input: 'online'
+    }, {transaction});
+};
+
+const refreshProgramDonationFunding = async(barangId, transaction) => {
+    const program = await BarangPengadaan.findByPk(barangId, {transaction});
+
+    if (!program) {
+        const error = new Error('Program pengadaan tidak ditemukan');
+        error.statusCode = 404;
+        throw error;
+    }
+
+    const totalDonasi = await DonasiPengadaan.sum('nominal', {
+        where: {
+            barang_id: barangId,
+            status: 'approved',
+            deleted_at: null
+        },
+        transaction
+    });
+
+    const danaDonasi = Number(totalDonasi) || 0;
+    const DanaAwalKas = Number(program.dana_awal_kas) || 0;
+    const targetDana = Number(program.target_dana) || 0;
+    const danaTerkumpul = danaDonasi + DanaAwalKas;
+
+    await program.update({
+        dana_donasi: danaDonasi,
+        dana_terkumpul: danaTerkumpul,
+        status_donasi: danaTerkumpul >= targetDana ? 'terpenuhi' : 'belum_terpenuhi'
+    }, {transaction});
+
+    return program;
+};
+
+const verifyDonasiPengadaan = async({id, action, reject_reason, validateBy}) => {
+    const transaction = await sequelize.transaction();
+
+    try {
+        const donasi = await donasiPengadaan.findByPk(id, {
+            include: [{model: barangPengadaan, as:'barang'}],
+
+            transaction
+        });
+
+        if (!donasi) {
+            const error = new Error('Donasi pengadaan tidak ditemukan');
+            error.statusCode = 404;
+            throw error;
+        }
+
+        if (donasi.status !== 'pending') {
+            const error = new Error('Donasi pengadaan tidak dalam status pending');
+            error.statusCode = 400;
+            throw error;
+        }
+
+        if (action === 'approve') {
+            await donasi.update({
+                status: 'approved',
+                reject_reason: null,
+                validate_by: validateBy || null,
+                validate_at: new Date()
+            }, {transaction});
+
+            await createLedgerFromDonasi(donasi, transaction);
+            await refreshProgramDonationFunding(donasi.barang_id, transaction);
+        } else if (action === 'reject') {
+            await donasi.update({
+                status: 'rejected',
+                reject_reason: reject_reason || null,
+                validate_by: validateBy || null,
+                validate_at: new Date()
+            }, {transaction});
+
+            await KasBukuBesar.update({
+                deleted_at: new Date()
+            }, {
+                where: {
+                    source_table: 'donasi_pengadaan',
+                    source_id: donasi.id,
+                    deleted_at: null
+                },
+                transaction
+            });
+
+            await refreshProgramDonationFunding(donasi.barang_id, transaction);
+        } else {
+            const error = new Error('Aksi tidak valid. Harus "approve" atau "reject".');
+            error.statusCode = 400;
+            throw error;
+        }
+        await transaction.commit();
+        return donasi;
+    } catch (error) {
+        await transaction.rollback();
+        throw error;
+    }
+}
 
 const generatedKodeUnik = async(nominal, barangId) => {
     const pendingDonasi = await donasiPengadaan.findAll({
@@ -77,5 +205,6 @@ const createDonasiPengadaan = async(payload) => {
 };
 
 module.exports = {
+    verifyDonasiPengadaan,
     createDonasiPengadaan
 };
