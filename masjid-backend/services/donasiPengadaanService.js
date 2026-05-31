@@ -6,15 +6,15 @@ const toNumber = (value) => {
 
     if(Number.isNaN(parsed)) {
         const error = new Error(`Nilai donasi harus berupa angka lebih dari 0. Diterima: ${value}`);
-        error.status = 400;
+        error.statusCode = 400;
         throw error;
     }
 
     return parsed;
 };
 
-const generatedKodeUnik = async() => {
-    const pendingDonasi = await donasiPengadaan.find({
+const generatedKodeUnik = async(nominal, barangId) => {
+    const pendingDonasi = await donasiPengadaan.findAll({
         where: {
             status: 'pending',
             nominal,
@@ -34,7 +34,7 @@ const generatedKodeUnik = async() => {
 
     if (kodeUnik > 999) {
         const error = new Error('Kode unik untuk donasi ini sudah habis. Silakan coba lagi nanti.');
-        error.status = 400;
+        error.statusCode = 400;
         throw error;
     }
 
@@ -52,7 +52,7 @@ const createDonasiPengadaan = async(payload) => {
 
     if (program.status !== 'aktif') {
         const error = new Error('Program pengadaan tidak aktif');
-        error.status = 400;
+        error.statusCode = 400;
         throw error;
     }
 
