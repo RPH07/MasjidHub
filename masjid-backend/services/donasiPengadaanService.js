@@ -152,7 +152,34 @@ const verifyDonasiPengadaan = async({id, action, reject_reason, validateBy}) => 
     }
 }
 
+const getDonasiByProgram = async(barangId, {status} = {}) =>{
+    const program = await BarangPengadaan.findByPk(barangId);
 
+    if(!program) {
+        const error = new Error('Program pengadaan tidak ditemukan');
+        error.statusCode = 404;
+        throw error;
+    }
+
+    const where = {
+        barang_id: barangId,
+        deleted_at: null
+    };
+
+    if(status && status !== 'all') {
+        where.status = status;
+    }
+
+    const donasi = await DonasiPengadaan.findAll({
+        where,
+        order: [['create_at', 'DESC']]
+    });
+
+    return {
+        program,
+        donasi
+    };
+};
 
 const generatedKodeUnik = async(nominal, barangId) => {
     const pendingDonasi = await DonasiPengadaan.findAll({
@@ -219,5 +246,6 @@ const createDonasiPengadaan = async(payload) => {
 
 module.exports = {
     verifyDonasiPengadaan,
-    createDonasiPengadaan
+    createDonasiPengadaan,
+    getDonasiByProgram
 };
