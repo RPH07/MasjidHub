@@ -62,6 +62,15 @@ const refreshProgramDonationFunding = async(barangId, transaction) => {
         transaction
     });
 
+    const totalDonatur = await DonasiPengadaan.count({
+        where: {
+            barang_id: barangId,
+            status: 'approved',
+            deleted_at: null
+        },
+        transaction
+    });
+
     const danaDonasi = Number(totalDonasi) || 0;
     const DanaAwalKas = Number(program.dana_awal_kas) || 0;
     const targetDana = Number(program.target_dana) || 0;
@@ -72,6 +81,7 @@ const refreshProgramDonationFunding = async(barangId, transaction) => {
         dana_terkumpul: danaTerkumpul,
         status_donasi: danaTerkumpul >= targetDana ? 'terpenuhi' : 'belum_terpenuhi',
         total_donatur: totalDonatur
+        
     }, {transaction});
 
     return program;
@@ -177,7 +187,7 @@ const createDonasiPengadaan = async(payload) => {
 
     if(!program) {
         const error = new Error('Program pengadaan tidak ditemukan');
-        error.status = 404;
+        error.statusCode = 404;
         throw error;
     }
 
