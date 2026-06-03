@@ -11,6 +11,11 @@ router.get(
 );
 
 router.get(
+    '/:id/donasi',
+    donasiPengadaanController.getDonasiByProgram
+);
+
+router.get(
     '/:id',
     barangPengadaanController.getProgramPengadaanById
 );
