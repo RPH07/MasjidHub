@@ -61,4 +61,21 @@ exports.verifyDonasiPengadaan = async(req, res) => {
             error: error.message
         });
     }
-}
+};
+
+exports.getDonasiByProgram = async(req, res) => {
+    try {
+        const data = await donasiPengadaanService.getDonasiByProgram(req.params.id, req.query);
+        res.status(200).json({
+            success: true,
+            msg: 'Berhasil mengambil donasi pengadaan',
+            data
+        });
+    } catch (error) {
+        res.status(error.statusCode || 500).json({
+            success: false,
+            msg: 'Gagal mengambil donasi pengadaan',
+            error: error.message
+        });
+    }
+};
