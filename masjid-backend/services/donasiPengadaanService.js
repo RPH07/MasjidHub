@@ -172,7 +172,7 @@ const getDonasiByProgram = async(barangId, {status} = {}) =>{
 
     const donasi = await DonasiPengadaan.findAll({
         where,
-        order: [['create_at', 'DESC']]
+        order: [['created_at', 'DESC']]
     });
 
     return {
