@@ -2,16 +2,20 @@ const {jsPDF} = require('jspdf');
 const BarangPengadaan = require('../models/BarangPengadaanModels');
 const DonasiPengadaan = require('../models/DonasiPengadaanModels');
 
-const formatRupiah = (value) => `Rp ${(value || 0).toLocaleString('id-ID')}`;
+const formatRupiah = (value) => `Rp ${Number(value || 0).toLocaleString('id-ID')}`;
 
-const formatDate = (date) => {
+const formatDate = (value) => {
     if(!value) return '-';
 
-    return new Date(date).toLocaleDateString('id-ID', {
+    return new Date(value).toLocaleDateString('id-ID', {
         day: 'numeric',
         month: 'long',
-        year: 'numeric'
-    });
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        timeZone: 'Asia/Jakarta'
+    }) + ' WIB';
 };
 
 const getProgramReportData = async(programId) => {
@@ -23,7 +27,7 @@ const getProgramReportData = async(programId) => {
     }
     
 
-    const donation = await DonasiPengadaan.findAll({
+    const donations = await DonasiPengadaan.findAll({
         where: {
             barang_id: programId,
             status: 'approved',
@@ -34,13 +38,13 @@ const getProgramReportData = async(programId) => {
 
     return {
         program,
-        donation
+        donations
     };
 };
 
 
 const generatePengadaanReport = async(programId) => {
-    const {program, donation} = await getProgramReportData(programId);
+    const {program, donations} = await getProgramReportData(programId);
 
     const doc = new jsPDF({
         orientation: 'portrait',
@@ -52,7 +56,7 @@ const generatePengadaanReport = async(programId) => {
     const margin = 20;
     let currentY = margin;
 
-
+    // Header pdf
     doc.setFontSize(18);
     doc.setTextColor(40, 40, 40);
     doc.text('Laporan Program Pengadaan', pageWidth / 2, currentY, { align: 'center' });
@@ -76,7 +80,7 @@ const generatePengadaanReport = async(programId) => {
     doc.setFont('helvetica', 'bold');
     doc.text('Tanggal Mulai:', leftCol, currentY + 22);
     doc.setFont('helvetica', 'normal');
-    doc.text(formatDate(program.tanggal_mulai), leftCol, currentY + 28);
+    doc.text(formatDate(program.created_at), leftCol, currentY + 28);
 
     doc.setFont('helvetica', 'bold');
     doc.text('Kategori:', leftCol, currentY + 42);
@@ -130,37 +134,45 @@ const generatePengadaanReport = async(programId) => {
     doc.line(margin, currentY, pageWidth - margin, currentY);
     currentY += 15;
 
-    doc.setFontSize(12);
+
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(40, 40, 40);
     doc.text(`Daftar Donatur (${donations.length}) orang`, margin, currentY);
-    currentY += 10;
+    currentY += 10; 
 
-    if (donation.length === 0) {
+    if (donations.length === 0) {
         doc.setFont('helvetica', 'italic');
         doc.setTextColor(120, 120, 120);
         doc.text('Belum ada donasi untuk program ini', margin, currentY);
         currentY += 20;
     } else {
+        const contentWidth = pageWidth - margin * 2;
+        const cols = [
+            {key: 'no', label: 'No', x: margin, w: 8},
+            {key: 'nama', label: 'Nama Donatur', x: margin + 8, w: 45},
+            {key: 'nominal', label: 'Nominal', x: margin + 53, w: 34},
+            {key: 'kode', label: 'Kode Unik', x: margin + 88, w: 22},
+            {key: 'metode', label: 'Metode', x: margin + 110, w: 32},
+            {key: 'tanggal', label: 'Tanggal', x: margin + 142, w: 35},
+        ];
         doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(255, 255, 255);
         doc.setFillColor(25, 135, 84);
-        doc.rect(margin, currentY, pageWidth - margin * 2, 10, 'F');
+        doc.rect(margin, currentY, contentWidth, 10, 'F');
 
-        doc.text('No', margin + 2, currentY + 7);
-        doc.text('Nama Donatur', margin + 15, currentY + 7);
-        doc.text('Nominal',  margin + 70, currentY + 5);
-        doc.text('Kode Unik', margin + 105, currentY + 5);
-        doc.text('Metode', margin + 130, currentY + 5);
-        doc.text('Tanggal', margin + 160, currentY + 5);
+        cols.forEach(col => {
+            doc.text(col.label, col.x + 2, currentY + 6);
+        });
+        currentY += 10;
 
-        currentY += 18;
-
+        const ROW_H = 8;
+        doc.setFontSize(8.5);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(60, 60, 60);
 
-        donations.forEach((donation, index) => {
+        donations.forEach((donations, index) => {
             if (currentY > 250) {
                 doc.addPage();
                 currentY = 20;
@@ -171,14 +183,22 @@ const generatePengadaanReport = async(programId) => {
                 doc.rect(margin, currentY, pageWidth - margin * 2, 10, 'F');
             }
 
-            doc.text(String(index + 1), margin + 2, currentY + 4);
-            doc.text((donation.nama_donatur || 'Hamba Allah').substring(0, 20), margin + 15, currentY + 7);
-            doc.text(formatRupiah(donation.nominal), margin + 70, currentY + 7);
-            doc.text(donation.kode_unik ? `+${donation.kode_unik}` : '-', margin + 105, currentY + 7);
-            doc.text((donation.metode || 'Tidak Diketahui').substring(0, 20).toUpperCase(), margin + 130, currentY + 7);
-            doc.text(formatDate(donation.created_at), margin + 160, currentY + 4);
+            const rowData = {
+                no: String(index + 1),
+                nama: (donations.nama_donatur || 'Hamba Allah'),
+                nominal: formatRupiah(donations.nominal),
+                kode: donations.kode_unik ? `+${donations.kode_unik}` : '-',
+                metode: (donations.metode_donasi || '-').toUpperCase(),
+                tanggal: formatDate(donations.created_at)
+            };
 
-            currentY += 18;
+            cols.forEach(col => {
+                const maxChars = Math.floor(col.w / 2.1);
+                const text = String(rowData[col.key]).substring(0, maxChars);
+                doc.text(text, col.x + 2, currentY + 5.5);
+            });
+
+            currentY += ROW_H;
         });
     }
 
@@ -187,23 +207,29 @@ const generatePengadaanReport = async(programId) => {
     doc.setFont('helvetica', 'italic');
     doc.setTextColor(120, 120, 120);
     doc.text(`Laporan digenerate pada: ${formatDate(new Date())}`, margin, footerY);
-    doc.text('MasjidHub - Solusi Digital untuk Masjid', pageWidth / 2, footerY, { align: 'center' });
+    // doc.text('MasjidHub - Solusi Digital untuk Masjid', pageWidth / 2, footerY, { align: 'center' });
     doc.text(`Halaman ${doc.internal.getCurrentPageInfo().pageNumber} dari ${doc.internal.getNumberOfPages()}`, pageWidth - margin, footerY, { align: 'right' });
 
     const pdfBuffer = doc.output('arraybuffer');
+    
+    const now = new Date();
+const options = { timeZone: 'Asia/Jakarta' };
+
+const tanggal = now.toLocaleDateString('id-ID', { 
+    ...options, day: '2-digit', month: '2-digit', year: 'numeric' 
+}).replace(/\//g, '-');
+
+const jam = now.toLocaleTimeString('id-ID', { 
+    ...options, hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hour12: false 
+}).replace(/\./g, '-');
 
     return {
-        filename: `Laporan-donasi-${programName.replace(/\s+/g, '-')} - ${Date.now()}.pdf`,
+        fileName: `Laporan-donasi-${programName.replace(/\s+/g, '-')}_${tanggal}_${jam}.pdf`,
         buffer: Buffer.from(pdfBuffer)
     };
 };
 
 module.exports = {
     generatePengadaanReport
-}
-
-
-
-
-
-
+};
