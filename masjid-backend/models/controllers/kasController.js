@@ -1,5 +1,6 @@
 const kasManualService = require('../../services/kasManualService');
 const kasReportService = require('../../services/kasReportService');
+const kasPdfReportService = require('../../services/kasPdfReportService');
 
 const validateKasManualPayload = (payload) => {
     const { tanggal, keterangan, jenis, jumlah } = payload;
@@ -31,6 +32,22 @@ exports.getKasHistory = async(req, res) => {
         });
     }
 };
+
+exports.exportsKasReportPdf = async(req, res) => {
+    try {
+        const {fileName, buffer} = await kasPdfReportService.generateKasReport(req.query);
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+        res.send(buffer);
+    } catch (error) {
+        res.status(error.statusCode || 500).json({
+            success: false,
+            msg: 'Gagal menghasilkan laporan PDF kas',
+            error: error.message
+        });
+    }
+}
 
 exports.getKasTransactions = async(req, res) => {
     try {
