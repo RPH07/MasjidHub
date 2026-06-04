@@ -20,6 +20,11 @@ router.get(
     barangPengadaanController.getProgramPengadaanById
 );
 
+router.get(
+    '/:id/export/pdf',
+    barangPengadaanController.exportProgramReportPdf
+)
+
 router.post(
     '/',
     verifyToken,
