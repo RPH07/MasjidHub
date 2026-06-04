@@ -193,6 +193,11 @@ router.get(
   kasController.getKasTransactions
 );
 
+router.get(
+  '/history',
+  kasController.getKasHistory
+);
+
 
 router.get('/summary', kasController.getKasSummary);
 // router.get('/summary', async (req, res) => {
