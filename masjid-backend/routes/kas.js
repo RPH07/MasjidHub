@@ -188,7 +188,12 @@ router.get('/', async (req, res) => {
   }
 });
 
-// summary endpoint
+router.get(
+  '/transactions',
+  kasController.getKasTransactions
+);
+
+
 router.get('/summary', kasController.getKasSummary);
 // router.get('/summary', async (req, res) => {
 //   try {
@@ -491,7 +496,6 @@ router.get('/infaq', async (req, res) => {
 
 
 // ===== CRUD OPERATIONS untuk kas manual =====
-// POST tambah transaksi kas manual
 router.post('/', kasController.createKasManual);
 router.put('/:id', kasController.updateKasManual);
 router.delete('/:id', kasController.deleteKasManual);
