@@ -1,4 +1,6 @@
 const barangPengadaanService = require("../../services/barangPengadaanService");
+const pengadaanReportService = require("../../services/pengadaanReportService");
+
 
 const validateCreatePayload = (payload) => {
     if (!payload.nama_barang) return "Nama barang wajib diisi";
@@ -112,3 +114,18 @@ exports.getProgramPengadaanById = async(req, res) => {
         });
     }
 };
+
+exports.exportProgramReportPdf = async(req, res) => {
+    try {
+        const {fileName, buffer} = await pengadaanReportService.generatePengadaanReport(req.params.id);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+        res.send(buffer);
+    } catch (error) {
+        res.status(error.status || 500).json({
+            success: false,
+            msg: "Gagal menghasilkan laporan Program Pengadaan",
+            error: error.message,
+        })
+    }
+}
