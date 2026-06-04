@@ -1,5 +1,8 @@
 const { Op, fn, col, literal } = require("sequelize");
 const KasBukuBesar = require("../models/KasBukuBesarModels");
+const Zakat = require("../models/ZakatModels");
+const DonasiPengadaan = require("../models/DonasiPengadaanModels");
+const BarangPengadaan = require("../models/BarangPengadaanModels");
 
 
 // ======== helper function ========
@@ -81,6 +84,52 @@ const buildDateWhere = (startDate, endDate) => ({
     },
     deleted_at: null
 });
+
+const normalizeTransaction = (item, type) => {
+    if (type === 'zakat') {
+        return {
+            id: item.id,
+            type: 'zakat',
+            type_label: 'Zakat',
+            nama_pemberi: item.nama,
+            jumlah: Number(item.jumlah || 0),
+            kategori: item.jenis_zakat || 'lainnya',
+            metode_pembayaran: item.metode_pembayaran || 'tunai',
+            status: item.status || 'n/a',
+            reject_reason: item.reject_reason || null,
+            bukti_transfer: item.bukti_transfer || null,
+            kode_unik: item.kode_unik || null,
+            total_transfer: item.total_bayar || null,
+            created_at: item.created_at,
+            validated_at: item.validated_at || null
+        };
+    }
+
+    if (type === 'donasi') {
+    return {
+        id: item.id,
+        type: 'donasi',
+        type_label: 'Donasi Program',
+        nama_pemberi: item.nama_donatur,
+        jumlah: Number(item.nominal || 0),
+        kategori: item.barang?.nama_barang || '-',
+        program_donasi: item.barang?.nama_barang || '-',
+        metode_pembayaran: item.metode_pembayaran || 'transfer_bank',
+        status: item.status || 'n/a',
+        reject_reason: item.reject_reason || null,
+        bukti_transfer: item.bukti_transfer || null,
+        kode_unik: item.kode_unik || null,
+        total_transfer: item.total_transfer || null,
+        created_at: item.created_at,
+        validated_at: item.validated_at || null
+    };
+}
+
+    return item;
+};
+
+
+// ======== main function ========
 
 const getTotalByJenis = async (where) => {
     const totalMasuk = await KasBukuBesar.sum('jumlah', {
@@ -300,7 +349,124 @@ const getKasTransactions = async({
     };
 };
 
-// ======== main function ========
+const getKasHistory = async({
+    period = 'bulan-ini',
+    startDate,
+    endDate,
+    type = 'all',
+    status = 'all'
+} = {}) => {
+    const dateFilter = startDate && endDate 
+    ? {startDate, endDate}
+    : getPeriodFilter(period);
+
+    const dateWhere = {
+        [Op.gte]: dateFilter.startDate,
+        [Op.lt]: dateFilter.endDate
+    };
+
+    const transactions = [];
+
+    if (type ===  'all' || type === 'zakat') {
+        const where = {
+            created_at: dateWhere
+        };
+
+        if (status !== 'all') {
+            where.status = status;
+        }
+
+        const zakatRows = await Zakat.findAll({
+            where,
+            order: [['created_at', 'DESC']]
+        });
+
+        transactions.push(...zakatRows.map((item) => normalizeTransaction(item, 'zakat')));
+    }
+
+    if (type === 'all' || type === 'donasi') {
+        const where = {
+            created_at: dateWhere,
+            deleted_at: null
+        };
+
+        if (status !== 'all') {
+            where.status = status;
+        }
+
+        const donasiRows = await DonasiPengadaan.findAll({
+            where, 
+            include: [{
+                model: BarangPengadaan,
+                as: 'barang',
+                attributes: ['id', 'nama_barang']
+            }],
+            order: [['created_at', 'DESC']]
+        });
+        transactions.push(...donasiRows.map((item) => normalizeTransaction(item, 'donasi')));
+    }
+    
+    if (type === 'all' || type === 'kas_manual') {
+        if (status === 'all' || status === 'approved') {
+            const kasRows = await KasBukuBesar.findAll({
+                where: {
+                    tanggal: dateWhere,
+                    source_table: 'kas_manual',
+                    deleted_at: null
+                },
+                order: [['created_at', 'DESC']]
+            });
+            transactions.push(...kasRows.map((item) => ({
+                id: item.id,
+                type: 'kas',
+                type_label: item.jenis === 'masuk' ? 'Kas Masuk' : 'Kas Keluar',
+                nama_pemberi: item.nama_pemberi || item.deskripsi || 'n/a',
+                jumlah: Number(item.jumlah || 0),
+                kategori: item.kategori || 'operasional',
+                metode_pembayaran: item.metode_pembayaran || 'n/a',
+                status: 'approved',
+                reject_reason: null,
+                bukti_transfer: item.bukti_transfer || null,
+                kode_unik: null,
+                total_transfer: null,
+                created_at: item.created_at,
+                validated_at: item.created_at
+            })));
+        }
+    }
+    transactions.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    const summary = {
+        total: transactions.length,
+        approved: transactions.filter(t => t.status === 'approved').length,
+        pending: transactions.filter(t => t.status === 'pending').length,
+        rejected: transactions.filter(t => t.status === 'rejected').length,
+        totalAmount: {
+            approved: transactions
+                .filter((item) => item.status === 'approved')
+                .reduce((sum, item) => sum + Number(item.jumlah || 0), 0),
+            rejected: transactions
+                .filter((item) => item.status === 'rejected')
+                .reduce((sum, item) => sum + Number(item.jumlah || 0), 0),
+            pending: transactions
+                .filter((item) => item.status === 'pending')
+                .reduce((sum, item) => sum + Number(item.jumlah || 0), 0)
+        } 
+
+    };
+
+    return { 
+        transactions, 
+        summary,
+        filters: {
+            period, 
+            startDate: dateFilter.startDate,
+            endDate: dateFilter.endDate,
+            type,
+            status
+        } 
+    };
+};
 
 const getKasSummary = async ({period = 'bulan-ini', startDate, endDate}) => { 
     const dateFilter = startDate && endDate ? {startDate, endDate} : getPeriodFilter(period);
@@ -351,5 +517,6 @@ const getKasSummary = async ({period = 'bulan-ini', startDate, endDate}) => {
 
 module.exports = {
     getKasSummary,
-    getKasTransactions
+    getKasTransactions,
+    getKasHistory
 };
