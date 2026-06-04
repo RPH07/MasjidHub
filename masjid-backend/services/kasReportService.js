@@ -222,7 +222,7 @@ const getPreviousPeriod = (period) => {
         startDate: formatDateLocal(startDate),
         endDate: formatDateLocal(endDate)
     };
-}
+};
 
 const calculatePercentageChanges = (current, previous) => {
     const curr = Number(current || 0);
@@ -238,7 +238,67 @@ const calculatePercentageChanges = (current, previous) => {
     const limited = Math.max(-100, Math.min(100, percentage));
 
     return Math.round(limited);
-}
+};
+
+const getKasTransactions = async({
+    startDate,
+    endDate,
+    period = 'bulan-ini',
+    jenis = 'all',
+    source = 'all',
+    page = 1,
+    limit = 20
+} = {}) => {
+    const dateFilter = startDate && endDate 
+    ? {startDate, endDate}
+    : getPeriodFilter(period);
+
+    const where = {
+        ...buildDateWhere(dateFilter.startDate, dateFilter.endDate)
+    };
+
+    if (jenis !== 'all') {
+        where.jenis = jenis;
+    }
+
+    if (source !== 'all') {
+        where.source_table = source;
+    }
+
+    const currentPage = Math.max(Number(page) || 1, 1);
+    const currentLimit = Math.max(Number(limit) || 20, 1);
+    const offset = (currentPage - 1) * currentLimit;
+
+    const {rows, count} = await KasBukuBesar.findAndCountAll({
+        where,
+        order: [
+            [['tanggal', 'DESC']],
+            [['created_at', 'DESC']]
+        ],
+        offset,
+        limit: currentLimit
+    });
+    
+
+    const totalPages = Math.ceil(count / currentLimit);
+
+    return {
+        transactions: rows,
+        pagination: {
+            page: currentPage,
+            limit: currentLimit,
+            totalPages,
+            total: count
+        },
+        filters: {
+            startDate: dateFilter.startDate,
+            endDate: dateFilter.endDate,
+            period, 
+            jenis,
+            source
+        }
+    };
+};
 
 // ======== main function ========
 
@@ -291,4 +351,5 @@ const getKasSummary = async ({period = 'bulan-ini', startDate, endDate}) => {
 
 module.exports = {
     getKasSummary,
+    getKasTransactions
 };
