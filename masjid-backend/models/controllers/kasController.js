@@ -15,6 +15,23 @@ const validateKasManualPayload = (payload) => {
     return null;
 };
 
+exports.getKasTransactions = async(req, res) => {
+    try {
+        const data = await kasReportService.getKasTransactions(req.query);
+        res.json({
+            success: true,
+            msg: 'Daftar transaksi kas berhasil diambil',
+            data
+        });
+    } catch (error) {
+        res.status(error.statusCode || 500).json({
+            success: false,
+            msg: 'Gagal mengambil daftar transaksi kas',
+            error: error.message
+        });
+    }
+};
+
 exports.getKasSummary = async (req, res) => {
     try {
         const data = await kasReportService.getKasSummary(req.query);
