@@ -30,9 +30,7 @@ const formatDateOnly = (value) => {
 
 
 const getPeriodLabel = ({period, startDate, endDate}) => {
-    if (startDate && endDate) {
-        return `${formatDateOnly(startDate)} - ${formatDateOnly(endDate)}`;
-    }
+    const currentYear = new Date().getFullYear();
 
     const labels = {
         'hari-ini': 'Hari Ini',
@@ -41,9 +39,20 @@ const getPeriodLabel = ({period, startDate, endDate}) => {
         'minggu-lalu': 'Minggu Lalu',
         'bulan-ini': 'Bulan Ini',
         'bulan-lalu': 'Bulan Lalu',
-        'tahun-ini': 'Tahun Ini',
-        'tahun-lalu': 'Tahun Lalu'
+        'tahun-ini': `Tahun ${new Date().getFullYear()}`,
+        'tahun-lalu': `Tahun ${new Date().getFullYear() - 1}`
     };
+
+    if (period && labels[period]) {
+        return labels[period];
+    }
+
+    if (startDate && endDate) {
+        const displayEndDate = new Date(endDate);
+        displayEndDate.setDate(displayEndDate.getDate() - 1); // kurangi 1 hari untuk tampilan
+
+        return `${formatDateOnly(startDate)} - ${formatDateOnly(displayEndDate)}`;
+    }
 
     return labels[period] || 'Bulan Ini';
 };
@@ -70,7 +79,7 @@ const generateKasReport = async(query = {}) => {
     
     const transactions = transactionsResult.transactions || [];
     const periodLabel = getPeriodLabel({
-        period: query.period || summary.dateFilter?.period || 'bulan-ini',
+        period: query.period,
         startDate: summary.dateFilter?.startDate,
         endDate: summary.dateFilter?.endDate
     });
