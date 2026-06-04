@@ -18,6 +18,8 @@ const formatDate = (value) => {
     }) + ' WIB';
 };
 
+const year = new Date().getFullYear();
+
 const getProgramReportData = async(programId) => {
     const program = await BarangPengadaan.findByPk(programId);
     if (!program) {
@@ -71,7 +73,7 @@ const generatePengadaanReport = async(programId) => {
 
     doc.setDrawColor(20, 200, 200);
     doc.setFillColor(240, 250, 252);
-    doc.roundedRect(margin, currentY, pageWidth - margin * 2, 60, 3, 3, 'FD');
+    doc.roundedRect(margin, currentY, pageWidth - margin * 2, 75, 3, 3, 'FD');
     currentY += 10;
 
     const leftCol = margin + 5;
@@ -121,11 +123,14 @@ const generatePengadaanReport = async(programId) => {
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
 
+    const danaAwalKas = Number(program.dana_awal_kas || 0);
+    const danaDonasi = Number(program.dana_terkumpul || 0) - danaAwalKas;
     const targetDana = Number(program.target_dana || 0);
+    const totalDonatur = donations.length;
     const danaTerkumpul = Number(program.dana_terkumpul || 0);
     const percentage = targetDana > 0 ? ((danaTerkumpul / targetDana) * 100).toFixed(1) : '0.0';
 
-    const summaryText = `Total ${donations.length} donatur telah mengumpulkan ${percentage}% dari target ${formatRupiah(danaTerkumpul)} dari ${formatRupiah(targetDana)}`;
+    const summaryText = `Total dana terkumpul ${formatRupiah(danaTerkumpul)} (${percentage}%) dari target ${formatRupiah(targetDana)}. Dana tersebut terdiri dari dana awal kas ${formatRupiah(danaAwalKas)} dan donasi jamaah ${formatRupiah(danaDonasi)} dari ${totalDonatur} donatur.`;
     doc.text(doc.splitTextToSize(summaryText, pageWidth - margin * 2 - 20), margin + 10, currentY);
 
     currentY += 20;
@@ -202,13 +207,19 @@ const generatePengadaanReport = async(programId) => {
         });
     }
 
-    const footerY = Math.min(currentY + 20, 285);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'italic');
-    doc.setTextColor(120, 120, 120);
-    doc.text(`Laporan digenerate pada: ${formatDate(new Date())}`, margin, footerY);
-    // doc.text('MasjidHub - Solusi Digital untuk Masjid', pageWidth / 2, footerY, { align: 'center' });
-    doc.text(`Halaman ${doc.internal.getCurrentPageInfo().pageNumber} dari ${doc.internal.getNumberOfPages()}`, pageWidth - margin, footerY, { align: 'right' });
+    const footerY = Math.min(currentY + 20, 275);
+doc.setDrawColor(200, 200, 200);
+doc.line(margin, footerY - 5, pageWidth - margin, footerY - 5);
+doc.setFontSize(10);
+doc.setFont('helvetica', 'italic');
+doc.setTextColor(120, 120, 120);
+
+// baris 1: generated date (kiri) & halaman (kanan)
+doc.text(`Laporan digenerate pada: ${formatDate(new Date())}`, margin, footerY);
+doc.text(`Halaman ${doc.internal.getCurrentPageInfo().pageNumber} dari ${doc.internal.getNumberOfPages()}`, pageWidth - margin, footerY, { align: 'right' });
+
+// baris 2: copyright tengah
+doc.text(`© 2025 - ${year} MasjidHub - Solusi Digital untuk Masjid`, pageWidth / 2, footerY + 10, { align: 'center' });
 
     const pdfBuffer = doc.output('arraybuffer');
     
