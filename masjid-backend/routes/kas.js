@@ -203,6 +203,10 @@ router.get(
   kasController.exportsKasReportPdf
 )
 
+router.get(
+  '/history/export',
+  kasController.exportsKasHistory
+);
 
 router.get('/summary', kasController.getKasSummary);
 // router.get('/summary', async (req, res) => {
