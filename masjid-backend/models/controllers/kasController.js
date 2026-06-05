@@ -1,6 +1,7 @@
 const kasManualService = require('../../services/kasManualService');
 const kasReportService = require('../../services/kasReportService');
 const kasPdfReportService = require('../../services/kasPdfReportService');
+const kasExportService = require('../../services/kasExportService');
 
 const validateKasManualPayload = (payload) => {
     const { tanggal, keterangan, jenis, jumlah } = payload;
@@ -47,7 +48,23 @@ exports.exportsKasReportPdf = async(req, res) => {
             error: error.message
         });
     }
-}
+};
+
+exports.exportsKasHistory = async(req, res) => {
+    try {
+        const {fileName, contentType, buffer} = await kasExportService.generateKasHistoryExport(req.query);
+
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+        res.send(buffer);
+    } catch (error) {
+        res.status(error.statusCode || 500).json({
+            success: false,
+            msg: 'Gagal export laporan kas',
+            error: error.message
+        });
+    }
+};
 
 exports.getKasTransactions = async(req, res) => {
     try {
