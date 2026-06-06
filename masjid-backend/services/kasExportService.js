@@ -1,7 +1,5 @@
-const XLSX = require('xlsx');
 const ExcelJS = require('exceljs');
 const kasReportService = require('./kasReportService');
-const { format } = require('sequelize/lib/utils');
 
 // Utils
 const formatRupiahNumber = (value) => Number(value || 0);
@@ -341,73 +339,11 @@ const generateExportExcel = async (query = {}) => {
 
     return {
         fileName: getExportFileName({period: query.period, format: 'excel'}),
-        contentType: 'application/vnd.openxmlformats-officedocument.spreadsheemtl.sheet',
+        contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         buffer
     };
 };
 
-// const generateExportExcel = async (query = {}) => {
-//     // todo: create excel file
-//     const history = await kasReportService.getKasHistory(query);
-//     const rows = history.transactions.map(mapTransactionForExport);
-
-//     const summary = history.summary;
-//     const filters = history.filters;
-
-//     const worksheetData = [
-//         ['Laporan Riwayat Tranaksi Kas Masjid'],
-//         [`Periode: ${filters.startDate} - ${filters.endDate}`],
-//         [`Filter: ${filters.type}, status=${filters.status}`],
-//         [''],
-//         ['Ringkasan'],
-//         [`Total Transaksi: ${summary.total}`],
-//         [`Approved: ${summary.approved}`],
-//         [`Pending: ${summary.pending}`],
-//         [`Rejected: ${summary.rejected}`],
-//         [`Total Approved: Rp${Number(summary.totalAmount.approved || 0).toLocaleString('id-ID')}`],
-//         [`Total Pending: Rp${Number(summary.totalAmount.pending || 0).toLocaleString('id-ID')}`],
-//         [`Total Rejected: Rp${Number(summary.totalAmount.rejected || 0).toLocaleString('id-ID')}`],
-//         [''],
-//         ['Detail Transaksi']
-//     ];
-
-//     const workbook = XLSX.utils.book_new();
-//     const worksheeet = XLSX.utils.aoa_to_sheet(worksheetData);
-
-//     XLSX.utils.sheet_add_json(worksheeet, rows, {
-//         origin: `A${worksheetData.length + 2}`,
-//         skipHeader: false
-//     });
-
-
-//     worksheeet['!cols'] = [
-//         {wch: 16},
-//         {wch: 18},
-//         {wch: 24},
-//         {wch: 24},
-//         {wch: 18},
-//         {wch: 14},
-//         {wch: 10},
-//         {wch: 12},
-//         {wch: 28},
-//         {wch: 14}
-//     ];
-
-//     XLSX.utils.book_append_sheet(workbook, worksheeet, 'Ringkasan Transaksi');
-
-//     return {
-//         fileName: getExportFileName({period: query.period, format: 'excel'}),
-//         contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-//         buffer: XLSX.write(workbook, {
-//             type: 'buffer',
-//             bookType: 'xlsx'
-//         })
-//     };
-// };
-
-// 
-
-// main export function
 const generateKasHistoryExport = async (query = {}) => {
     if (query.format === 'excel') {
         return generateExportExcel(query);
@@ -418,8 +354,6 @@ const generateKasHistoryExport = async (query = {}) => {
 module.exports = {
     generateKasHistoryExport
 }
-
-
 
 
 
