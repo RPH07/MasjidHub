@@ -1,10 +1,14 @@
 const User = require('../UserModels');
 const bcrypt = require('bcryptjs');
 
+const USER_ATTRIBUTES = ['id', 'nama', 'email', 'role', 'jabatan', 'status'];
+const ALLOWED_ROLES = ['admin', 'dkm', 'jamaah'];
+const ALLOWED_JABATAN = ['ketua_dkm', 'bendahara', 'sekretaris', 'anggota_dkm'];
+
 exports.getUser = async (req, res) => {
     try {
         const user = await User.findAll({
-            attributes: ['id', 'nama', 'email', 'role', 'status']
+            attributes: USER_ATTRIBUTES
         });
         res.json(user);
     } catch (error) {
@@ -16,7 +20,7 @@ exports.getMe = async(req, res) => {
     try {
         const user = await User.findOne({
             where: { id: req.userId},
-            attributes: ['id', 'nama', 'email', 'role', 'status']
+            attributes: USER_ATTRIBUTES
         });
         if(!user) return res.status(404).json({ message: 'User tidak ditemukan' });
         res.json(user);
@@ -53,6 +57,68 @@ exports.updateUser = async (req, res) => {
         res.json({ msg: 'User Updated' });
     } catch (error) {
         res.status(400).json({msg: error.message})
+    }
+}
+
+exports.updateUserAccess = async (req, res) => {
+    try {
+        const user = await User.findOne({
+            where: { id: req.params.id }
+        });
+
+        if (!user) return res.status(404).json({ message: 'User tidak ditemukan' });
+
+        const { role, jabatan } = req.body;
+        const updatePayload = {};
+
+        if (role && !ALLOWED_ROLES.includes(role)) {
+            return res.status(400).json({ msg: 'Role tidak valid' });
+        }
+
+        if (jabatan && !ALLOWED_JABATAN.includes(jabatan)) {
+            return res.status(400).json({ msg: 'Jabatan tidak valid' });
+        }
+
+        if (req.role === 'admin') {
+            if (role) updatePayload.role = role;
+
+            const nextRole = role || user.role;
+            if (nextRole === 'dkm') {
+                updatePayload.jabatan = jabatan || user.jabatan || 'anggota_dkm';
+            } else {
+                updatePayload.jabatan = null;
+            }
+        } else if (req.role === 'dkm' && req.jabatan === 'ketua_dkm') {
+            if (role) {
+                return res.status(403).json({ msg: 'Ketua DKM tidak boleh mengubah role user' });
+            }
+
+            if (user.role !== 'dkm') {
+                return res.status(403).json({ msg: 'Ketua DKM hanya boleh mengubah jabatan sesama DKM' });
+            }
+
+            if (jabatan === 'ketua_dkm') {
+                return res.status(403).json({ msg: 'Jabatan ketua DKM hanya bisa diatur admin' });
+            }
+
+            updatePayload.jabatan = jabatan || 'anggota_dkm';
+        } else {
+            return res.status(403).json({ msg: 'Akses ditolak' });
+        }
+
+        await user.update(updatePayload);
+
+        const updatedUser = await User.findByPk(user.id, {
+            attributes: USER_ATTRIBUTES
+        });
+
+        res.json({
+            success: true,
+            msg: 'Akses user berhasil diperbarui',
+            data: updatedUser
+        });
+    } catch (error) {
+        res.status(500).json({ msg: error.message });
     }
 }
 
