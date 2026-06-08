@@ -1,7 +1,7 @@
 const Zakat = require('../ZakatModels');
 const BankMasjid = require('../BankModels');
 const {Op} = require('sequelize');
-const cloudinary = require('../../config/cloudinary').v2;
+const {cloudinary} = require('../../config/cloudinary');
 const zakatService = require('../../services/zakatService');
 
 exports.getZakat = async(req, res) => {
@@ -148,49 +148,6 @@ exports.verifyZakat = async(req, res) => {
         });
     } catch (error) {
         res.status(error.statusCode || 500).json({
-            success: false,
-            msg: error.message
-        });
-    }
-};
-
-exports.deleteZakat = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const zakat = await Zakat.findByPk(id);
-
-        if (!zakat) return res.status(404).json({ success: false, msg: "Data tidak ditemukan" });
-
-        // ✅ Cek apakah ada bukti_transfer DAN isinya string
-        if (zakat.bukti_transfer && typeof zakat.bukti_transfer === 'string') {
-            try {
-                // Contoh: https://res.cloudinary.com/cloud/image/upload/v1/masjidhub/zakat_bukti/abc.jpg
-                const urlParts = zakat.bukti_transfer.split('/');
-                
-                // Ambil file name (abc.jpg)
-                const fileNameWithExt = urlParts[urlParts.length - 1]; 
-                // Ambil public_id (abc)
-                const publicIdFile = fileNameWithExt.split('.')[0];
-                
-                // Gabungin sama folder sesuai config lu: masjidhub/zakat_bukti/abc
-                const publicId = `masjidhub/zakat_bukti/${publicIdFile}`;
-
-                console.log("Menghapus dari Cloudinary:", publicId);
-                await cloudinary.uploader.destroy(publicId);
-            } catch (cloudErr) {
-                console.error("Gagal hapus foto di Cloudinary (skip):", cloudErr.message);
-                // Kita log aja errornya, jangan gagalin proses delete database-nya
-            }
-        }
-
-        await zakat.destroy();
-
-        res.status(200).json({
-            success: true,
-            msg: "Data zakat dan bukti berhasil dihapus"
-        });
-    } catch (error) {
-        res.status(500).json({
             success: false,
             msg: error.message
         });
