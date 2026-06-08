@@ -35,7 +35,6 @@ router.post(
 
 router.post(
     '/donasi',
-    verifyToken,
     upload('donasi-program').single('bukti_transfer'),
     donasiPengadaanController.createDonasiPengadaan
 );
