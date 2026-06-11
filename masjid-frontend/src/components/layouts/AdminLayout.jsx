@@ -6,7 +6,7 @@ import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../../hooks/useAuth';
 
-const UserLayout = () => {
+const AdminLayout = () => {
   const { user } = useAuth();
   const isMobile = useMediaQuery('(max-width: 768px)');
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -57,4 +57,4 @@ const UserLayout = () => {
   );
 };
 
-export default UserLayout;
+export default AdminLayout;
