@@ -35,6 +35,34 @@ const KasManual = sequelize.define('KasManual', {
         type: DataTypes.STRING,
         allowNull: true
     },
+    status: {
+        type: DataTypes.ENUM('draft', 'pending', 'approved', 'rejected', 'voided'),
+        defaultValue: 'approved'
+    },
+    created_by: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    approved_by: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    approved_at: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+    rejected_by: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    rejected_at: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+    reject_reason: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
     deleted_at: {
         type: DataTypes.DATE,
         allowNull: true
