@@ -29,7 +29,11 @@ const LoginPages = () => {
 
         
         try {
-            const res = await api.post('/auth/login', formData);
+            const payload = {
+                email: formData.email.trim().toLocaleLowerCase(),
+                password: formData.password
+            };
+            const res = await api.post('/auth/login', payload);
 
             // Simpan token dan role di localStorage
             localStorage.setItem('accessToken', res.data.accessToken);
