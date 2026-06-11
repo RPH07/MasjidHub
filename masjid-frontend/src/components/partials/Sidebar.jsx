@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from "../../lib/utils";
-import { useAuth } from "../../hooks/useAuth"; // ✅ TAMBAH INI
+import { useAuth } from "../../hooks/useAuth";
 
 // Icons import dari Lucide React
 import { 
@@ -15,7 +15,7 @@ import {
   Heart,
   History,
   HandHeart,
-  LogOut // ✅ TAMBAH ICON LOGOUT
+  LogOut 
 } from "lucide-react";
 
 // Komponen shadcn
@@ -36,16 +36,17 @@ import {
 const Sidebar = ({ className, isMobile = false, isCollapsed = false, role = 'admin' }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { logout } = useAuth(); // ✅ AMBIL LOGOUT FUNCTION
+  const { logout } = useAuth();
 
-  // ✅ FUNCTION HANDLE LOGOUT
   const handleLogout = () => {
     logout(); // Clear localStorage & state
     navigate('/'); // Redirect ke homepage
   };
 
+  const isPengurus = role === 'admin' || role === 'dkm';
+
   // Menu berdasarkan role
-  const menuItems = role === 'admin' ? [
+  const menuItems = isPengurus ? [
     {
       title: "Dashboard",
       icon: <LayoutDashboard className="h-5 w-5" />,
@@ -173,7 +174,6 @@ const Sidebar = ({ className, isMobile = false, isCollapsed = false, role = 'adm
         </ul>
       </nav>
 
-      {/* ✅ LOGOUT BUTTON - FIX */}
       <div className="px-2 pt-2 border-t">
         {isCollapsed ? (
           <TooltipProvider delayDuration={0}>
