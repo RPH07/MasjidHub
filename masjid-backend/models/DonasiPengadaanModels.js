@@ -38,7 +38,7 @@ const DonasiPengadaan = sequelize.define('DonasiPengadaan', {
         allowNull: true
     },
     status: {
-        type: DataTypes.ENUM('pending', 'approved', 'rejected'),
+        type: DataTypes.ENUM('pending', 'approved', 'rejected', 'voided'),
         defaultValue: 'pending'
     },
     reject_reason: {
