@@ -28,7 +28,7 @@ const Dashboard = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('accessToken');
         const config = {
           headers: { Authorization: `Bearer ${token}` },
         };

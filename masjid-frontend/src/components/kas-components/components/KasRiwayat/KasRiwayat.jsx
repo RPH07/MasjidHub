@@ -114,7 +114,7 @@ const KasRiwayat = ({
   const handleExport = async (format = 'csv') => {
     try {
       setExportLoading(prev => ({...prev, [format]: true}))
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('accessToken');
       console.log(`🚀 Starting ${format} export...`);
 
       const loadingToast = Swal.fire({

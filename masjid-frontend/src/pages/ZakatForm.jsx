@@ -289,7 +289,7 @@ const ZakatForm = () => {
     try {
       console.log('🚀 Sending zakat data to backend...');
 
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('accessToken');
       console.log('🎫 Token from localStorage:', token ? 'EXISTS' : 'NOT_FOUND');
 
       const headers = {};

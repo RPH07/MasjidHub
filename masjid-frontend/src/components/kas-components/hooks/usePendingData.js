@@ -8,7 +8,7 @@ export const usePendingData = () => {
   const fetchPendingData = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('accessToken');
       
       // Use unified pending endpoint
       const response = await axios.get(

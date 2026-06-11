@@ -21,7 +21,7 @@ const HomePage = () => {
   const navigate = useNavigate();
 
   const isLoggedIn = () => {
-    return localStorage.getItem('token') !== null;
+    return localStorage.getItem('accessToken') !== null;
   };
 
     const handleDetailKegiatan = (kegiatan) => {

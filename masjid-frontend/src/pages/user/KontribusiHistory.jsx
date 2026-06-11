@@ -32,7 +32,7 @@ const KontribusiHistory = () => {
 
       const response = await axios.get(url, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`
         }
       });
 
@@ -54,7 +54,7 @@ const KontribusiHistory = () => {
 
       const response = await axios.get(url, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`
         }
       });
 

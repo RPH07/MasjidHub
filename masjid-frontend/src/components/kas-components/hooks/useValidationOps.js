@@ -7,7 +7,7 @@ export const useValidationOps = (refreshCallback) => {
   const approveTransaction = async (type, id) => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('accessToken');
       
       // Tentukan endpoint berdasarkan tipe
       let endpoint;
@@ -51,7 +51,7 @@ export const useValidationOps = (refreshCallback) => {
   const rejectTransaction = async (type, id, reason) => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('accessToken');
       
       // Tentukan endpoint berdasarkan tipe
       let endpoint;

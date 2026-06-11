@@ -42,7 +42,7 @@ const UserDashboard = () => {
 useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('accessToken');
         const config = { headers: { Authorization: `Bearer ${token}` } };
 
         // Fetch data paralel

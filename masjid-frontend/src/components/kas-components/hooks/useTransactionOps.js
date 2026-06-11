@@ -19,7 +19,7 @@ export const useTransactionOps = (onSuccess) => {
 
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('accessToken');
       const config = {
         headers: { Authorization: `Bearer ${token}` }
       };
@@ -47,7 +47,7 @@ export const useTransactionOps = (onSuccess) => {
     // console.log('deleteTransaction called with ID:', id); // Debug log
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('accessToken');
       const config = {
         headers: { Authorization: `Bearer ${token}` }
       };
