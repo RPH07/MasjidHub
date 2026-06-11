@@ -38,7 +38,9 @@ const mapTransactionForExport = (trx) => ({
     Jumlah: formatRupiahNumber(trx.jumlah),
     'Kode Unik': trx.kode_unik ? `+${trx.kode_unik}` : '-',
     Status: trx.status || '-',
-    Keterangan: trx.reject_reason || trx.keterangan || '-',
+    Keterangan: trx.status === 'voided'
+        ? (trx.reject_reason || trx.void_reason || 'Transaksi dibatalkan melalui proses void')
+        : (trx.reject_reason || trx.keterangan || '-'),
     'Bukti Transfer': trx.bukti_transfer ? 'Ada' : 'Tidak Ada'
 });
 
@@ -46,6 +48,7 @@ const mapTransactionForExport = (trx) => ({
 const generateExportCsv = async (query = {}) => {
     const history = await kasReportService.getKasHistory(query);
     const rows = history.transactions.map(mapTransactionForExport);
+    const { summary, filters } = history;
 
     const headers = [    
         'Tanggal',
@@ -62,7 +65,21 @@ const generateExportCsv = async (query = {}) => {
 
     const escapeCsv = (value) => `"${String(value).replace(/"/g, '""')}"`;
 
+    const summaryLines = [
+        ['Laporan Riwayat Transaksi Kas Masjid'],
+        [`Periode: ${filters.startDate} - ${filters.endDate}`],
+        [],
+        ['Ringkasan'],
+        ['Total Transaksi', summary.total],
+        ['Approved', summary.approved, 'Total Approved', formatRupiahNumber(summary.totalAmount.approved)],
+        ['Pending', summary.pending, 'Total Pending', formatRupiahNumber(summary.totalAmount.pending)],
+        ['Rejected', summary.rejected, 'Total Rejected', formatRupiahNumber(summary.totalAmount.rejected)],
+        ['Voided', summary.voided || 0, 'Total Voided', formatRupiahNumber(summary.totalAmount.voided)],
+        []
+    ];
+
     const csvLines = [
+        ...summaryLines.map(line => line.map(escapeCsv).join(',')),
         headers.join(','),
         ...rows.map(row => headers.map(header => escapeCsv(row[header])).join(','))
     ];
@@ -113,7 +130,8 @@ const styleCell = (cell, opts = {}) => {
 const STATUS_STYLE = {
     approved: { fill: 'FFC8E6C9', color: 'FF256029', },
     pending: { fill: 'FFFFF9C4', color: 'FF827717' },
-    rejected: { fill: 'FFFFCDD2', color: 'FFB71C1C' }
+    rejected: { fill: 'FFFFCDD2', color: 'FFB71C1C' },
+    voided: { fill: 'FFEADCF8', color: 'FF5E35B1' }
 };
 
 const generateExportExcel = async (query = {}) => {
@@ -193,13 +211,15 @@ const generateExportExcel = async (query = {}) => {
         ['Total Transaksi', summary.total, null, null],
         ['Approved', summary.approved, 'Total Approved', fmRp(summary.totalAmount.approved)],
         ['Pending', summary.pending, 'Total Pending', fmRp(summary.totalAmount.pending)],
-        ['Rejected', summary.rejected, 'Total Rejected', fmRp(summary.totalAmount.rejected)]
+        ['Rejected', summary.rejected, 'Total Rejected', fmRp(summary.totalAmount.rejected)],
+        ['Voided', summary.voided || 0, 'Total Voided', fmRp(summary.totalAmount.voided)]
     ];
 
     const SUM_VAL_COLOR = {
         Approved: 'FF375623',
         Pending: 'FF827717',
-        Rejected: 'FFB71C1C'
+        Rejected: 'FFB71C1C',
+        Voided: 'FF5E35B1'
     };
 
     let rowIdx = 6;
@@ -354,7 +374,5 @@ const generateKasHistoryExport = async (query = {}) => {
 module.exports = {
     generateKasHistoryExport
 }
-
-
 
 
