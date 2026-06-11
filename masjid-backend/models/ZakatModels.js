@@ -65,7 +65,7 @@ const Zakat = sequelize.define('Zakat', {
         allowNull: true
     },
     status: {
-        type: DataTypes.ENUM('pending', 'approved', 'rejected'),
+        type: DataTypes.ENUM('pending', 'approved', 'rejected', 'voided'),
         defaultValue: 'pending'
     },
     reject_reason: {
