@@ -2,6 +2,7 @@ const kasManualService = require('../../services/kasManualService');
 const kasReportService = require('../../services/kasReportService');
 const kasPdfReportService = require('../../services/kasPdfReportService');
 const kasExportService = require('../../services/kasExportService');
+const kasVoidService = require('../../services/kasVoidService');
 
 const validateKasManualPayload = (payload) => {
     const { tanggal, keterangan, jenis, jumlah } = payload;
@@ -96,6 +97,75 @@ exports.getKasSummary = async (req, res) => {
         res.status(error.statusCode || 500).json({
             success: false,
             msg: 'Gagal mengambil ringkasan kas',
+            error: error.message
+        });
+    }
+};
+
+exports.requestVoidKas = async(req, res) => {
+    try {
+        const data = await kasVoidService.requestVoid({
+            ledgerId: req.params.id,
+            reason: req.body.reason,
+            requestedBy: req.userId,
+            requesterJabatan: req.jabatan
+        });
+
+        res.status(200).json({
+            success: true,
+            msg: 'Permintaan void transaksi berhasil dibuat',
+            data
+        });
+    } catch (error) {
+        res.status(error.statusCode || 500).json({
+            success: false,
+            msg: 'Gagal membuat permintaan void transaksi',
+            error: error.message
+        });
+    }
+};
+
+exports.approveVoidKas = async(req, res) => {
+    try {
+        const data = await kasVoidService.approveVoid({
+            ledgerId: req.params.id,
+            approverId: req.userId,
+            approverJabatan: req.jabatan
+        });
+
+        res.status(200).json({
+            success: true,
+            msg: data.void_status === 'approved'
+                ? 'Void transaksi sudah disetujui lengkap'
+                : 'Persetujuan void transaksi berhasil dicatat',
+            data
+        });
+    } catch (error) {
+        res.status(error.statusCode || 500).json({
+            success: false,
+            msg: 'Gagal menyetujui void transaksi',
+            error: error.message
+        });
+    }
+};
+
+exports.rejectVoidKas = async(req, res) => {
+    try {
+        const data = await kasVoidService.rejectVoid({
+            ledgerId: req.params.id,
+            rejectedBy: req.userId,
+            rejectReason: req.body.reject_reason
+        });
+
+        res.status(200).json({
+            success: true,
+            msg: 'Permintaan void transaksi berhasil ditolak',
+            data
+        });
+    } catch (error) {
+        res.status(error.statusCode || 500).json({
+            success: false,
+            msg: 'Gagal menolak void transaksi',
             error: error.message
         });
     }
