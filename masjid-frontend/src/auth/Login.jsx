@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
-// import {API_BASE_URL} from '../config/api'
+import api from '../config/api'
 
 const LoginPages = () => {
     const navigate = useNavigate(); 
@@ -28,43 +27,30 @@ const LoginPages = () => {
         setError('');
         setSuccess('');
 
-        const axiosInstance = axios.create({
-            baseURL: 'http://localhost:5000',
-            timeout: 10000,
-            retryDelay: 1000,
-            retry: 3,
-            withCredentials: true
-        })
         
         try {
-            const res = await axiosInstance.post('/api/auth/login', formData);
+            const res = await api.post('/auth/login', formData);
 
             // Simpan token dan role di localStorage
-            localStorage.setItem('token', res.data.token);
-            localStorage.setItem('userData', JSON.stringify(res.data.user));
-            localStorage.setItem('userRole', res.data.user.role);
+            localStorage.setItem('accessToken', res.data.accessToken);
+            localStorage.setItem('user', JSON.stringify(res.data.user));
 
-            const destination = res.data.user.role === 'admin' ? 'halaman admin' : 'dashboard';
-            setSuccess(`Login berhasil! Anda akan dialihkan ke ${destination} dalam 3 detik.`);
-            
-            // Redirect sesuai role
-            setTimeout(() => {
-                if (res.data.user.role === 'admin') {
-                    navigate('/admin');
-                } else {
-                    navigate('/dashboard');
-                }
-            }, 3000);
-            
-            // console.log('Login success:', res.data);
-        } catch (err) {
-            const errorMessage = err.response?.data?.message || 'Terjadi kesalahan saat login';
-            setError(errorMessage);
+            const role = res.data.user.role;
+            const destination = role === 'admin' || role === 'dkm' ? 'dashboard pengurus' : 'dashboard jamaah';
 
-            // eslint-disable-next-line no-undef
-            if(process.env.NODE_ENV === 'development') {
-                console.error('Login error:', err);
+            setSuccess(`Login berhasil! Anda akan dialihkan ke ${destination}`);
+            if (role === 'admin' || role === 'dkm') {
+                navigate('/admin')
+            } else {
+                navigate('/dashboard')
             }
+        } catch (err) {
+            const errorMessage = 
+            err.response?.data?.message ||
+            err.response?.data?.msg ||
+            err.response?.data?.error ||
+            'Terjadi kesalahan saat login';
+            setError(errorMessage);
         } finally {
             setLoading(false);
         }
@@ -107,7 +93,7 @@ const LoginPages = () => {
 
                     <div className="mb-6 relative">
                         <input
-                            type={showPassword ? 'test' : 'password'}
+                            type={showPassword ? 'text' : 'password'}
                             placeholder=" "
                             name="password"
                             value={formData.password}
