@@ -4,40 +4,32 @@ export const useAuth = () => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
+    const loadUser = () => {
+        const token = localStorage.getItem('accessToken');
+        const storedUser = localStorage.getItem('user');
+
+        if (!token || !storedUser) {
+            setUser(null);
+            setLoading(false);
+            return; 
+        }
+        try {
+            setUser(JSON.parse(storedUser));
+        } catch {
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('user');
+            setUser(null);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        // Ambil data user dari localStorage
-        const getUserFromLocalStorage = () => {
-            try {
-                const token = localStorage.getItem('token');
-                const userData = localStorage.getItem('userData');
-                const userRole = localStorage.getItem('userRole');
-
-                if (token && userData) {
-                    const parsedUserData = JSON.parse(userData);
-                    
-                    // Set user dengan data dari localStorage
-                    setUser({
-                        ...parsedUserData,
-                        role: userRole || parsedUserData.role
-                    });
-                } else {
-                    setUser(null);
-                }
-            } catch (error) {
-                console.error('Error parsing user data from localStorage:', error);
-                setUser(null);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        getUserFromLocalStorage();
+        loadUser();
 
         // Listen for localStorage changes (jika login dari tab lain)
-        const handleStorageChange = (e) => {
-            if (e.key === 'userData' || e.key === 'token') {
-                getUserFromLocalStorage();
-            }
+        const handleStorageChange = () => {
+            loadUser();
         };
 
         window.addEventListener('storage', handleStorageChange);
@@ -49,9 +41,8 @@ export const useAuth = () => {
 
     // Function untuk logout
     const logout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('userData');
-        localStorage.removeItem('userRole');
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('user');
         setUser(null);
     };
 
