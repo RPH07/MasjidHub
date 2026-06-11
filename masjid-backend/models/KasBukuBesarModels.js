@@ -58,6 +58,54 @@ const KasBukuBesar = sequelize.define('KasBukuBesar', {
     deleted_at: {
         type: DataTypes.DATE,
         allowNull: true
+    },
+    void_status: {
+        type: DataTypes.ENUM('none', 'requested', 'approved', 'rejected'),
+        defaultValue: 'none'
+    },
+    void_reason: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
+    void_requested_by: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    void_requested_at: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+    void_approved_ketua_by: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    void_approved_ketua_at: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+    void_approved_bendahara_by: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    void_approved_bendahara_at: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+    void_rejected_by: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    void_rejected_at: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+    void_reject_reason: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
+    voided_at: {
+        type: DataTypes.DATE,
+        allowNull: true
     }
 }, {
     tableName: 'kas_buku_besar',
