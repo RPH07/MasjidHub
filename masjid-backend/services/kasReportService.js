@@ -82,8 +82,18 @@ const buildDateWhere = (startDate, endDate) => ({
         [Op.gte]: startDate,
         [Op.lt]: endDate
     },
-    deleted_at: null
+    deleted_at: null,
+    void_status: {
+        [Op.ne]: 'approved'
+    }
 });
+
+const activeLedgerWhere = {
+    deleted_at: null,
+    void_status: {
+        [Op.ne]: 'approved'
+    }
+};
 
 const normalizeTransaction = (item, type) => {
     if (type === 'zakat') {
@@ -96,7 +106,9 @@ const normalizeTransaction = (item, type) => {
             kategori: item.jenis_zakat || 'lainnya',
             metode_pembayaran: item.metode_pembayaran || 'tunai',
             status: item.status || 'n/a',
-            reject_reason: item.reject_reason || null,
+            reject_reason: item.status === 'voided'
+                ? 'Transaksi dibatalkan melalui proses void'
+                : item.reject_reason || null,
             bukti_transfer: item.bukti_transfer || null,
             kode_unik: item.kode_unik || null,
             total_transfer: item.total_bayar || null,
@@ -116,7 +128,9 @@ const normalizeTransaction = (item, type) => {
         program_donasi: item.barang?.nama_barang || '-',
         metode_pembayaran: item.metode_pembayaran || 'transfer_bank',
         status: item.status || 'n/a',
-        reject_reason: item.reject_reason || null,
+        reject_reason: item.status === 'voided'
+            ? 'Transaksi dibatalkan melalui proses void'
+            : item.reject_reason || null,
         bukti_transfer: item.bukti_transfer || null,
         kode_unik: item.kode_unik || null,
         total_transfer: item.total_transfer || null,
@@ -321,8 +335,8 @@ const getKasTransactions = async({
     const {rows, count} = await KasBukuBesar.findAndCountAll({
         where,
         order: [
-            [['tanggal', 'DESC']],
-            [['created_at', 'DESC']]
+            ['tanggal', 'DESC'],
+            ['created_at', 'DESC']
         ],
         offset,
         limit: currentLimit
@@ -407,13 +421,25 @@ const getKasHistory = async({
     }
     
     if (type === 'all' || type === 'kas_manual') {
-        if (status === 'all' || status === 'approved') {
+        if (status === 'all' || status === 'approved' || status === 'voided') {
+            const manualWhere = {
+                tanggal: dateWhere,
+                source_table: 'manual',
+                deleted_at: null
+            };
+
+            if (status === 'approved') {
+                manualWhere.void_status = {
+                    [Op.ne]: 'approved'
+                };
+            }
+
+            if (status === 'voided') {
+                manualWhere.void_status = 'approved';
+            }
+
             const kasRows = await KasBukuBesar.findAll({
-                where: {
-                    tanggal: dateWhere,
-                    source_table: 'kas_manual',
-                    deleted_at: null
-                },
+                where: manualWhere,
                 order: [['created_at', 'DESC']]
             });
             transactions.push(...kasRows.map((item) => ({
@@ -424,8 +450,10 @@ const getKasHistory = async({
                 jumlah: Number(item.jumlah || 0),
                 kategori: item.kategori || 'operasional',
                 metode_pembayaran: item.metode_pembayaran || 'n/a',
-                status: 'approved',
-                reject_reason: null,
+                status: item.void_status === 'approved' ? 'voided' : 'approved',
+                reject_reason: item.void_status === 'approved'
+                    ? item.void_reason || 'Transaksi dibatalkan melalui proses void'
+                    : null,
                 bukti_transfer: item.bukti_transfer || null,
                 kode_unik: null,
                 total_transfer: null,
@@ -441,6 +469,7 @@ const getKasHistory = async({
         approved: transactions.filter(t => t.status === 'approved').length,
         pending: transactions.filter(t => t.status === 'pending').length,
         rejected: transactions.filter(t => t.status === 'rejected').length,
+        voided: transactions.filter(t => t.status === 'voided').length,
         totalAmount: {
             approved: transactions
                 .filter((item) => item.status === 'approved')
@@ -450,6 +479,9 @@ const getKasHistory = async({
                 .reduce((sum, item) => sum + Number(item.jumlah || 0), 0),
             pending: transactions
                 .filter((item) => item.status === 'pending')
+                .reduce((sum, item) => sum + Number(item.jumlah || 0), 0),
+            voided: transactions
+                .filter((item) => item.status === 'voided')
                 .reduce((sum, item) => sum + Number(item.jumlah || 0), 0)
         } 
 
@@ -471,7 +503,7 @@ const getKasHistory = async({
 const getKasSummary = async ({period = 'bulan-ini', startDate, endDate}) => { 
     const dateFilter = startDate && endDate ? {startDate, endDate} : getPeriodFilter(period);
     const totalSaldoRows = await getTotalByJenis({
-        deleted_at: null
+        ...activeLedgerWhere
     });
     const periodWhere = buildDateWhere(dateFilter.startDate, dateFilter.endDate);
     const kodeUnikStats = await getKodeUnikStats(periodWhere);
@@ -485,7 +517,7 @@ const getKasSummary = async ({period = 'bulan-ini', startDate, endDate}) => {
         tanggal: {
             [Op.lt]: dateFilter.startDate
         },
-        deleted_at: null
+        ...activeLedgerWhere
     });
 
     const prevPeriodRows = await getTotalByJenis(
