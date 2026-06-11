@@ -1,5 +1,8 @@
 const {jsPDF} = require('jspdf');
+const { Op } = require('sequelize');
 const KasReportService = require('./kasReportService');
+const KasBukuBesar = require('../models/KasBukuBesarModels');
+const User = require('../models/UserModels');
 
 const formatRupiah = (value) => `Rp ${Number(value || 0).toLocaleString('id-ID')}`;
 
@@ -67,6 +70,76 @@ const drawKeyValue = (doc, label, value, x, y, valueColor = [60, 60, 60]) => {
     doc.text(value, x, y + 6);
 };
 
+const trimTextToWidth = (doc, value, maxWidth) => {
+    let text = String(value || '-');
+
+    while (text.length > 0 && doc.getTextWidth(text) > maxWidth) {
+        text = text.slice(0, -1);
+    }
+
+    return text || '-';
+};
+
+const ensureSpace = (doc, currentY, margin, neededHeight = 18) => {
+    if (currentY + neededHeight <= 275) return currentY;
+
+    doc.addPage();
+    return margin;
+};
+
+const getVoidedTransactions = async (dateFilter) => {
+    return KasBukuBesar.findAll({
+        where: {
+            tanggal: {
+                [Op.gte]: dateFilter.startDate,
+                [Op.lt]: dateFilter.endDate
+            },
+            deleted_at: null,
+            void_status: 'approved'
+        },
+        order: [
+            ['voided_at', 'DESC'],
+            ['updated_at', 'DESC']
+        ],
+        limit: 200
+    });
+};
+
+const buildUserMap = async (transactions) => {
+    const userIds = [
+        ...new Set(
+            transactions
+                .flatMap((trx) => [
+                    trx.void_requested_by,
+                    trx.void_approved_ketua_by,
+                    trx.void_approved_bendahara_by
+                ])
+                .filter(Boolean)
+        )
+    ];
+
+    if (userIds.length === 0) return new Map();
+
+    const users = await User.findAll({
+        where: {
+            id: userIds
+        },
+        attributes: ['id', 'nama', 'jabatan'],
+        raw: true
+    });
+
+    return new Map(users.map((user) => [user.id, user]));
+};
+
+const formatUserName = (userId, userMap) => {
+    if (!userId) return '-';
+
+    const user = userMap.get(userId);
+    if (!user) return '-';
+
+    return user.nama || '-';
+};
+
 const generateKasReport = async(query = {}) => {
     const summary = await KasReportService.getKasSummary(query);
     const transactionsResult = await KasReportService.getKasTransactions({
@@ -78,6 +151,8 @@ const generateKasReport = async(query = {}) => {
     });
     
     const transactions = transactionsResult.transactions || [];
+    const voidedTransactions = await getVoidedTransactions(summary.dateFilter);
+    const voidUserMap = await buildUserMap(voidedTransactions);
     const periodLabel = getPeriodLabel({
         period: query.period,
         startDate: summary.dateFilter?.startDate,
@@ -184,10 +259,7 @@ const generateKasReport = async(query = {}) => {
     doc.setTextColor(60, 60, 60);
 
     transactions.forEach((trx, index) => {
-        if (currentY > 265) {
-            doc.addPage();
-            currentY = margin;
-        }
+        currentY = ensureSpace(doc, currentY, margin, 10);
 
         if (index % 2 === 0) {
             doc.setFillColor(240, 240, 240);
@@ -203,17 +275,86 @@ const generateKasReport = async(query = {}) => {
         };
 
         cols.forEach((col) => {
-    let text = String(row[col.key]);
-    const maxWidth = col.w - 6; // kasih padding 3mm
-
-    while (text.length > 0 && doc.getTextWidth(text) > maxWidth) {
-        text = text.slice(0, -1);
-    }
-
-    doc.text(text, col.x + 1, currentY + 5);
-});
+            const text = trimTextToWidth(doc, row[col.key], col.w - 6);
+            doc.text(text, col.x + 1, currentY + 5);
+        });
         currentY += 8;
     });
+
+    currentY += 12;
+    currentY = ensureSpace(doc, currentY, margin, 24);
+
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 30, 30);
+    doc.text(`Catatan transaksi void (${voidedTransactions.length})`, margin, currentY);
+    currentY += 8;
+
+    if (voidedTransactions.length === 0) {
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'italic');
+        doc.setTextColor(120, 120, 120);
+        doc.text('Tidak ada transaksi yang dibatalkan pada periode ini.', margin, currentY);
+        currentY += 8;
+    } else {
+        const voidCols = [
+            { key: 'tanggal', label: 'Tanggal', x: margin, w: 22 },
+            { key: 'deskripsi', label: 'Deskripsi', x: margin + 22, w: 42 },
+            { key: 'jumlah', label: 'Jumlah', x: margin + 64, w: 25 },
+            { key: 'requested_by', label: 'Request', x: margin + 89, w: 24 },
+            { key: 'ketua_by', label: 'Ketua', x: margin + 113, w: 22 },
+            { key: 'bendahara_by', label: 'Bendahara', x: margin + 135, w: 27 },
+            { key: 'alasan', label: 'Alasan', x: margin + 162, w: 18 }
+        ];
+
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(255, 255, 255);
+        doc.setFillColor(180, 70, 70);
+        doc.rect(margin, currentY, contentWidth, 8, 'F');
+        voidCols.forEach((col) => doc.text(col.label, col.x + 1, currentY + 5.5));
+        currentY += 8;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(70, 70, 70);
+
+        voidedTransactions.forEach((trx, index) => {
+            currentY = ensureSpace(doc, currentY, margin, 10);
+
+            if (index % 2 === 0) {
+                doc.setFillColor(250, 238, 238);
+                doc.rect(margin, currentY, contentWidth, 8, 'F');
+            }
+
+            const row = {
+                tanggal: formatDateOnly(trx.tanggal),
+                jenis: trx.jenis || '-',
+                deskripsi: trx.deskripsi || '-',
+                jumlah: formatRupiah(trx.jumlah),
+                requested_by: formatUserName(trx.void_requested_by, voidUserMap),
+                ketua_by: formatUserName(trx.void_approved_ketua_by, voidUserMap),
+                bendahara_by: formatUserName(trx.void_approved_bendahara_by, voidUserMap),
+                alasan: trx.void_reason || '-'
+            };
+
+            voidCols.forEach((col) => {
+                const text = trimTextToWidth(doc, row[col.key], col.w - 4);
+                doc.text(text, col.x + 1, currentY + 5);
+            });
+
+            currentY += 8;
+        });
+
+        currentY += 6;
+        currentY = ensureSpace(doc, currentY, margin, 18);
+
+        doc.setFontSize(8.5);
+        doc.setFont('helvetica', 'italic');
+        doc.setTextColor(100, 100, 100);
+        const note = 'Catatan: transaksi void tetap ditampilkan sebagai audit, tetapi tidak dihitung dalam total pemasukan, pengeluaran, atau saldo aktif.';
+        doc.text(doc.splitTextToSize(note, contentWidth), margin, currentY);
+        currentY += 12;
+    }
 
     const footerY = Math.min(currentY + 20, 275);
     doc.setDrawColor(200, 200, 200);
