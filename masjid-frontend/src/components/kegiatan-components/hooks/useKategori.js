@@ -25,34 +25,31 @@ export const useKategori = () => {
   }, []);
 
   // Handle form change
-  const handleKategoriChange = (field, value) => {
+  const handleKategoriChange = useCallback((field, value) => {
     setNewKategori(prev => ({
       ...prev,
       [field]: value
     }));
-  };
+  }, []);
 
   // Create kategori
-  const createKategori = async () => {
-    if (!newKategori.nama_kategori.trim()) {
+  const createKategori = useCallback(async (kategoriPayload = newKategori) => {
+    const namaKategori = kategoriPayload.nama_kategori?.trim();
+
+    if (!namaKategori) {
       toast.error('Nama kategori wajib diisi!');
       return false;
     }
 
     try {
-      const kategoriData = {
-        ...newKategori,
-        warna: newKategori.warna || 'blue'
-      };
-      
-      await KategoriService.create(kategoriData);
+      await KategoriService.create({ nama_kategori: namaKategori });
       toast.success('Kategori berhasil ditambahkan!', {
         icon: '✅',
         duration: 3000
       });
       
       setNewKategori(initialKategoriData);
-      fetchKategori();
+      await fetchKategori();
       setShowKategoriManager(false);
       return true;
     } catch (err) {
@@ -63,7 +60,7 @@ export const useKategori = () => {
       });
       return false;
     }
-  };
+  }, [fetchKategori, newKategori]);
 
   // Update kategori
   const updateKategori = async (id, kategoriData) => {
@@ -109,12 +106,14 @@ export const useKategori = () => {
   };
 
   // Toggle modal
-  const toggleKategoriManager = () => {
-    setShowKategoriManager(!showKategoriManager);
-    if (!showKategoriManager) {
-      setNewKategori(initialKategoriData);
-    }
-  };
+  const toggleKategoriManager = useCallback(() => {
+    setShowKategoriManager(prevShow => {
+      if (!prevShow) {
+        setNewKategori(initialKategoriData);
+      }
+      return !prevShow;
+    });
+  }, []);
 
   return {
     kategoriList,

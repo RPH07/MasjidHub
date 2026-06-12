@@ -1,94 +1,54 @@
 import { useState } from 'react';
-import axios from 'axios';
+import { kasService } from '../services/kasService';
 
 export const useValidationOps = (refreshCallback) => {
   const [loading, setLoading] = useState(false);
 
-  const approveTransaction = async (type, id) => {
+  const approveVoid = async (id) => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const token = localStorage.getItem('accessToken');
-      
-      // Tentukan endpoint berdasarkan tipe
-      let endpoint;
-      switch (type) {
-        case 'zakat':
-          endpoint = `http://localhost:5000/api/zakat/${id}/validate`;
-          break;
-        case 'infaq':
-          endpoint = `http://localhost:5000/api/infaq/${id}/validate`;
-          break;
-        case 'donasi':
-          endpoint = `http://localhost:5000/api/donasi/${id}/validate`;
-          break;
-        default:
-          throw new Error('Tipe transaksi tidak valid');
-      }
-      
-      const response = await axios.put(
-        endpoint,
-        { action: 'approve' },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      if (response.data.success) {
-        if (refreshCallback) refreshCallback();
-        return { success: true, message: response.data.message };
-      }
-      
-      return { success: false, message: response.data.message };
+      const response = await kasService.approveVoid(id);
+      if (refreshCallback) refreshCallback();
+      return { success: true, message: response.msg || 'Persetujuan void berhasil dicatat' };
     } catch (error) {
-      console.error('Error approving transaction:', error);
-      return { 
-        success: false, 
-        message: error.response?.data?.message || 'Terjadi kesalahan saat approve' 
+      console.error('Error approving void:', error.response?.data || error);
+      return {
+        success: false,
+        message: error.response?.data?.error || error.response?.data?.msg || 'Gagal menyetujui void transaksi'
       };
     } finally {
       setLoading(false);
     }
   };
 
-  const rejectTransaction = async (type, id, reason) => {
+  const rejectVoid = async (id, rejectReason) => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const token = localStorage.getItem('accessToken');
-      
-      // Tentukan endpoint berdasarkan tipe
-      let endpoint;
-      switch (type) {
-        case 'zakat':
-          endpoint = `http://localhost:5000/api/zakat/${id}/validate`;
-          break;
-        case 'infaq':
-          endpoint = `http://localhost:5000/api/infaq/${id}/validate`;
-          break;
-        case 'donasi':
-          endpoint = `http://localhost:5000/api/donasi/${id}/validate`;
-          break;
-        default:
-          throw new Error('Tipe transaksi tidak valid');
-      }
-      
-      const response = await axios.put(
-        endpoint,
-        { 
-          action: 'reject', 
-          reason: reason || 'Tidak ada alasan yang diberikan' 
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      if (response.data.success) {
-        if (refreshCallback) refreshCallback();
-        return { success: true, message: response.data.message };
-      }
-      
-      return { success: false, message: response.data.message };
+      const response = await kasService.rejectVoid(id, rejectReason);
+      if (refreshCallback) refreshCallback();
+      return { success: true, message: response.msg || 'Void transaksi berhasil ditolak' };
     } catch (error) {
-      console.error('Error rejecting transaction:', error);
-      return { 
-        success: false, 
-        message: error.response?.data?.message || 'Terjadi kesalahan saat reject' 
+      console.error('Error rejecting void:', error.response?.data || error);
+      return {
+        success: false,
+        message: error.response?.data?.error || error.response?.data?.msg || 'Gagal menolak void transaksi'
+      };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const requestVoid = async (id, reason) => {
+    setLoading(true);
+    try {
+      const response = await kasService.requestVoid(id, reason);
+      if (refreshCallback) refreshCallback();
+      return { success: true, message: response.msg || 'Permintaan void berhasil dibuat' };
+    } catch (error) {
+      console.error('Error requesting void:', error.response?.data || error);
+      return {
+        success: false,
+        message: error.response?.data?.error || error.response?.data?.msg || 'Gagal membuat permintaan void'
       };
     } finally {
       setLoading(false);
@@ -96,8 +56,9 @@ export const useValidationOps = (refreshCallback) => {
   };
 
   return {
-    approveTransaction,
-    rejectTransaction,
+    approveVoid,
+    rejectVoid,
+    requestVoid,
     loading
   };
 };

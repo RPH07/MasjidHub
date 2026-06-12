@@ -3,17 +3,17 @@ import React from 'react';
 const BuktiModal = ({ isOpen, onClose, buktiTransfer, transactionInfo }) => {
   if (!isOpen) return null;
 
-  // UPDATE: Buat URL function yang lebih simple karena URL sudah dibuat di parent
   const getImageUrl = (urlOrFilename) => {
     if (!urlOrFilename) return null;
     
-    // Jika sudah berupa URL lengkap, langsung return
     if (urlOrFilename.startsWith('http')) {
       return urlOrFilename;
     }
-    
-    // Fallback jika masih berupa filename saja
-    return `http://localhost:5000/uploads/bukti-donasi/${urlOrFilename}`;
+
+    const apiBaseUrl = import.meta.env.VITE_API_URL || '';
+    const backendBaseUrl = apiBaseUrl.replace(/\/api\/?$/, '');
+
+    return backendBaseUrl ? `${backendBaseUrl}/uploads/bukti-donasi/${urlOrFilename}` : urlOrFilename;
   };
 
   const imageUrl = getImageUrl(buktiTransfer);

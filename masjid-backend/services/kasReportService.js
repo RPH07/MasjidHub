@@ -381,6 +381,61 @@ const getKasHistory = async({
 
     const transactions = [];
 
+    const shouldIncludeLedgerVoidStatus = (voidStatus) => {
+        if (status === 'all') return true;
+        if (status === 'approved') return voidStatus === 'none' || !voidStatus;
+        if (status === 'voided') return voidStatus === 'approved';
+        if (status === 'void_requested') return voidStatus === 'requested';
+        if (status === 'void_rejected') return voidStatus === 'rejected';
+        return false;
+    };
+
+    const mapLedgerHistoryStatus = (voidStatus) => {
+        if (voidStatus === 'approved') return 'voided';
+        if (voidStatus === 'requested') return 'void_requested';
+        if (voidStatus === 'rejected') return 'void_rejected';
+        return 'approved';
+    };
+
+    const mapLedgerHistoryReason = (item) => {
+        if (item.void_status === 'approved') {
+            return item.void_reason || 'Transaksi dibatalkan melalui proses void';
+        }
+
+        if (item.void_status === 'requested') {
+            return item.void_reason || 'Menunggu persetujuan void';
+        }
+
+        if (item.void_status === 'rejected') {
+            return item.void_reject_reason || item.void_reason || 'Permintaan void ditolak';
+        }
+
+        return null;
+    };
+
+    const getLedgerHistoryDate = (item) => {
+        if (item.void_status === 'approved') {
+            return item.voided_at || item.updated_at || item.created_at;
+        }
+
+        if (item.void_status === 'rejected') {
+            return item.void_rejected_at || item.updated_at || item.created_at;
+        }
+
+        if (item.void_status === 'requested') {
+            return item.void_requested_at || item.updated_at || item.created_at;
+        }
+
+        return item.created_at;
+    };
+
+    const ledgerHistoryDateOr = [
+        { tanggal: dateWhere },
+        { void_requested_at: dateWhere },
+        { void_rejected_at: dateWhere },
+        { voided_at: dateWhere }
+    ];
+
     if (type ===  'all' || type === 'zakat') {
         const where = {
             created_at: dateWhere
@@ -421,9 +476,9 @@ const getKasHistory = async({
     }
     
     if (type === 'all' || type === 'kas_manual') {
-        if (status === 'all' || status === 'approved' || status === 'voided') {
+        if (status === 'all' || status === 'approved' || status === 'voided' || status === 'void_requested' || status === 'void_rejected') {
             const manualWhere = {
-                tanggal: dateWhere,
+                [Op.or]: ledgerHistoryDateOr,
                 source_table: 'manual',
                 deleted_at: null
             };
@@ -442,7 +497,9 @@ const getKasHistory = async({
                 where: manualWhere,
                 order: [['created_at', 'DESC']]
             });
-            transactions.push(...kasRows.map((item) => ({
+            transactions.push(...kasRows
+            .filter((item) => shouldIncludeLedgerVoidStatus(item.void_status))
+            .map((item) => ({
                 id: item.id,
                 type: 'kas',
                 type_label: item.jenis === 'masuk' ? 'Kas Masuk' : 'Kas Keluar',
@@ -450,17 +507,50 @@ const getKasHistory = async({
                 jumlah: Number(item.jumlah || 0),
                 kategori: item.kategori || 'operasional',
                 metode_pembayaran: item.metode_pembayaran || 'n/a',
-                status: item.void_status === 'approved' ? 'voided' : 'approved',
-                reject_reason: item.void_status === 'approved'
-                    ? item.void_reason || 'Transaksi dibatalkan melalui proses void'
-                    : null,
+                status: mapLedgerHistoryStatus(item.void_status),
+                reject_reason: mapLedgerHistoryReason(item),
                 bukti_transfer: item.bukti_transfer || null,
                 kode_unik: null,
                 total_transfer: null,
-                created_at: item.created_at,
+                created_at: getLedgerHistoryDate(item),
                 validated_at: item.created_at
             })));
         }
+    }
+
+    if (type === 'all') {
+        const voidLedgerRows = await KasBukuBesar.findAll({
+            where: {
+                [Op.or]: ledgerHistoryDateOr,
+                source_table: {
+                    [Op.ne]: 'manual'
+                },
+                deleted_at: null,
+                void_status: {
+                    [Op.in]: ['requested', 'rejected', 'approved']
+                }
+            },
+            order: [['created_at', 'DESC']]
+        });
+
+        transactions.push(...voidLedgerRows
+        .filter((item) => shouldIncludeLedgerVoidStatus(item.void_status))
+        .map((item) => ({
+            id: item.id,
+            type: item.source_table,
+            type_label: item.jenis === 'masuk' ? 'Kas Masuk' : 'Kas Keluar',
+            nama_pemberi: item.nama_pemberi || item.deskripsi || 'n/a',
+            jumlah: Number(item.jumlah || 0),
+            kategori: item.kategori || 'operasional',
+            metode_pembayaran: item.metode_pembayaran || 'n/a',
+            status: mapLedgerHistoryStatus(item.void_status),
+            reject_reason: mapLedgerHistoryReason(item),
+            bukti_transfer: item.bukti_transfer || null,
+            kode_unik: item.kode_unik || null,
+            total_transfer: item.kode_unik ? Number(item.jumlah || 0) + Number(item.kode_unik || 0) : null,
+            created_at: getLedgerHistoryDate(item),
+            validated_at: item.updated_at
+        })));
     }
     transactions.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
@@ -470,6 +560,8 @@ const getKasHistory = async({
         pending: transactions.filter(t => t.status === 'pending').length,
         rejected: transactions.filter(t => t.status === 'rejected').length,
         voided: transactions.filter(t => t.status === 'voided').length,
+        void_requested: transactions.filter(t => t.status === 'void_requested').length,
+        void_rejected: transactions.filter(t => t.status === 'void_rejected').length,
         totalAmount: {
             approved: transactions
                 .filter((item) => item.status === 'approved')
@@ -482,6 +574,12 @@ const getKasHistory = async({
                 .reduce((sum, item) => sum + Number(item.jumlah || 0), 0),
             voided: transactions
                 .filter((item) => item.status === 'voided')
+                .reduce((sum, item) => sum + Number(item.jumlah || 0), 0),
+            void_requested: transactions
+                .filter((item) => item.status === 'void_requested')
+                .reduce((sum, item) => sum + Number(item.jumlah || 0), 0),
+            void_rejected: transactions
+                .filter((item) => item.status === 'void_rejected')
                 .reduce((sum, item) => sum + Number(item.jumlah || 0), 0)
         } 
 

@@ -15,7 +15,8 @@ import {
   Heart,
   History,
   HandHeart,
-  LogOut 
+  LogOut,
+  Users
 } from "lucide-react";
 
 // Komponen shadcn
@@ -70,6 +71,12 @@ const Sidebar = ({ className, isMobile = false, isCollapsed = false, role = 'adm
       icon: <FileDown className="h-5 w-5" />,
       to: "/admin/donasi",
       active: location.pathname === "/admin/donasi"
+    },
+    {
+      title: "Manajemen User",
+      icon: <Users className="h-5 w-5" />,
+      to: "/admin/users",
+      active: location.pathname === "/admin/users"
     }
   ] : [
     {

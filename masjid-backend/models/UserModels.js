@@ -32,7 +32,7 @@ const User = sequelize.define('user', {
         allowNull: true
     },
     status: {
-        type: DataTypes.ENUM('active', 'deletion_requested'),
+        type: DataTypes.ENUM('active', 'deletion_requested', 'inactive'),
         defaultValue: 'active'
     }
 }, {

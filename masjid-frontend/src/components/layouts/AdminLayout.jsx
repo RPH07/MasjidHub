@@ -45,7 +45,7 @@ const AdminLayout = () => {
               )}
             </button>
           )}
-          <h1 className="text-xl font-bold">Dashboard Jamaah</h1>
+          <h1 className="text-xl font-bold">Dashboard Pengurus</h1>
         </header>
 
         {/* Page content */}

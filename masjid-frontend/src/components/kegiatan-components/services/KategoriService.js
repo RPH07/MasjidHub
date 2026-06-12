@@ -1,34 +1,33 @@
-import axios from 'axios';
-import { API_ENDPOINTS } from '../utils/constants';
+import api from "@/config/api";
 
 export const KategoriService = {
   // GET semua kategori
   getAll: async () => {
-    const response = await axios.get(API_ENDPOINTS.KATEGORI);
+    const response = await api.get('/kategori-kegiatan');
     return response.data;
   },
 
   // GET kategori by ID
   getById: async (id) => {
-    const response = await axios.get(`${API_ENDPOINTS.KATEGORI}/${id}`);
+    const response = await api.get(`/kategori-kegiatan/${id}`);
     return response.data;
   },
 
   // CREATE kategori baru
   create: async (kategoriData) => {
-    const response = await axios.post(API_ENDPOINTS.KATEGORI, kategoriData);
+    const response = await api.post('/kategori-kegiatan', kategoriData);
     return response.data;
   },
 
   // UPDATE kategori
   update: async (id, kategoriData) => {
-    const response = await axios.put(`${API_ENDPOINTS.KATEGORI}/${id}`, kategoriData);
+    const response = await api.put(`/kategori-kegiatan/${id}`, kategoriData);
     return response.data;
   },
 
   // DELETE kategori
   delete: async (id) => {
-    const response = await axios.delete(`${API_ENDPOINTS.KATEGORI}/${id}`);
+    const response = await api.delete(`/kategori-kegiatan/${id}`);
     return response.data;
   }
 };

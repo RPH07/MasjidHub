@@ -37,8 +37,8 @@ const KegiatanForm = ({
       <div className="col-span-2 md:col-span-1">
         <FloatingSelect
           label="Kategori Kegiatan"
-          name="kategori"
-          value={formData.kategori}
+          name="kategori_id"
+          value={formData.kategori_id}
           onChange={onChange}
           required
           icon={
@@ -47,8 +47,9 @@ const KegiatanForm = ({
             </svg>
           }
         >
+          <option value="">Pilih Kategori</option>
           {safeKategoriList.map(kategori => (
-            <option key={kategori.id} value={kategori.nama_kategori}>
+            <option key={kategori.id} value={kategori.id}>
               {kategori.icon} {formatKategoriName(kategori.nama_kategori)}
             </option>
           ))}
@@ -67,6 +68,17 @@ const KegiatanForm = ({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
           }
+        />
+      </div>
+
+      <div className="col-span-2 md:col-span-1">
+        <FloatingInput
+          label="Jam Kegiatan"
+          type="time"
+          name="jam"
+          value={formData.jam}
+          onChange={onChange}
+          required
         />
       </div>
 

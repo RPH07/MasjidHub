@@ -1,15 +1,21 @@
 import React from 'react';
-import { formatTanggal, getKategoriInfo, getWarnaClass } from '../../utils';
+import { formatKategoriName, formatTanggal, getKategoriInfo, getWarnaClass } from '../../utils';
 
 const KegiatanCard = ({ kegiatan, kategoriList, onEdit, onDelete }) => {
-  const kategoriInfo = getKategoriInfo(kegiatan.kategori, kategoriList);
+  
+  const kategoriName = kegiatan.kategori_nama || '-';
+  const kategoriLabel = formatKategoriName(kategoriName);
+  const judul = kegiatan.judul || '-';
+  const imageUrl = kegiatan.image_url || null;
+  const kategoriInfo = getKategoriInfo(kategoriName, kategoriList);
+
 
   return (
     <li className="bg-white border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex justify-between items-start mb-3">
         <div className="flex items-center gap-2">
           <span className={`px-2 py-1 text-xs rounded-full ${getWarnaClass(kategoriInfo.warna)}`}>
-            {kategoriInfo.icon} {kegiatan.kategori}
+            {kategoriInfo.icon} {kategoriLabel}
           </span>
         </div>
         
@@ -25,7 +31,7 @@ const KegiatanCard = ({ kegiatan, kategoriList, onEdit, onDelete }) => {
           </button>
           
           <button
-            onClick={() => onDelete(kegiatan.id, kegiatan.nama_kegiatan)}
+            onClick={() => onDelete(kegiatan.id, judul)}
             className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
             title="Hapus kegiatan"
           >
@@ -37,7 +43,7 @@ const KegiatanCard = ({ kegiatan, kategoriList, onEdit, onDelete }) => {
       </div>
       
       <h3 className="font-semibold text-lg mb-2 text-gray-800">
-        {kegiatan.nama_kegiatan}
+        {judul}
       </h3>
       
       <div className="space-y-2 text-sm text-gray-600 mb-3">
@@ -61,11 +67,11 @@ const KegiatanCard = ({ kegiatan, kategoriList, onEdit, onDelete }) => {
         {kegiatan.deskripsi}
       </p>
       
-      {kegiatan.foto && (
+      {imageUrl && (
         <div className="mt-3">
           <img
-            src={`http://localhost:5000/${kegiatan.foto}`}
-            alt={kegiatan.nama_kegiatan}
+            src={imageUrl}
+            alt={judul}
             className="w-full h-40 object-cover rounded-md"
             onError={(e) => {
               e.target.style.display = 'none';
@@ -77,4 +83,4 @@ const KegiatanCard = ({ kegiatan, kategoriList, onEdit, onDelete }) => {
   );
 };
 
-export default KegiatanCard;
+export default React.memo(KegiatanCard);

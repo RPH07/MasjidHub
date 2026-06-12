@@ -16,9 +16,10 @@ export const warnaOptions = [
 export const initialFormData = {
   nama_kegiatan: '',
   tanggal: '',
+  jam: '',
   lokasi: '',
   deskripsi: '',
-  kategori: ''
+  kategori_id: ''
 };
 
 // Initial kategori data

@@ -25,7 +25,13 @@ export const formatTanggalSingkat = (tanggal) => {
 
 // Format nama kategori
 export const formatKategoriName = (nama) => {
-  return nama.charAt(0).toUpperCase() + nama.slice(1);
+  if (!nama) return '-';
+  return String(nama)
+    .replace(/[_-]+/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
 };
 
 // Validate form data
@@ -59,38 +65,17 @@ export const getSortLabel = (sortOrder) => {
 // Sort data helper
 export const sortData = (data, sortOrder = 'terbaru') => {
   try {
-    // ✅ Handle response structure: { success: true, data: [...] }
-    let arrayToSort;
-    
-    if (data && typeof data === 'object') {
-      // Jika data berbentuk response object dengan property 'data'
-      if (data.data && Array.isArray(data.data)) {
-        arrayToSort = data.data;
-      }
-      // Jika data sudah berupa array langsung
-      else if (Array.isArray(data)) {
-        arrayToSort = data;
-      }
-      // Jika data bukan array dan tidak ada property 'data'
-      else {
-        console.warn('⚠️ Data is not in expected format:', data);
-        return [];
-      }
-    } else {
-      console.warn('⚠️ Invalid data format:', data);
-      return [];
-    }
-
-    // ✅ Clone array to avoid mutation
-    const sortedData = [...arrayToSort];
+    const sortedData = Array.isArray(data) ? [...data] : [];
     
     switch (sortOrder) {
+      case 'desc':
       case 'terbaru':
         return sortedData.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
+      case 'asc':
       case 'terlama':
         return sortedData.sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
       case 'nama':
-        return sortedData.sort((a, b) => a.nama_kegiatan.localeCompare(b.nama_kegiatan));
+        return sortedData.sort((a, b) => (a.judul || '').localeCompare(b.judul || ''));
       default:
         return sortedData;
     }
@@ -100,9 +85,7 @@ export const sortData = (data, sortOrder = 'terbaru') => {
   }
 };
 
-// ✅ FIX: Get kategori info with safe array check
 export const getKategoriInfo = (namaKategori, kategoriList = []) => {
-  // ✅ SAFE: Ensure kategoriList is always an array
   const safeKategoriList = Array.isArray(kategoriList) ? kategoriList : [];
   
   try {

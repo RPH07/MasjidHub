@@ -3,7 +3,6 @@ import { useKasData } from '../../components/kas-components/hooks/useKasData';
 import { usePeriodFilter } from '../../components/kas-components/hooks/usePeriodFilter';
 import { useModal } from '../../components/kas-components/hooks/useModal';
 import { useTransactionOps } from '../../components/kas-components/hooks/useTransactionOps';
-import { usePendingData } from '../../components/kas-components/hooks/usePendingData';
 import { useValidationOps } from '../../components/kas-components/hooks/useValidationOps';
 import {
   KasOverview,
@@ -14,7 +13,7 @@ import {
   TransactionModal,
   BuktiModal
 } from '../../components/kas-components/components';
-import { TABS, kategoriPemasukan } from '../../components/kas-components/utils/constants';
+import { TABS } from '../../components/kas-components/utils/constants';
 
 const Kas = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -28,11 +27,7 @@ const Kas = () => {
   const { selectedPeriod, setPeriod, getPeriodLabel } = usePeriodFilter('bulan-ini');
   const kasDataHook = useKasData(selectedPeriod);
   const { deleteTransaction } = useTransactionOps(kasDataHook.refreshData);
-  const pendingDataHook = usePendingData();
-  const validationOps = useValidationOps(() => {
-    pendingDataHook.refreshData();
-    kasDataHook.refreshData();
-  });
+  const validationOps = useValidationOps(kasDataHook.refreshData);
   
   const {
     showModal,
@@ -52,6 +47,7 @@ const Kas = () => {
       setShowCustomDate(true);
     } else {
       setShowCustomDate(false);
+      kasDataHook.clearCustomDateRange();
       setPeriod(value);
     }
   };
@@ -64,39 +60,14 @@ const Kas = () => {
     }
   };
 
-const handleOpenBukti = (buktiTransfer, transactionInfo = null) => {
-  if (!buktiTransfer) {
-    alert('Bukti transfer tidak tersedia');
-    return;
-  }
-
-  // console.log('Opening bukti with info:', transactionInfo);
-
-  let folderPath = '';
-  
-  if (buktiTransfer.startsWith('zakat-')) {
-    folderPath = 'bukti-zakat';
-  } else if (buktiTransfer.startsWith('infaq-')) {
-    folderPath = 'bukti-infaq';
-  } else if (buktiTransfer.startsWith('donasi-')) {
-    folderPath = 'bukti-donasi';
-  } else {
-    // Fallback berdasarkan transaction type
-    switch (transactionInfo?.type) {
-      case 'zakat': folderPath = 'bukti-zakat'; break;
-      case 'infaq': folderPath = 'bukti-infaq'; break;
-      case 'donasi': folderPath = 'bukti-donasi'; break;
-      default: folderPath = 'uploads'; 
+  const handleOpenBukti = (buktiTransfer, transactionInfo = null) => {
+    if (!buktiTransfer) {
+      alert('Bukti transfer tidak tersedia');
+      return;
     }
-  }
 
-  const imageUrl = `http://localhost:5000/uploads/${folderPath}/${buktiTransfer}`;
-  
-  console.log('Generated image URL:', imageUrl);
-  console.log('File prefix detection:', buktiTransfer.split('-')[0]);
-
-  openBuktiModal(imageUrl, transactionInfo);
-};
+    openBuktiModal(buktiTransfer, transactionInfo);
+  };
 
   // Loading state
   if (kasDataHook.loading) {
@@ -111,6 +82,16 @@ const handleOpenBukti = (buktiTransfer, transactionInfo = null) => {
   const handleDelete = async (id) => {
     if (window.confirm('Apakah Anda yakin ingin menghapus transaksi ini?')) {
       await deleteTransaction(id);
+    }
+  };
+
+  const handleRequestVoid = async (transaction) => {
+    const reason = window.prompt('Masukkan alasan void transaksi:');
+    if (!reason?.trim()) return;
+
+    const result = await validationOps.requestVoid(transaction.id, reason.trim());
+    if (!result.success) {
+      alert(result.message);
     }
   };
 
@@ -207,55 +188,45 @@ const handleOpenBukti = (buktiTransfer, transactionInfo = null) => {
           <KasOverview
             summary={kasDataHook.summary}
             periodLabel={getPeriodLabel()}
-            kategoriPemasukan={kategoriPemasukan}
             selectedPeriod={selectedPeriod}
           />
         )}
 
         {activeTab === 'validasi' && (
           <KasValidation
-            pendingData={pendingDataHook.pendingData}
-            loading={pendingDataHook.loading || validationOps.loading}
-            onApprove={validationOps.approveTransaction}
-            onReject={validationOps.rejectTransaction}
-            onOpenBukti={handleOpenBukti}
+            pendingData={kasDataHook.voidPendingData}
+            loading={kasDataHook.loading || validationOps.loading}
+            onApprove={validationOps.approveVoid}
+            onReject={validationOps.rejectVoid}
           />
         )}
 
         {activeTab === 'pemasukan' && (
           <KasPemasukan
-            kasData={kasDataHook.kasData}
-            zakatData={kasDataHook.zakatData}
-            infaqData={kasDataHook.infaqData}
-            donasiData={kasDataHook.donasiData}
+            transactions={kasDataHook.pemasukanData}
             onEdit={handleEdit}
             onDelete={handleDelete}
             onOpenBukti={handleOpenBukti}
             onOpenModal={openTransactionModal}
-            onAddTransaction={() => openTransactionModal('add-pemasukan')}
+            onRequestVoid={handleRequestVoid}
           />
         )}
 
         {activeTab === 'pengeluaran' && (
           <KasPengeluaran
-            kasData={kasDataHook.kasData}
+            transactions={kasDataHook.pengeluaranData}
             onEdit={handleEdit}
             onDelete={handleDelete}
-            onOpenBukti={handleOpenBukti}
             onOpenModal={openTransactionModal}
-            onAddTransaction={() => openTransactionModal('add-pengeluaran')}
+            onRequestVoid={handleRequestVoid}
           />
         )}
 
         {activeTab === 'riwayat' && (
           <KasRiwayat
-            kasData={kasDataHook.kasData}
-            zakatData={kasDataHook.zakatData}
-            infaqData={kasDataHook.infaqData}
-            donasiData={kasDataHook.donasiData}
+            history={kasDataHook.history}
+            filters={kasDataHook.history.filters || kasDataHook.filters}
             onOpenBukti={handleOpenBukti}
-            kategoriPemasukan={kategoriPemasukan}
-            currentPeriod={selectedPeriod}
           />
         )}
       </div>

@@ -47,15 +47,16 @@ const TransactionModal = ({
   useEffect(() => {
     if (data) {
       const isCustomKategori = !defaultKategoriPengeluaran.some(k => k.value === data.kategori);
-      const isCustomPemasukan = !kategoriPemasukan[data.kategori_pemasukan];
+      const pemasukanKategoriValue = data.kategori_pemasukan || data.kategori || 'donasi_umum';
+      const isCustomPemasukan = !kategoriPemasukan[pemasukanKategoriValue];
       
       setFormData({
-        tanggal: data.tanggal || '',
+        tanggal: data.tanggal?.slice?.(0, 10) || data.tanggal || '',
         keterangan: data.keterangan || data.deskripsi || '',
         jenis: data.jenis || (type === 'edit-pemasukan' ? 'masuk' : 'keluar'),
         jumlah: data.jumlah || '',
         kategori: isCustomKategori ? 'custom' : (data.kategori || 'operasional'),
-        kategori_pemasukan: isCustomPemasukan ? 'custom' : (data.kategori_pemasukan || 'donasi_umum'),
+        kategori_pemasukan: isCustomPemasukan ? 'custom' : pemasukanKategoriValue,
         nama_pemberi: data.nama_pemberi || data.nama_donatur || ''
       });
 
@@ -68,7 +69,7 @@ const TransactionModal = ({
       
       if (isCustomPemasukan) {
         setShowCustomPemasukan(true);
-        setCustomPemasukan(data.kategori_pemasukan);
+        setCustomPemasukan(pemasukanKategoriValue);
       }
     } else {
       setFormData({
@@ -189,7 +190,7 @@ const TransactionModal = ({
       <div className="relative mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
         <div className="mt-3">
           <h3 className="text-lg font-medium text-gray-900 mb-4">
-            {type === 'edit' ? 'Edit Transaksi' :
+            {type?.startsWith('edit') ? 'Edit Transaksi' :
             type === 'add-pemasukan' ? 'Tambah Pemasukan' : 'Tambah Pengeluaran'}
           </h3>
           

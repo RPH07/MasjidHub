@@ -20,6 +20,7 @@ import UserLayout from './components/layouts/UserLayout';
 import KontribusiHistory from './pages/user/KontribusiHistory';
 import UserKegiatan from './pages/user/UserKegiatan';
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary';
+import UserAccessPage from './pages/admin/UserAccess';
 
 const router = createBrowserRouter([
   {
@@ -111,6 +112,10 @@ const router = createBrowserRouter([
       {
         path: "donasi",
         element: <DonasiPage />
+      },
+      {
+        path: "users",
+        element: <UserAccessPage />
       }
     ]
   }
