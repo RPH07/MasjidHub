@@ -11,6 +11,13 @@ router.get(
 );
 
 router.get(
+    '/donasi/pending',
+    verifyToken,
+    dkmOrAdmin,
+    donasiPengadaanController.getPendingDonasiPengadaan
+);
+
+router.get(
     '/:id/donasi',
     donasiPengadaanController.getDonasiByProgram
 );
