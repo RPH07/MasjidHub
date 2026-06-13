@@ -79,3 +79,20 @@ exports.getDonasiByProgram = async(req, res) => {
         });
     }
 };
+
+exports.getPendingDonasiPengadaan = async(req, res) => {
+    try {
+        const data = await donasiPengadaanService.getPendingDonasiPengadaan();
+        res.status(200).json({
+            success: true,
+            msg: 'Berhasil mengambil donasi pengadaan pending',
+            data
+        });
+    } catch (error) {
+        res.status(error.statusCode || 500).json({
+            success: false,
+            msg: 'Gagal mengambil donasi pengadaan pending',
+            error: error.message
+        });
+    }
+};
