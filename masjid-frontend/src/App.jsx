@@ -21,6 +21,7 @@ import KontribusiHistory from './pages/user/KontribusiHistory';
 import UserKegiatan from './pages/user/UserKegiatan';
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary';
 import UserAccessPage from './pages/admin/UserAccess';
+import VerifikasiTransaksi from './pages/admin/VerifikasiTransaksi';
 
 const router = createBrowserRouter([
   {
@@ -108,6 +109,10 @@ const router = createBrowserRouter([
       {
         path: "kas",
         element: <KasPage />
+      },
+      {
+        path: "verifikasi-transaksi",
+        element: <VerifikasiTransaksi />
       },
       {
         path: "donasi",

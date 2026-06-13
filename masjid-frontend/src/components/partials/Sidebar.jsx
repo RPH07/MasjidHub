@@ -16,7 +16,8 @@ import {
   History,
   HandHeart,
   LogOut,
-  Users
+  Users,
+  ClipboardCheck
 } from "lucide-react";
 
 // Komponen shadcn
@@ -67,7 +68,13 @@ const Sidebar = ({ className, isMobile = false, isCollapsed = false, role = 'adm
       active: location.pathname === "/admin/kas"
     },
     {
-      title: "Export",
+      title: "Verifikasi Transaksi",
+      icon: <ClipboardCheck className="h-5 w-5" />,
+      to: "/admin/verifikasi-transaksi",
+      active: location.pathname === "/admin/verifikasi-transaksi"
+    },
+    {
+      title: "Donasi",
       icon: <FileDown className="h-5 w-5" />,
       to: "/admin/donasi",
       active: location.pathname === "/admin/donasi"
