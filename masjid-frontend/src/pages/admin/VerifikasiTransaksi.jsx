@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import toast from 'react-hot-toast';
+import Swal from 'sweetalert2';
 import { useVerifikasiTransaksi } from '@/components/verifikasi-components/hooks/useVerifikasiTransaksi';
 import Verifikasi from '@/components/verifikasi-components/components/Verifikasi';
 import RejectReasonModal from '@/components/verifikasi-components/components/RejectReasonModal';
@@ -24,22 +24,46 @@ const VerifikasiTransaksi = () => {
     } = useVerifikasiTransaksi();
 
     const handleApprove = async (type, item) => {
-        const confirmed = window.confirm('Yakin ingin menyetujui transaksi ini?');
+        const transactionName =
+            type === 'zakat'
+                ? item.nama || 'Hamba Allah'
+                : item.nama_donatur || 'Hamba Allah';
 
-        if(!confirmed) return;
+        const confirmation = await Swal.fire({
+            title: 'Setujui transaksi?',
+            text: `Transaksi dari ${transactionName} akan masuk ke kas setelah disetujui.`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Setujui',
+            cancelButtonText: 'Batal',
+            confirmButtonColor: '#16a34a',
+            cancelButtonColor: '#6b7280',
+            reverseButtons: true
+        });
+
+        if (!confirmation.isConfirmed) return;
 
         const result = await verifyTransaction({
-            type, 
+            type,
             id: item.id,
             action: 'approve'
         });
 
         if (result.success) {
-            toast.success(result.message);
+            Swal.fire({
+                title: 'Berhasil',
+                text: result.message,
+                icon: 'success',
+                confirmButtonColor: '#16a34a'
+            });
         } else {
-            toast.error(result.message);
+            Swal.fire({
+                title: 'Gagal',
+                text: result.message,
+                icon: 'error',
+                confirmButtonColor: '#dc2626'
+            });
         }
-        
     };
 
     const handleOpenReject = (type, item) => {
@@ -71,16 +95,31 @@ const VerifikasiTransaksi = () => {
             rejectReason: reason
         });
         if (result.success) {
-            toast.success(result.message);
             handleCloseReject();
+            Swal.fire({
+                title: 'Berhasil',
+                text: result.message,
+                icon: 'success',
+                confirmButtonColor: '#16a34a'
+            });
         } else {
-            toast.error(result.message);
+            Swal.fire({
+                title: 'Gagal',
+                text: result.message,
+                icon: 'error',
+                confirmButtonColor: '#dc2626'
+            });
         }
     };
 
     const handleOpenBukti = (buktiTransfer) => {
         if (!buktiTransfer) {
-            toast.error('Bukti Transfer belum tersedia');
+            Swal.fire({
+                title: 'Bukti belum tersedia',
+                text: 'Transaksi ini belum memiliki bukti transfer.',
+                icon: 'info',
+                confirmButtonColor: '#2563eb'
+            });
             return;
         }
         window.open(buktiTransfer, '_blank', 'noopener, noreferrer');
@@ -88,7 +127,7 @@ const VerifikasiTransaksi = () => {
 
     return(
         <>
-            <Verifikasi
+                <Verifikasi
                 activeTab={activeTab}
                 onChangeTab={setActiveTab}
                 zakatPending={zakatPending}
@@ -116,4 +155,3 @@ const VerifikasiTransaksi = () => {
 };
 
 export default VerifikasiTransaksi;
-
