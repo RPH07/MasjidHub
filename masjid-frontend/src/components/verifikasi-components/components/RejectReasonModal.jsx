@@ -1,9 +1,10 @@
-import { useState } from "react"
+import { useState } from "react";
+import Swal from "sweetalert2";
 
 const RejectReasonModal = ({
     open,
     title = 'Tolak Transaksi',
-    desctiption = 'Berikan alasan penolakan untuk transaksi ini',
+    description = 'Berikan alasan penolakan untuk transaksi ini',
     loading = false,
     onClose,
     onSubmit
@@ -16,7 +17,12 @@ const RejectReasonModal = ({
         e.preventDefault();
 
         if(!reason.trim()) {
-            alert('Alasan penolakan harus diisi');
+            Swal.fire({
+                title: 'Alasan wajib diisi',
+                text: 'Masukkan alasan penolakan supaya donatur/DKM tahu penyebab transaksi ditolak.',
+                icon: 'warning',
+                confirmButtonColor: '#dc2626'
+            });
             return;
         }
 
@@ -34,7 +40,7 @@ const RejectReasonModal = ({
             <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-l">
                 <div className="mb-4">
                     <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-                    <p className="mt-1 text-sm text-gray-500">{desctiption}</p>
+                    <p className="mt-1 text-sm text-gray-500">{description}</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
