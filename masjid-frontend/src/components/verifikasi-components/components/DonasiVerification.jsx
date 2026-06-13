@@ -31,7 +31,9 @@ const DonasiVerification = ({
         );
     }
 
-    if (data.length === 0) {
+    const rows = Array.isArray(data) ? data : [];
+
+    if (rows.length === 0) {
         return (
             <div className="rounded-lg border bg-white p-6 text-center text-gray-500">
                 Tidak ada donasi program yang perlu diverifikasi.
@@ -58,7 +60,7 @@ const DonasiVerification = ({
                     </thead>
 
                     <tbody className="divide-y divide-gray-200">
-                        {data.map((item) => (
+                        {rows.map((item) => (
                             <tr key={item.id}>
                                 <td className="px-4 py-3 text-sm text-gray-700">{formatDate(item.created_at)}</td>
                                 <td className="px-4 py-3 text-sm">
