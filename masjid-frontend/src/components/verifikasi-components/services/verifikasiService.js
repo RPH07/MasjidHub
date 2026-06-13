@@ -12,7 +12,7 @@ export const verifikasiService = {
 
     getPendingDonasi: async() => {
         const response = await api.get('/pengadaan/donasi/pending');
-        return response.data?.data || [];
+        return response.data?.data?.donasi || [];
     },
     
     verifyZakat: async(id, action, rejectReason = '') => {
