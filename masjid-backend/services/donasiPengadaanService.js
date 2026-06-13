@@ -79,7 +79,7 @@ const refreshProgramDonationFunding = async(barangId, transaction) => {
     await program.update({
         dana_donasi: danaDonasi,
         dana_terkumpul: danaTerkumpul,
-        status_donasi: danaTerkumpul >= targetDana ? 'terpenuhi' : 'belum_terpenuhi',
+        status_pengadaan: danaTerkumpul >= targetDana ? 'terpenuhi' : 'belum_terpenuhi',
         total_donatur: totalDonatur
         
     }, {transaction});
