@@ -1,61 +1,76 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import HomePage from './pages/HomePage';
-import About from './pages/About'; 
-import Contact from './pages/Contact'; 
-import LoginPages from './auth/Login';
-import ZakatForm from './pages/ZakatForm';
-import RegisterPages from './auth/Signup';
 import AdminLayout from './components/layouts/AdminLayout';
-import Dashboard from './pages/admin/Dashboard';
-import KegiatanPage from './pages/admin/Kegiatan';
-import KasPage from './pages/admin/Kas.jsx';
-import DonasiPage from './pages/admin/Donasi';
-import AdminSignup from './auth/AdminSignup';
 import AdminRoute from './components/route-guard/AdminRoute';
 import ProtectedRoute from './components/route-guard/ProtectedRoute';
-import UserDashboard from './pages/user/userDashoard';
-import Crowdfunding from './pages/user/Crowdfunding';
 import UserLayout from './components/layouts/UserLayout'; 
-import KontribusiHistory from './pages/user/KontribusiHistory';
-import UserKegiatan from './pages/user/UserKegiatan';
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary';
-import UserAccessPage from './pages/admin/UserAccess';
-import VerifikasiTransaksi from './pages/admin/VerifikasiTransaksi';
+import RouteError from './components/RouteError';
+
+const HomePage = lazy(() => import('./pages/HomePage'));
+const About = lazy(() => import('./pages/About'));
+const Contact = lazy(() => import('./pages/Contact'));
+const LoginPages = lazy(() => import('./auth/Login'));
+const RegisterPages = lazy(() => import('./auth/Signup'));
+const AdminSignup = lazy(() => import('./auth/AdminSignup'));
+const ZakatForm = lazy(() => import('./pages/ZakatForm'));
+const Crowdfunding = lazy(() => import('./pages/user/Crowdfunding'));
+const UserDashboard = lazy(() => import('./pages/user/userDashoard'));
+const KontribusiHistory = lazy(() => import('./pages/user/KontribusiHistory'));
+const UserKegiatan = lazy(() => import('./pages/user/UserKegiatan'));
+const Dashboard = lazy(() => import('./pages/admin/Dashboard'));
+const KegiatanPage = lazy(() => import('./pages/admin/Kegiatan'));
+const KasPage = lazy(() => import('./pages/admin/Kas.jsx'));
+const DonasiPage = lazy(() => import('./pages/admin/Donasi'));
+const UserAccessPage = lazy(() => import('./pages/admin/UserAccess'));
+const VerifikasiTransaksi = lazy(() => import('./pages/admin/VerifikasiTransaksi'));
+
+const PageLoader = () => (
+  <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 text-sm text-gray-500">
+    Memuat halaman...
+  </div>
+);
+
+
+const lazyPage = (element) => (
+  <Suspense fallback={<PageLoader />}>
+    {element}
+  </Suspense>
+);
 
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <HomePage />,
-    errorElement: <div>Oops! Something went wrong. Please come back later.</div>,
+    element: lazyPage(<HomePage />),
+    errorElement: <RouteError />
   },
   {
     path: "/about", 
-    element: <About />
+    element: lazyPage(<About />)
   },
   {
     path: "/contact",
-    element: <Contact />
+    element: lazyPage(<Contact />)
   },
   {
     path: "/login",
-    element: <LoginPages />,
+    element: lazyPage(<LoginPages />),
   },
   {
     path: "/signup",
-    element: <RegisterPages />
+    element: lazyPage(<RegisterPages />)
   },
   {
     path: "/admin/signup",
-    element: <AdminSignup />
+    element: lazyPage(<AdminSignup />)
   },
   {
     path: "/zakat",
-    element: <ZakatForm />,
+    element: lazyPage(<ZakatForm />),
   },
   {
     path: "/crowdfunding",
-    element: <Crowdfunding />
+    element: lazyPage(<Crowdfunding />)
   },
   {
     path: "/dashboard",
@@ -64,26 +79,27 @@ const router = createBrowserRouter([
         <UserLayout />
       </ProtectedRoute>
     ),
+    errorElement: <RouteError />,
     children: [
       {
         index: true,
-        element: <UserDashboard />
+        element: lazyPage(<UserDashboard />)
       },
       {
         path: "zakat",
-        element: <ZakatForm />
+        element: lazyPage(<ZakatForm />)
       },
       {
         path: "crowdfunding",
-        element: <Crowdfunding />
+        element: lazyPage(<Crowdfunding />)
       },
       {
         path: "kegiatan",
-        element: <UserKegiatan />
+        element: lazyPage(<UserKegiatan />)
       },
       {
         path: "kontribusi-history",
-        element: <KontribusiHistory />
+        element: lazyPage(<KontribusiHistory />)
       }
     ]
   },
@@ -97,30 +113,31 @@ const router = createBrowserRouter([
         </ProtectedRoute>
       </AdminRoute>
     ),
+    errorElement: <RouteError />,
     children: [
       {
         index: true,
-        element: <Dashboard />
+        element: lazyPage(<Dashboard />)
       },
       {
         path: "kegiatan",
-        element: <KegiatanPage />
+        element: lazyPage(<KegiatanPage />)
       },
       {
         path: "kas",
-        element: <KasPage />
+        element: lazyPage(<KasPage />)
       },
       {
         path: "verifikasi-transaksi",
-        element: <VerifikasiTransaksi />
+        element: lazyPage(<VerifikasiTransaksi />)
       },
       {
         path: "donasi",
-        element: <DonasiPage />
+        element: lazyPage(<DonasiPage />)
       },
       {
         path: "users",
-        element: <UserAccessPage />
+        element: lazyPage(<UserAccessPage />)
       }
     ]
   }
