@@ -120,7 +120,7 @@ useEffect(() => {
         }}
       >
         {/* Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-r from-green-900/80 via-emerald-800/70 to-teal-900/80"></div>
+        <div className="absolute inset-0 bg-linear-to-r from-green-900/80 via-emerald-800/70 to-teal-900/80"></div>
         
         <div className="relative z-10 max-w-7xl mx-auto px-4 text-center">
           <div className="max-w-4xl mx-auto">
@@ -179,7 +179,7 @@ useEffect(() => {
       </section>
 
       {/* ✅ TENTANG MASJID - Modern Layout */}
-      <section className="py-20 px-4 md:px-12 bg-gradient-to-br from-gray-50 to-green-50">
+      <section className="py-20 px-4 md:px-12 bg-linear-to-br from-gray-50 to-green-50">
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div className="relative">
@@ -243,7 +243,7 @@ useEffect(() => {
       </section>
 
       {/* ✅ KEGIATAN MASJID - Modern Grid */}
-      <section id="kegiatan" className="py-20 px-4 md:px-12 bg-gradient-to-br from-green-50 to-blue-50">
+      <section id="kegiatan" className="py-20 px-4 md:px-12 bg-linear-to-br from-green-50 to-blue-50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
@@ -265,7 +265,7 @@ useEffect(() => {
                       className="w-full h-48 object-cover"
                     />
                   ) : (
-                    <div className="w-full h-48 bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center">
+                    <div className="w-full h-48 bg-linear-to-br from-green-400 to-blue-500 flex items-center justify-center">
                       <span className="text-white text-4xl">🕌</span>
                     </div>
                   )}
@@ -309,7 +309,7 @@ useEffect(() => {
       </section>
 
       {/* ✅ CALL TO ACTION - Modern Design */}
-      <section className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 text-white py-20 px-4">
+      <section className="bg-linear-to-r from-green-600 via-emerald-600 to-teal-600 text-white py-20 px-4">
         <div className="max-w-6xl mx-auto text-center">
           <h2 className="text-4xl md:text-5xl font-bold mb-6">
             Dukung Kegiatan <span className="text-yellow-300">Masjid</span>
@@ -401,7 +401,7 @@ useEffect(() => {
                   className="w-full h-64 object-cover rounded-lg mb-4"
                 />
               ) : (
-                <div className="w-full h-64 bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center rounded-lg mb-4">
+                <div className="w-full h-64 bg-linear-to-br from-green-400 to-blue-500 flex items-center justify-center rounded-lg mb-4">
                   <span className="text-white text-6xl">🕌</span>
                 </div>
               )}
