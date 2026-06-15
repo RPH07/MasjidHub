@@ -10,6 +10,8 @@ const kasRoutes = require('./routes/kas');
 const zakatRoutes = require('./routes/zakat');
 const pengadaanRoutes = require('./routes/pengadaan');
 const kategoriKegiatanRoutes = require('./routes/kategori-kegiatan');
+const kontribusiRoutes = require('./routes/kontribusi');
+const transparansiRoutes = require('./routes/transparansi');
 
 dotenv.config();
 
@@ -44,6 +46,8 @@ app.use('/api/kas', kasRoutes);
 app.use('/api/zakat', zakatRoutes);
 app.use('/api/kategori-kegiatan', kategoriKegiatanRoutes);
 app.use('/api/pengadaan', pengadaanRoutes);
+app.use('/api/kontribusi', kontribusiRoutes);
+app.use('/api/transparansi', transparansiRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
