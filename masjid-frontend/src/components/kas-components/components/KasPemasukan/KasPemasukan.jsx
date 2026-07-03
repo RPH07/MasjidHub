@@ -67,7 +67,7 @@ const KasPemasukan = ({
       ) : (
         <div className="rounded-lg border bg-white shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px]">
+            <table className="w-full min-w-225">
               <thead className="bg-gray-50">
                 <tr>
                   {[
