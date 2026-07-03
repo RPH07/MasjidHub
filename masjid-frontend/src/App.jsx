@@ -10,6 +10,7 @@ import RouteError from './components/RouteError';
 const HomePage = lazy(() => import('./pages/HomePage'));
 const About = lazy(() => import('./pages/About'));
 const Contact = lazy(() => import('./pages/Contact'));
+const TransparansiDana = lazy(() => import('./pages/TransparansiDana'));
 const LoginPages = lazy(() => import('./auth/Login'));
 const RegisterPages = lazy(() => import('./auth/Signup'));
 const AdminSignup = lazy(() => import('./auth/AdminSignup'));
@@ -24,6 +25,7 @@ const KasPage = lazy(() => import('./pages/admin/Kas.jsx'));
 const DonasiPage = lazy(() => import('./pages/admin/Donasi'));
 const UserAccessPage = lazy(() => import('./pages/admin/UserAccess'));
 const VerifikasiTransaksi = lazy(() => import('./pages/admin/VerifikasiTransaksi'));
+const TransparansiAdmin = lazy(() => import('./pages/admin/TransparansiAdmin'));
 
 const PageLoader = () => (
   <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 text-sm text-gray-500">
@@ -51,6 +53,10 @@ const router = createBrowserRouter([
   {
     path: "/contact",
     element: lazyPage(<Contact />)
+  },
+  {
+    path: "/transparansi",
+    element: lazyPage(<TransparansiDana />)
   },
   {
     path: "/login",
@@ -130,6 +136,10 @@ const router = createBrowserRouter([
       {
         path: "verifikasi-transaksi",
         element: lazyPage(<VerifikasiTransaksi />)
+      },
+      {
+        path: "transparansi",
+        element: lazyPage(<TransparansiAdmin />)
       },
       {
         path: "donasi",
