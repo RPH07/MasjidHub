@@ -1,11 +1,12 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState } from 'react'
+import Swal from 'sweetalert2'
 import { formatRupiah } from '../../utils/formatters'
-import { formatKodeUnik, generateKodeUnikDonasi } from '.'
 import { useAuth } from '../../../../hooks/useAuth'
 
-const DetailDonasiModal = ({ program, onSubmit, onClose, loading = false }) => {
+const DetailDonasiModal = ({ program, onSubmit, onUploadProof, onClose, loading = false }) => {
     const { user } =useAuth();
     const [currentStep, setCurrentStep] = useState(1)
+    const [paymentInfo, setPaymentInfo] = useState(null)
     const [formData, setFormData] = useState({
         nama_donatur: 'Hamba Allah',
         kontak_donatur: '',
@@ -70,41 +71,77 @@ const DetailDonasiModal = ({ program, onSubmit, onClose, loading = false }) => {
         }
     }
 
-    const kodeUnikFixed = useMemo(() => generateKodeUnikDonasi(), [])
-
     const handleSubmit = async () => {
         try {
+            if (paymentInfo) {
+                if (formData.metode_pembayaran !== 'tunai' && !formData.bukti_transfer) {
+                    Swal.fire('Bukti wajib diupload', 'Upload bukti transfer setelah melakukan pembayaran.', 'warning')
+                    return
+                }
+
+                if (formData.bukti_transfer && onUploadProof) {
+                    const uploadResult = await onUploadProof(paymentInfo.id, formData.bukti_transfer)
+
+                    if (!uploadResult.success) {
+                        Swal.fire('Gagal', uploadResult.message || 'Gagal upload bukti transfer', 'error')
+                        return
+                    }
+                }
+
+                Swal.fire({
+                    title: 'Bukti donasi terkirim',
+                    html: `
+                        <div style="text-align:left">
+                            <p><strong>Total transfer:</strong> ${formatRupiah(paymentInfo.total_transfer)}</p>
+                            <p><strong>Kode unik:</strong> +${paymentInfo.kode_unik}</p>
+                            <p style="margin-top:8px">Donasi akan diverifikasi oleh DKM dalam 1x24 jam.</p>
+                        </div>
+                    `,
+                    icon: 'success',
+                    confirmButtonColor: '#16a34a'
+                })
+                onClose()
+                return
+            }
+
             const submitData = new FormData()
+            submitData.append('barang_id', program.id)
             submitData.append('nama_donatur', formData.nama_donatur)
             submitData.append('kontak_donatur', formData.kontak_donatur)
-            submitData.append('nominal_donasi', formData.nominal_donasi)
+            submitData.append('nominal', formData.nominal_donasi)
             submitData.append('metode_pembayaran', formData.metode_pembayaran)
             submitData.append('catatan', formData.catatan)
-            submitData.append('kode_unik_frontend', kodeUnikFixed)
             submitData.append('user_id', user?.id || '')
-
-            if (formData.bukti_transfer) {
-                submitData.append('bukti_transfer', formData.bukti_transfer)
-            }
 
             const result = await onSubmit(submitData)
             
             if (result.success) {
-                // Tampilkan kode unik yang digenerate backend
-                const totalTransfer = result.data?.total_transfer || (parseInt(formData.nominal_donasi) + kodeUnikFixed)
-                
-                alert(`🎉 Terima kasih atas donasi Anda!
-                📋 Detail Transfer:
-                💰 Total Transfer: ${formatRupiah(totalTransfer)}
-                🔢 Kode Unik: ${kodeUnikFixed}
-                ✅ Donasi akan diverifikasi oleh admin dalam 1x24 jam.`)
-                onClose()
+                const nextPaymentInfo = {
+                    id: result.data?.id,
+                    kode_unik: result.data?.kode_unik,
+                    total_transfer: result.data?.total_transfer,
+                    nominal: result.data?.nominal
+                }
+                setPaymentInfo(nextPaymentInfo)
+
+                Swal.fire({
+                    title: 'Kode pembayaran dibuat',
+                    html: `
+                        <div style="text-align:left">
+                            <p><strong>Total transfer:</strong> ${formatRupiah(nextPaymentInfo.total_transfer)}</p>
+                            <p><strong>Kode unik:</strong> +${nextPaymentInfo.kode_unik}</p>
+                            <p style="margin-top:8px">Silakan transfer sesuai total tersebut, lalu upload bukti pembayaran.</p>
+                        </div>
+                    `,
+                    icon: 'success',
+                    confirmButtonColor: '#16a34a'
+                })
             } else {
-                alert(result.message || 'Gagal mengirim donasi')
+                Swal.fire('Gagal', result.message || 'Gagal mengirim donasi', 'error')
             }
         } catch (error) {
             console.error('Error submitting donation:', error)
-            alert('Terjadi kesalahan saat mengirim donasi')
+            Swal.fire('Gagal', 'Terjadi kesalahan saat mengirim donasi', 'error')
         }
     }
 
@@ -312,7 +349,6 @@ const DetailDonasiModal = ({ program, onSubmit, onClose, loading = false }) => {
                 
             case 4:
                 {
-                const estimasiTotal = parseInt(formData.nominal_donasi || 0) + kodeUnikFixed
                 return (
                     <div className="space-y-4">
                         <h3 className="text-lg font-semibold text-gray-900">Konfirmasi Donasi</h3>
@@ -337,14 +373,22 @@ const DetailDonasiModal = ({ program, onSubmit, onClose, loading = false }) => {
                                     <span>Nominal Donasi:</span>
                                     <span className="font-medium">{formatRupiah(formData.nominal_donasi || 0)}</span>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span>Kode Unik:</span>
-                                    <span className="font-medium font-mono">+{formatKodeUnik(kodeUnikFixed)}</span>
-                                </div>
-                                <div className="flex justify-between border-t pt-2 font-bold">
-                                    <span>Total Transfer:</span>
-                                    <span className="text-green-600">{formatRupiah(estimasiTotal)}</span>
-                                </div>
+                                {paymentInfo ? (
+                                    <>
+                                        <div className="flex justify-between">
+                                            <span>Kode Unik:</span>
+                                            <span className="font-medium font-mono text-orange-600">+{paymentInfo.kode_unik}</span>
+                                        </div>
+                                        <div className="flex justify-between border-t pt-2 font-bold">
+                                            <span>Total Transfer:</span>
+                                            <span className="text-green-600">{formatRupiah(paymentInfo.total_transfer)}</span>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="rounded-md border border-orange-200 bg-orange-50 p-3 text-orange-800">
+                                        Klik <strong>Buat Kode Pembayaran</strong> untuk mendapatkan kode unik dan total transfer dari backend.
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -352,13 +396,12 @@ const DetailDonasiModal = ({ program, onSubmit, onClose, loading = false }) => {
                         <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
                             <h5 className="font-medium text-blue-800 mb-1">ℹ️ Tentang Kode Unik</h5>
                             <p className="text-sm text-blue-700">
-                                Kode unik <strong>{formatKodeUnik(kodeUnikFixed)}</strong> dimulai dengan angka <strong>3</strong> yang menandakan kategori donasi. 
-                                Ini membantu admin memverifikasi pembayaran Anda dengan mudah.
+                                Kode unik dibuat oleh sistem setelah data donasi dibuat. Gunakan total transfer final yang tampil di halaman ini.
                             </p>
                         </div>
 
                         {/* Upload Bukti */}
-                        {formData.metode_pembayaran !== 'tunai' && (
+                        {paymentInfo && formData.metode_pembayaran !== 'tunai' && (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                     Upload Bukti Transfer *
@@ -372,7 +415,7 @@ const DetailDonasiModal = ({ program, onSubmit, onClose, loading = false }) => {
                                     required
                                 />
                                 <p className="text-xs text-gray-500 mt-1">
-                                    Upload screenshot bukti transfer dengan nominal <strong>{formatRupiah(estimasiTotal)}</strong>
+                                    Upload screenshot bukti transfer dengan nominal <strong>{formatRupiah(paymentInfo.total_transfer)}</strong>
                                 </p>
                             </div>
                         )}
@@ -393,6 +436,7 @@ const DetailDonasiModal = ({ program, onSubmit, onClose, loading = false }) => {
             case 3:
                 return formData.nominal_donasi && parseInt(formData.nominal_donasi) >= 10000
             case 4:
+                if (!paymentInfo) return true
                 return formData.metode_pembayaran === 'tunai' || formData.bukti_transfer
             default:
                 return false
@@ -418,7 +462,7 @@ const DetailDonasiModal = ({ program, onSubmit, onClose, loading = false }) => {
                         
                         {program.foto_barang && (
                             <img
-                                src={`http://localhost:5000/images/donasi-program/${program.foto_barang}`}
+                                src={String(program.foto_barang).startsWith('http') ? program.foto_barang : program.foto_barang}
                                 alt={program.nama_barang}
                                 className="w-full h-40 object-cover rounded-lg mb-4"
                                 onError={(e) => {
@@ -520,7 +564,13 @@ const DetailDonasiModal = ({ program, onSubmit, onClose, loading = false }) => {
                                     disabled={!canProceed() || loading}
                                     className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    {loading ? 'Mengirim...' : 'Selesai Donasi'}
+                                    {loading
+                                        ? 'Memproses...'
+                                        : !paymentInfo
+                                            ? 'Buat Kode Pembayaran'
+                                            : formData.metode_pembayaran === 'tunai'
+                                                ? 'Selesai'
+                                                : 'Upload Bukti Transfer'}
                                 </button>
                             )}
                         </div>
