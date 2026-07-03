@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import Swal from 'sweetalert2';
 import { formatRupiah } from '../../utils';
-import { API_BASE_URL } from '../../utils/constants';
 import { donasiService } from '../../services';
 
 const ViewDonations = ({ program, onClose }) => {
@@ -13,7 +13,7 @@ const ViewDonations = ({ program, onClose }) => {
         try {
             setLoading(true);
             const response = await donasiService.getDonationHistory(program.id);
-            setDonations(response.data || []);
+            setDonations(response.data?.data?.donasi || []);
         } catch (error) {
             console.error('Error fetching donations:', error);
             setError('Gagal memuat data donasi');
@@ -30,17 +30,20 @@ const ViewDonations = ({ program, onClose }) => {
         try {
             setIsExporting(true);
             
-            // Create download link
+            const response = await donasiService.exportProgramPdf(program.id);
+            const blob = new Blob([response.data], { type: 'application/pdf' });
+            const url = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
-            link.href = `${API_BASE_URL}/api/donasi/program/${program.id}/export/pdf`;
+            link.href = url;
             link.download = `laporan-donasi-${program.nama_barang}-${Date.now()}.pdf`;
-            
-            // Add authorization header by opening in new tab
-            window.open(link.href, '_blank');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
             
         } catch (error) {
             console.error('Error exporting PDF:', error);
-            alert('Gagal export PDF. Silakan coba lagi.');
+            Swal.fire('Gagal', 'Gagal export PDF. Silakan coba lagi.', 'error');
         } finally {
             setIsExporting(false);
         }
@@ -212,7 +215,7 @@ const ViewDonations = ({ program, onClose }) => {
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                                                    {donation.tanggal_donasi}
+                                                    {donation.created_at ? new Date(donation.created_at).toLocaleDateString('id-ID') : '-'}
                                                 </td>
                                                 <td className="px-4 py-3 text-sm text-gray-500 max-w-xs truncate">
                                                     {donation.catatan || '-'}
