@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import Swal from 'sweetalert2'
 import { ProgramCard } from '../shared'
 import { useDonasiHistory } from '../../hooks/useDonasiHistory'
 import { formatRupiah, formatDate } from '../../utils/formatters'
@@ -76,9 +77,9 @@ const DonasiHistory = () => {
     const handleExportLaporan = async (programId, format) => {
         const result = await exportLaporanDonasi(programId, format)
         if (result.success) {
-            alert('Laporan berhasil diexport')
+            Swal.fire('Berhasil', 'Laporan berhasil diexport', 'success')
         } else {
-            alert(result.message)
+            Swal.fire('Gagal', result.message, 'error')
         }
     }
 
@@ -229,12 +230,6 @@ const DonasiHistory = () => {
                                     >
                                         PDF
                                     </button>
-                                    <button
-                                        onClick={() => handleExportLaporan(program.id, 'csv')}
-                                        className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
-                                    >
-                                        CSV
-                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -322,7 +317,7 @@ const DonasiHistory = () => {
                                                             <span className="capitalize">{donasi.metode_pembayaran}</span>
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                            {formatDate(donasi.tanggal_donasi)}
+                                                            {formatDate(donasi.created_at)}
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -342,12 +337,6 @@ const DonasiHistory = () => {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                     </svg>
                                     Export PDF
-                                </button>
-                                <button
-                                    onClick={() => handleExportLaporan(detailProgram.id, 'csv')}
-                                    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-                                >
-                                    Export CSV
                                 </button>
                                 <button
                                     onClick={handleCloseDetail}
