@@ -19,12 +19,25 @@ const KasValidation = ({
     reason: ''
   });
 
+  const [actionLoading, setActionLoading] = useState({
+    id: null,
+    action: ''
+  });
+
+  const isActionLoading = (transaction, action) =>
+    actionLoading.id === transaction.id && actionLoading.action === action;
+
   const handleApprove = async (transaction) => {
-    const result = await onApprove(transaction.id);
-    if (result.success) {
-      toast.success(result.message);
-    } else {
-      toast.error(result.message);
+    setActionLoading({ id: transaction.id, action: 'approve' });
+    try {
+      const result = await onApprove(transaction.id);
+      if (result.success) {
+        toast.success(result.message);
+      } else {
+        toast.error(result.message);
+      }
+    } finally {
+      setActionLoading({ id: null, action: '' });
     }
   };
 
@@ -33,13 +46,20 @@ const KasValidation = ({
       toast.error('Alasan penolakan wajib diisi');
       return;
     }
+    setActionLoading({ id: rejectModal.transaction.id, action: 'reject' });
 
-    const result = await onReject(rejectModal.transaction.id, rejectModal.reason);
+    try {
+      const result = await onReject(rejectModal.transaction.id, rejectModal.reason);
     if (result.success) {
       toast.success(result.message);
       setRejectModal({ isOpen: false, transaction: null, reason: '' });
     } else {
       toast.error(result.message);
+    }
+    } catch  {
+      toast.error('Terjadi kesalahan saat menolak void');
+    } finally {
+      setActionLoading({ id: null, action: '' });
     }
   };
 
@@ -112,13 +132,15 @@ const KasValidation = ({
             <div className="flex flex-col sm:flex-row lg:flex-col gap-2 lg:w-40">
               <button
                 onClick={() => handleApprove(transaction)}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                disabled={isActionLoading(transaction, 'approve') || isActionLoading(transaction, 'reject')}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Setujui
+                {isActionLoading(transaction, 'approve') ? 'Memproses...' : 'Setujui'}
               </button>
               <button
                 onClick={() => setRejectModal({ isOpen: true, transaction, reason: '' })}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                disabled={isActionLoading(transaction, 'approve') || isActionLoading(transaction, 'reject')}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Tolak
               </button>
@@ -140,15 +162,20 @@ const KasValidation = ({
             <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
               <button
                 onClick={() => setRejectModal({ isOpen: false, transaction: null, reason: '' })}
-                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+                disabled={rejectModal.transaction && isActionLoading(rejectModal.transaction, 'reject')}
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Batal
               </button>
               <button
                 onClick={handleRejectConfirm}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                disabled={rejectModal.transaction && isActionLoading(rejectModal.transaction, 'reject')}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Tolak Void
+                {rejectModal.transaction && isActionLoading(rejectModal.transaction, 'reject')
+                  ? 'Memproses...'
+                  : 'Tolak Void'
+                }
               </button>
             </div>
           </div>
