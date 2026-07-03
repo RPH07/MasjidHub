@@ -17,7 +17,8 @@ import {
   HandHeart,
   LogOut,
   Users,
-  ClipboardCheck
+  ClipboardCheck,
+  ShieldCheck
 } from "lucide-react";
 
 // Komponen shadcn
@@ -72,6 +73,12 @@ const Sidebar = ({ className, isMobile = false, isCollapsed = false, role = 'adm
       icon: <ClipboardCheck className="h-5 w-5" />,
       to: "/admin/verifikasi-transaksi",
       active: location.pathname === "/admin/verifikasi-transaksi"
+    },
+    {
+      title: "Transparansi Dana",
+      icon: <ShieldCheck className="h-5 w-5" />,
+      to: "/admin/transparansi",
+      active: location.pathname === "/admin/transparansi"
     },
     {
       title: "Donasi",
