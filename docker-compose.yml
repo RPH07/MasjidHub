@@ -59,6 +59,19 @@ services:
       - /app/node_modules
     command: npm run dev
 
+  # Service 3: Cloudflare Tunnel
+  cloudflare-tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: api_backend
+    restart: always
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+    command: tunnel --no-autoupdate run
+    depends_on: 
+      - backend
+    networks:
+      - masjid_network
+
 volumes:
   mysql_data:
 
