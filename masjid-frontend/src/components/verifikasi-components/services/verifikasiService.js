@@ -4,7 +4,8 @@ export const verifikasiService = {
     getPendingZakat: async() => {
         const response = await api.get("/zakat", {
             params: {
-                status: 'pending'
+                status: 'pending',
+                has_bukti: true
             }
         });
         return response.data?.data || [];
