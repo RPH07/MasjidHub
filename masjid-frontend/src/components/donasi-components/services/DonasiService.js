@@ -1,86 +1,78 @@
-import axios from 'axios';
-
-const API_BASE_URL = 'http://localhost:5000/api';
-
-const api = axios.create({
-    baseURL: `${API_BASE_URL}/donasi`
-});
-
-api.interceptors.request.use(
-    (config) => {
-        const token = localStorage.getItem('accessToken');
-        if (token) {
-            config.headers.Authorization = `Bearer ${token};`
-        }
-        return config;
-    },
-    (error) => {
-        return Promise.reject(error);
-    }
-);
+import api from '@/config/api';
 
 export const donasiService = {
-    // CRUD Program Donasi
     getPrograms: (status) => {
-        const params = status ? { status } : {};
-        return api.get('/program', { params });
+        const params = status && status !== 'all' ? { status } : {};
+        return api.get('/pengadaan', { params });
+    },
+
+    getProgramById: (id) => {
+        return api.get(`/pengadaan/${id}`);
+    },
+
+    getActivePrograms: () => {
+        return api.get('/pengadaan', {
+            params: {
+                status: 'aktif'
+            }
+        });
     },
 
     createProgram: (formData) => {
-        return api.post('/program', formData, {
+        return api.post('/pengadaan', formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
         });
     },
 
     updateProgram: (id, formData) => {
-        return api.put(`/program/${id}`, formData, {
+        return api.put(`/pengadaan/${id}`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
         });
     },
 
-    deleteProgram: async (id) => {
-        try {
-            const response = await api.delete(`/program/${id}`);
-            return response;
-        } catch (error) {
-            console.error('Error deleting program:', error);
-            // Throw error agar bisa di-catch di component
-            throw {
-                response: {
-                    data: {
-                        message: error.response?.data?.message || 'Gagal menghapus program donasi'
-                    }
-                }
-            };
-        }
+    changeProgramStatus: (id, status) => {
+        return api.patch(`/pengadaan/${id}`, { status });
     },
 
-    // Kelola Status Program
     activateProgram: (id) => {
-        return api.post(`/program/${id}/activate`);
-    },
-
-    deactivateProgram: (id) => {
-        return api.post(`/program/${id}/deactivate`);
+        return donasiService.changeProgramStatus(id, 'aktif');
     },
 
     completeProgram: (id) => {
-        return api.post(`/program/${id}/complete`);
+        return donasiService.changeProgramStatus(id, 'selesai');
     },
 
-    // Donasi Management
-    getActivePrograms: () => {
-        return api.get('/program?status=aktif');
+    deactivateProgram: async () => {
+        throw new Error('Program aktif belum bisa dinonaktifkan di backend baru. Gunakan aksi selesaikan program.');
     },
 
-    submitDonation: (programId, donationData) => {
-        return api.post(`/submit/${programId}`, donationData, {
+    deleteProgram: async () => {
+        throw new Error('Hapus program belum tersedia di backend baru. Program draft bisa diedit atau tidak diaktifkan.');
+    },
+
+    submitDonation: (donationData) => {
+        return api.post('/pengadaan/donasi', donationData, {
             headers: { 'Content-Type': 'multipart/form-data' }
         });
     },
 
-    getDonationHistory: (programId) => {
-        return api.get(`/program/${programId}/donations`);
+    uploadDonationProof: (donationId, proofData) => {
+        return api.patch(`/pengadaan/donasi/${donationId}/upload`, proofData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+    },
+
+    getDonationHistory: (programId, status = 'approved') => {
+        return api.get(`/pengadaan/${programId}/donasi`, {
+            params: { status }
+        });
+    },
+
+    exportProgramPdf: (programId) => {
+        return api.get(`/pengadaan/${programId}/export/pdf`, {
+            responseType: 'blob',
+            timeout: 30000
+        });
     }
 };
 
