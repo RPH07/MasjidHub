@@ -56,7 +56,7 @@ const KasPengeluaran = ({
       ) : (
         <div className="rounded-lg border bg-white shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px]">
+            <table className="w-full min-w-190">
               <thead className="bg-gray-50">
                 <tr>
                   {[
