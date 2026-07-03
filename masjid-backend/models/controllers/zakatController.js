@@ -7,7 +7,7 @@ const zakatService = require('../../services/zakatService');
 exports.getZakat = async(req, res) => {
     // todo: bikin get zakat.
     try {
-        const {status, jenis_zakat} = req.query;
+        const {status, jenis_zakat, has_bukti} = req.query;
 
         let condition = {};
         if (status) {
@@ -15,6 +15,11 @@ exports.getZakat = async(req, res) => {
         }
         if (jenis_zakat) {
             condition.jenis_zakat = jenis_zakat;
+        }
+        if (has_bukti === 'true') {
+            condition.bukti_transfer = {
+                [Op.ne]: null
+            };
         }
 
         const zakatList = await Zakat.findAll({
