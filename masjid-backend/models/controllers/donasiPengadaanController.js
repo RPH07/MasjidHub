@@ -96,3 +96,31 @@ exports.getPendingDonasiPengadaan = async(req, res) => {
         });
     }
 };
+
+exports.uploadBuktiDonasiPengadaan = async(req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                msg: 'Mohon upload file bukti transfer'
+            });
+        }
+
+        const data = await donasiPengadaanService.uploadBuktiDonasiPengadaan(
+            req.params.id,
+            req.file.path
+        );
+
+        res.status(200).json({
+            success: true,
+            msg: 'Bukti donasi pengadaan berhasil diupload',
+            data
+        });
+    } catch (error) {
+        res.status(error.statusCode || 500).json({
+            success: false,
+            msg: 'Gagal upload bukti donasi pengadaan',
+            error: error.message
+        });
+    }
+};
