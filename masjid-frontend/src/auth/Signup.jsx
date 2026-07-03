@@ -1,14 +1,14 @@
 /* eslint-disable no-undef */
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
-// import {API_BASE_URL} from '../config/api';
+import api from '../config/api';
 
 const RegisterPages = () => {
   const [formData, setFormData] = useState({
     nama: '',
     email: '',
     password: '',
+    confirmPassword: '',
   });
 
   const [error, setError] = useState('');
@@ -16,6 +16,7 @@ const RegisterPages = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   // Effect untuk redirect ke login setelah berhasil registrasi
   useEffect(() => {
@@ -42,32 +43,32 @@ const RegisterPages = () => {
     e.preventDefault();
     setError('');
     setSuccess('');
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Password dan konfirmasi password tidak cocok');
+      return;
+    }
+
     setIsLoading(true);
-    
-    const axiosInstance = axios.create({
-      baseURL: 'http://localhost:5000',
-      timeout: 10000,
-      retryDelay: 1000,
-      retry: 3,
-    });
-    
+
     try {
       // Langsung lakukan registrasi tanpa pengecekan awal
-      await axiosInstance.post('/api/auth/signup', formData);
+      await api.post('/auth/register', formData);
       
       // Reset form setelah berhasil
       setFormData({
         nama: '',
         email: '',
         password: '',
+        confirmPassword: '',
       });
       
       setSuccess('Registrasi berhasil! Anda akan dialihkan ke halaman login dalam 3 detik.');
     } catch (err) {
-      const errorMessage = err.response?.data?.message || 'Terjadi kesalahan saat registrasi';
+      const errorMessage = err.response?.data?.message || err.response?.data?.msg || 'Terjadi kesalahan saat registrasi';
       setError(errorMessage);
       
-      if(process.env.NODE_ENV === 'development') {
+      if(import.meta.env.DEV) {
         console.error('Registration error:', errorMessage);
       }
     } finally {
@@ -147,6 +148,37 @@ const RegisterPages = () => {
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
               >
                   {showPassword ? (
+                  <svg className="h-5 w-5 text-gray-500" fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  ) : (
+                  <svg className="h-5 w-5 text-gray-500" fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                  </svg>
+                  )}
+              </button>
+          </div>
+
+          <div className="mb-6 relative">
+            <input
+              type={showConfirmPassword ? 'text' : 'password'}
+              placeholder=" "
+              name="confirmPassword"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              required
+              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 peer"
+            />
+            <label className="absolute left-3 -top-2.5 bg-white px-1 text-sm text-gray-600 transition-all peer-placeholder-shown:top-2 peer-placeholder-shown:text-base peer-focus:-top-2.5 peer-focus:text-sm">
+              Konfirmasi Password
+            </label>
+            <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+              >
+                  {showConfirmPassword ? (
                   <svg className="h-5 w-5 text-gray-500" fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
