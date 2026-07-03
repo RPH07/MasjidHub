@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import axios from 'axios';
 import toast, { Toaster } from 'react-hot-toast';
 import DetailDonasiModal from '../../components/donasi-components/components/shared/DetailDonasiModal';
 import { useAuth } from '../../hooks/useAuth'
+import { donasiService } from '../../components/donasi-components/services/DonasiService';
+import transparansiService from '../../services/transparansiService';
 
 const Crowdfunding = () => {
     const { user } = useAuth();
@@ -13,7 +14,6 @@ const Crowdfunding = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [filterStatus, setFilterStatus] = useState('all');
     const [downloadingPdf, setDownloadingPdf] = useState(null);
-    const API_URL = 'http://localhost:5000/api/donasi';
 
     const location = useLocation();
     const isLoggedIn = location.pathname.startsWith('/dashboard');
@@ -22,21 +22,8 @@ const Crowdfunding = () => {
     const fetchPrograms = async () => {
         try {
             setLoading(true);
-            console.log('🔍 Fetching programs with filter:', filterStatus);
-            
-            let url = `${API_URL}/program`;
-            if (filterStatus === 'all') {
-                url += '?status=aktif,selesai';
-            } else {
-                url += `?status=${filterStatus}`;
-            }
-            
-            console.log('📡 Request URL:', url);
-            
-            const response = await axios.get(url);
-            console.log('📊 Response data:', response.data);
-            
-            setPrograms(response.data);
+            const response = await donasiService.getPrograms(filterStatus === 'all' ? undefined : filterStatus);
+            setPrograms(response.data?.data || []);
         } catch (error) {
             console.error('❌ Error fetching programs:', error);
             console.error('Response:', error.response?.data);
@@ -59,27 +46,7 @@ const Crowdfunding = () => {
             // ✅ TOAST: Loading state
             const loadingToast = toast.loading('Sedang menyiapkan laporan PDF...');
             
-            console.log('📄 Downloading PDF for program:', programId);
-            
-            const response = await axios.get(`${API_URL}/program/${programId}/export/pdf`, {
-                responseType: 'blob',
-                timeout: 30000
-            });
-            
-            // ✅ Create download link
-            const blob = new Blob([response.data], { type: 'application/pdf' });
-            const downloadUrl = window.URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = downloadUrl;
-            
-            const filename = `laporan-donasi-${programName.replace(/\s+/g, '-')}-${new Date().getTime()}.pdf`;
-            link.download = filename;
-            
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            
-            window.URL.revokeObjectURL(downloadUrl);
+            await transparansiService.downloadProgramPdf(programId);
             
             console.log('✅ PDF downloaded successfully');
             
@@ -115,24 +82,20 @@ const Crowdfunding = () => {
             // ✅ TOAST: Loading saat submit
             const loadingToast = toast.loading('Sedang mengirim donasi...');
             
+            if (selectedProgram?.id && !donasiData.get('barang_id')) {
+                donasiData.append('barang_id', selectedProgram.id);
+            }
+
             if (user?.id && !donasiData.get('user_id')) {
                 donasiData.append('user_id', user.id);
             }
             
-            const response = await axios.post(
-                `${API_URL}/submit/${selectedProgram.id}`,
-                donasiData,
-                {
-                    headers: {
-                        'Content-Type': 'multipart/form-data'
-                    }
-                }
-            );
+            const response = await donasiService.submitDonation(donasiData);
 
             // ✅ TOAST: Success
             toast.dismiss(loadingToast);
             toast.success(
-                response.data.message || 'Donasi berhasil dikirim!',
+                response.data.msg || response.data.message || 'Donasi berhasil dikirim!',
                 {
                     duration: 4000,
                     icon: '🎉',
@@ -141,7 +104,7 @@ const Crowdfunding = () => {
 
             return {
                 success: true,
-                message: response.data.message || 'Donasi berhasil dikirim!',
+                message: response.data.msg || response.data.message || 'Donasi berhasil dikirim!',
                 data: response.data.data
             };
         } catch (error) {
@@ -149,7 +112,7 @@ const Crowdfunding = () => {
             
             // ✅ TOAST: Error
             toast.error(
-                error.response?.data?.error || 'Gagal mengirim donasi',
+                error.response?.data?.msg || error.response?.data?.error || 'Gagal mengirim donasi',
                 {
                     duration: 5000,
                     icon: '😞',
@@ -158,14 +121,47 @@ const Crowdfunding = () => {
             
             return {
                 success: false,
-                message: error.response?.data?.error || 'Gagal mengirim donasi'
+                message: error.response?.data?.msg || error.response?.data?.error || 'Gagal mengirim donasi'
+            };
+        }
+    };
+
+    const handleUploadDonasiProof = async (donationId, proofFile) => {
+        try {
+            const loadingToast = toast.loading('Sedang mengupload bukti transfer...');
+            const proofData = new FormData();
+            proofData.append('bukti_transfer', proofFile);
+
+            const response = await donasiService.uploadDonationProof(donationId, proofData);
+
+            toast.dismiss(loadingToast);
+            toast.success(response.data?.msg || 'Bukti transfer berhasil diupload');
+
+            return {
+                success: true,
+                message: response.data?.msg || 'Bukti transfer berhasil diupload',
+                data: response.data?.data
+            };
+        } catch (error) {
+            console.error('Error uploading bukti donasi:', error);
+            toast.error(
+                error.response?.data?.msg || error.response?.data?.error || 'Gagal upload bukti transfer',
+                {
+                    duration: 5000,
+                    icon: '😞',
+                }
+            );
+
+            return {
+                success: false,
+                message: error.response?.data?.msg || error.response?.data?.error || 'Gagal upload bukti transfer'
             };
         }
     };
 
     // Fungsi untuk membuka modal donasi
     const handleDonateClick = (program) => {
-        if (program.status === 'aktif' || program.status_pengadaan === 'aktif') {
+        if (program.status === 'aktif') {
             setSelectedProgram(program);
             setIsModalOpen(true);
         } else {
@@ -186,9 +182,9 @@ const Crowdfunding = () => {
 
     // ✅ FIX: Perbaiki filtering
     const filteredPrograms = programs.filter(program => {
-        if (filterStatus === 'all') return true;
+        if (filterStatus === 'all') return ['aktif', 'selesai'].includes(program.status);
         
-        const programStatus = program.status || program.status_pengadaan;
+        const programStatus = program.status;
         
         if (filterStatus === 'aktif') return programStatus === 'aktif';
         if (filterStatus === 'selesai') return programStatus === 'selesai';
@@ -203,12 +199,6 @@ const Crowdfunding = () => {
             minimumFractionDigits: 0,
         }).format(angka);
     };
-
-    // Debug info
-    console.log('🎯 Current filter:', filterStatus);
-    console.log('📊 Total programs:', programs.length);
-    console.log('🔍 Filtered programs:', filteredPrograms.length);
-    console.log('📋 Programs data:', programs);
 
     if (loading) {
         return (
@@ -351,7 +341,7 @@ const Crowdfunding = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                         {filteredPrograms.map((program) => {
                             const progress = (program.dana_terkumpul / program.target_dana) * 100;
-                            const programStatus = program.status || program.status_pengadaan;
+                            const programStatus = program.status;
                             const isCompleted = progress >= 100 || programStatus === 'selesai';
                             const isDownloading = downloadingPdf === program.id;
                             
@@ -361,7 +351,7 @@ const Crowdfunding = () => {
                                     <div className="relative">
                                         {program.foto_barang ? (
                                             <img 
-                                                src={`http://localhost:5000/images/donasi-program/${program.foto_barang}`}
+                                                src={String(program.foto_barang).startsWith('http') ? program.foto_barang : program.foto_barang}
                                                 alt={program.nama_barang} 
                                                 className="w-full h-56 object-cover"
                                                 onError={(e) => {
@@ -480,6 +470,7 @@ const Crowdfunding = () => {
                 <DetailDonasiModal 
                     program={selectedProgram}
                     onSubmit={handleSubmitDonasi}
+                    onUploadProof={handleUploadDonasiProof}
                     onClose={handleCloseModal}
                 />
             )}
