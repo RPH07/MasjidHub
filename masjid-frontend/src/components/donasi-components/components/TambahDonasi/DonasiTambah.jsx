@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
+import Swal from 'sweetalert2'
 import { useDonasi } from '../../hooks'
 import { formatRupiah } from '../../utils'
-import axios from 'axios'
+import api from '@/config/api'
 
 const TambahDonasi = () => {
     const { createProgramDonasi, loading } = useDonasi()
@@ -26,7 +27,7 @@ const TambahDonasi = () => {
 
     const fetchKasInfo = async () => {
         try {
-            const response = await axios.get('http://localhost:5000/api/kas/summary')
+            const response = await api.get('/kas/summary')
             if (response.data.success) {
                 setKasInfo(response.data.data)
             }
@@ -100,11 +101,13 @@ const TambahDonasi = () => {
             newErrors.kategori_barang = 'Kategori barang harus dipilih'
         }
 
-        if (formData.deadline) {
+        if (!formData.deadline) {
+            newErrors.deadline = 'Deadline wajib diisi'
+        } else {
             const selectedDate = new Date(formData.deadline)
             const today = new Date()
             today.setHours(0, 0, 0, 0)
-            
+
             if (selectedDate < today) {
                 newErrors.deadline = 'Deadline tidak boleh di masa lalu'
             }
@@ -117,21 +120,29 @@ const TambahDonasi = () => {
         }
 
         try {
-            const result = await createProgramDonasi(formData, formData.foto_barang)
-            
-            if (result.success) {
-            const targetDana = parseInt(formData.target_dana) || 0
-            const kasTotal = kasInfo?.totalSaldo || 0
+            const kasTotal = Number(kasInfo?.totalSaldo || 0)
             const danaAwalKas = Math.min(kasTotal, targetDana)
-            const sisaKebutuhan = Math.max(0, targetDana - danaAwalKas)
-            
-            alert(`Program donasi berhasil ditambahkan!
-            📊 Rincian Dana:
-            💰 Dana dari Kas: ${formatRupiah(danaAwalKas)}
-            🎯 Target Dana: ${formatRupiah(targetDana)}
-            📉 Sisa Kebutuhan: ${formatRupiah(sisaKebutuhan)}
+            const result = await createProgramDonasi({
+                ...formData,
+                dana_awal_kas: danaAwalKas
+            }, formData.foto_barang)
 
-            Program akan dimulai dengan dana awal dari kas masjid.`)
+            if (result.success) {
+            const sisaKebutuhan = Math.max(0, targetDana - danaAwalKas)
+
+            Swal.fire({
+                title: 'Program berhasil ditambahkan',
+                html: `
+                    <div style="text-align:left">
+                        <p><strong>Dana dari kas:</strong> ${formatRupiah(danaAwalKas)}</p>
+                        <p><strong>Target dana:</strong> ${formatRupiah(targetDana)}</p>
+                        <p><strong>Sisa kebutuhan:</strong> ${formatRupiah(sisaKebutuhan)}</p>
+                        <p style="margin-top:8px">Program disimpan sebagai draft dan bisa diaktifkan dari daftar program.</p>
+                    </div>
+                `,
+                icon: 'success',
+                confirmButtonColor: '#16a34a'
+            })
                 
                 // Reset form
                 setFormData({
@@ -146,11 +157,11 @@ const TambahDonasi = () => {
                 setErrors({})
                 fetchKasInfo()
             } else {
-                alert(result.message)
+                Swal.fire('Gagal', result.message, 'error')
             }
         } catch (error) {
             console.error('Error creating program:', error)
-            alert('Terjadi kesalahan saat menambahkan program donasi')
+            Swal.fire('Gagal', 'Terjadi kesalahan saat menambahkan program donasi', 'error')
         } finally {
             setIsSubmitting(false)
         }
@@ -311,6 +322,9 @@ const TambahDonasi = () => {
                             <option value="elektronik">Elektronik</option>
                             <option value="furniture">Furniture</option>
                             <option value="konstruksi">Konstruksi</option>
+                            <option value="peralatan">Peralatan</option>
+                            <option value="renovasi">Renovasi</option>
+                            <option value="pembangunan">Pembangunan</option>
                             <option value="lainnya">Lainnya</option>
                         </select>
                         {errors.kategori_barang && (
@@ -321,7 +335,7 @@ const TambahDonasi = () => {
                     {/* Deadline */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Deadline (Opsional)
+                            Deadline *
                         </label>
                         <input
                             type="date"
