@@ -1,6 +1,15 @@
 import { useState, useCallback } from 'react';
 import { donasiService } from '../services/DonasiService';
 
+const getResponseData = (response, fallback = []) => response.data?.data ?? fallback;
+const getResponseMessage = (response, fallback) => response.data?.msg || response.data?.message || fallback;
+const getErrorMessage = (error, fallback) =>
+    error.response?.data?.msg ||
+    error.response?.data?.error ||
+    error.response?.data?.message ||
+    error.message ||
+    fallback;
+
 export const useDonasi = () => {
     const [state, setState] = useState({
         programDonasi: [],
@@ -15,7 +24,7 @@ export const useDonasi = () => {
             const response = await donasiService.getPrograms();
             setState(prev => ({
                 ...prev,
-                programDonasi: response.data || [],
+                programDonasi: getResponseData(response),
                 loading: false
             }));
         } catch (error) {
@@ -35,7 +44,7 @@ export const useDonasi = () => {
             const response = await donasiService.getActivePrograms();
             setState(prev => ({
                 ...prev,
-                programAktif: response.data || [],
+                programAktif: getResponseData(response),
                 loading: false
             }));
         } catch (error) {
@@ -71,13 +80,13 @@ export const useDonasi = () => {
             
             return { 
                 success: true, 
-                message: response.data?.message || 'Program donasi berhasil ditambahkan' 
+                message: getResponseMessage(response, 'Program donasi berhasil ditambahkan')
             };
         } catch (error) {
             setState(prev => ({ ...prev, loading: false }));
             return {
                 success: false,
-                message: error.response?.data?.error || error.message || 'Gagal menambah program donasi'
+                message: getErrorMessage(error, 'Gagal menambah program donasi')
             };
         }
     }, [fetchProgramDonasi]);
@@ -106,7 +115,7 @@ export const useDonasi = () => {
             
             return { 
                 success: true, 
-                message: response.data?.message || 'Program donasi berhasil diperbarui' 
+                message: getResponseMessage(response, 'Program donasi berhasil diperbarui')
             };
         } catch (error) {
             setState(prev => ({ ...prev, loading: false }));
@@ -114,7 +123,7 @@ export const useDonasi = () => {
             
             return {
                 success: false,
-                message: error.response?.data?.message || error.message || 'Gagal memperbarui program donasi'
+                message: getErrorMessage(error, 'Gagal memperbarui program donasi')
             };
         }
     }, [fetchProgramDonasi]);
@@ -131,7 +140,7 @@ export const useDonasi = () => {
             
             return { 
                 success: true, 
-                message: response.data?.message || 'Program donasi berhasil dihapus' 
+                message: getResponseMessage(response, 'Program donasi berhasil dihapus')
             };
         } catch (error) {
             setState(prev => ({ ...prev, loading: false }));
@@ -139,7 +148,7 @@ export const useDonasi = () => {
             
             return {
                 success: false,
-                message: error.response?.data?.message || error.message || 'Gagal menghapus program donasi'
+                message: getErrorMessage(error, 'Gagal menghapus program donasi')
             };
         }
     }, [fetchProgramDonasi]);
@@ -151,12 +160,12 @@ export const useDonasi = () => {
             await fetchProgramAktif();
             return { 
                 success: true, 
-                message: response.data?.message || 'Program berhasil diaktifkan' 
+                message: getResponseMessage(response, 'Program berhasil diaktifkan')
             };
         } catch (error) {
             return {
                 success: false,
-                message: error.response?.data?.error || 'Gagal mengaktifkan program'
+                message: getErrorMessage(error, 'Gagal mengaktifkan program')
             };
         }
     }, [fetchProgramDonasi, fetchProgramAktif]);
@@ -168,12 +177,12 @@ export const useDonasi = () => {
             await fetchProgramAktif();
             return { 
                 success: true, 
-                message: response.data?.message || 'Program berhasil dinonaktifkan' 
+                message: getResponseMessage(response, 'Program berhasil dinonaktifkan')
             };
         } catch (error) {
             return {
                 success: false,
-                message: error.response?.data?.error || 'Gagal menonaktifkan program'
+                message: getErrorMessage(error, 'Gagal menonaktifkan program')
             };
         }
     }, [fetchProgramDonasi, fetchProgramAktif]);
@@ -185,12 +194,12 @@ export const useDonasi = () => {
             await fetchProgramAktif();
             return { 
                 success: true, 
-                message: response.data?.message || 'Program berhasil diselesaikan' 
+                message: getResponseMessage(response, 'Program berhasil diselesaikan')
             };
         } catch (error) {
             return {
                 success: false,
-                message: error.response?.data?.error || 'Gagal menyelesaikan program'
+                message: getErrorMessage(error, 'Gagal menyelesaikan program')
             };
         }
     }, [fetchProgramDonasi, fetchProgramAktif]);
