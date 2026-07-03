@@ -97,10 +97,9 @@ const changeProgramStatus = async(id, status) => {
     }
 
     const allowedTransition = {
-        draft: ['aktif', 'batal'],
-        aktif: ['selesai', 'batal'],
-        selesai: [],
-        batal: []
+        draft: ['aktif'],
+        aktif: ['selesai'],
+        selesai: []
     };
 
     const allowedStatuses = allowedTransition[program.status] || [];
@@ -112,7 +111,7 @@ const changeProgramStatus = async(id, status) => {
 
     await program.update({
         status,
-        tanggal_selesai: status === 'selesai' ? new Date() : null
+        tanggal_Selesai: status === 'selesai' ? new Date() : null
     });
 
     return program;
