@@ -179,6 +179,9 @@ const EditDonasi = ({ program, onSave, onCancel, isSubmitting }) => {
                                 <option value="elektronik">Elektronik</option>
                                 <option value="furniture">Furniture</option>
                                 <option value="konstruksi">Konstruksi</option>
+                                <option value="peralatan">Peralatan</option>
+                                <option value="renovasi">Renovasi</option>
+                                <option value="pembangunan">Pembangunan</option>
                                 <option value="lainnya">Lainnya</option>
                             </select>
                             {errors.kategori_barang && (
