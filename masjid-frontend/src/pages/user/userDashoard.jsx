@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
-import axios from 'axios';
+import api from '../../config/api';
 import {
   LineChart,
   Line,
@@ -42,31 +42,32 @@ const UserDashboard = () => {
 useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const token = localStorage.getItem('accessToken');
-        const config = { headers: { Authorization: `Bearer ${token}` } };
-
         // Fetch data paralel
-        const [kasRes, donasiRes, zakatRes, kegiatanRes, programRes] = await Promise.all([
-          axios.get('http://localhost:5000/api/kas/summary', config),
-          axios.get(`http://localhost:5000/api/donasi/history/user/${user?.id}`, config),
-          axios.get(`http://localhost:5000/api/zakat/history/${user?.id}`, config),
-          axios.get('http://localhost:5000/api/kegiatan', config),
-          axios.get('http://localhost:5000/api/donasi/program?status=aktif', config)
+        const [kasRes, kontribusiSummaryRes, kontribusiHistoryRes, kegiatanRes, programRes] = await Promise.all([
+          api.get('/kas/summary'),
+          api.get('/kontribusi/summary'),
+          api.get('/kontribusi/history'),
+          api.get('/kegiatan'),
+          api.get('/pengadaan', { params: { status: 'aktif' } })
         ]);
+
+        const kontribusiSummary = kontribusiSummaryRes.data?.data || {};
+        const kontribusiHistory = kontribusiHistoryRes.data?.data || [];
+        const kegiatanList = kegiatanRes.data?.data || [];
+        const programList = programRes.data?.data || [];
 
         setStats({
           saldoMasjid: kasRes.data.data?.totalSaldo || 0,
-          totalDonasiUser: donasiRes.data.data?.statistics?.total_nominal_approved || 0,
-          totalZakatUser: zakatRes.data.data?.reduce((sum, item) => 
-            item.status === 'approved' ? sum + item.jumlah : sum, 0) || 0,
-          totalKegiatan: kegiatanRes.data?.length || 0,
-          programAktif: programRes.data?.length || 0
+          totalDonasiUser: kontribusiSummary.donasi?.total_amount || 0,
+          totalZakatUser: kontribusiSummary.zakat?.total_amount || 0,
+          totalKegiatan: kegiatanList.length || 0,
+          programAktif: programList.length || 0
         });
 
         processChartDataFromSummary(kasRes.data.data);
 
         // ✅ FETCH AKTIVITAS SETELAH DATA UTAMA
-        await fetchAktivitasTerbaru(config, donasiRes.data, zakatRes.data, kegiatanRes.data);
+        await fetchAktivitasTerbaru(kontribusiHistory, kegiatanList);
 
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -81,21 +82,23 @@ useEffect(() => {
   }, [user?.id]);
 
   // FUNCTION FETCH AKTIVITAS MIX
-  const fetchAktivitasTerbaru = async (config, donasiUserData, zakatUserData, kegiatanData) => {
+  const fetchAktivitasTerbaru = async (kontribusiHistory, kegiatanData) => {
     setLoadingAktivitas(true);
     try {
       // 1. Aktivitas Personal User (limit 3)
       const personalActivities = [];
       
       // Donasi user (2 terbaru)
-      const userDonasi = donasiUserData?.data?.donations?.slice(0, 2) || [];
+      const userDonasi = kontribusiHistory
+        .filter((item) => item.type === 'donasi')
+        .slice(0, 2);
       userDonasi.forEach(donasi => {
         personalActivities.push({
           id: `donasi-${donasi.id}`,
           type: 'personal_donasi',
           icon: '💝',
-          title: `Donasi "${donasi.nama_barang}"`,
-          description: `${formatRupiah(donasi.nominal)}`,
+          title: donasi.detail_program,
+          description: `${formatRupiah(donasi.jumlah)}`,
           status: donasi.status,
           timestamp: new Date(donasi.created_at),
           isPersonal: true,
@@ -105,13 +108,15 @@ useEffect(() => {
       });
 
       // Zakat user (1 terbaru)
-      const userZakat = zakatUserData?.data?.slice(0, 1) || [];
+      const userZakat = kontribusiHistory
+        .filter((item) => item.type === 'zakat')
+        .slice(0, 1);
       userZakat.forEach(zakat => {
         personalActivities.push({
           id: `zakat-${zakat.id}`,
           type: 'personal_zakat',
           icon: '🌙',
-          title: `Zakat ${zakat.jenis_zakat}`,
+          title: zakat.detail_program,
           description: `${formatRupiah(zakat.jumlah)}`,
           status: zakat.status,
           timestamp: new Date(zakat.created_at),
@@ -124,51 +129,14 @@ useEffect(() => {
       // 2. Aktivitas Masjid Umum (limit 2)
       const masjidActivities = [];
 
-      // Donasi masuk dari user lain (menggunakan kas history)
-      const kasHistoryRes = await axios.get(
-        'http://localhost:5000/api/kas/history?type=donasi&limit=3',
-        config
-      );
-      
-      const recentDonations = kasHistoryRes?.data?.data?.transactions || [];
-      recentDonations.forEach(donation => {
-        // Skip donasi dari user sendiri
-        if (donation.user_id && donation.user_id == user.id) return;
-        
-        masjidActivities.push({
-          id: `public-donasi-${donation.id}`,
-          type: 'masjid_donasi',
-          icon: '🤝',
-          title: 'Donasi Masuk',
-          description: `${donation.nama_pemberi || 'Anonim'} • ${formatRupiah(donation.jumlah)}`,
-          status: 'approved',
-          timestamp: new Date(donation.created_at),
-          isPersonal: false,
-          clickable: false,
-          data: donation
-        });
-      });
-
-      // debug struktur data kegiatan
-      // console.log('🔍 Debug kegiatanData structure:', kegiatanData);
-
       // Kegiatan terbaru masjid (1 terbaru)
-      let kegiatanArray = [];
-      
-      // Cek apakah kegiatanData sudah array atau masih dalam wrapper object
-      if (Array.isArray(kegiatanData)) {
-        kegiatanArray = kegiatanData;
-      } else if (kegiatanData?.data && Array.isArray(kegiatanData.data)) {
-        kegiatanArray = kegiatanData.data;
-      } 
-
-      const recentKegiatan = kegiatanArray.slice(0, 1) || [];
+      const recentKegiatan = (Array.isArray(kegiatanData) ? kegiatanData : []).slice(0, 1);
       recentKegiatan.forEach(kegiatan => {
         masjidActivities.push({
           id: `kegiatan-${kegiatan.id}`,
           type: 'masjid_kegiatan',
           icon: '🕌',
-          title: `Kegiatan: ${kegiatan.nama_kegiatan}`,
+          title: `Kegiatan: ${kegiatan.judul}`,
           description: `${new Date(kegiatan.tanggal).toLocaleDateString('id-ID')} • ${kegiatan.lokasi}`,
           status: 'info',
           timestamp: new Date(kegiatan.created_at || kegiatan.tanggal), // Fallback ke tanggal jika created_at tidak ada
@@ -182,8 +150,6 @@ useEffect(() => {
       const allActivities = [...personalActivities, ...masjidActivities]
         .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
         .slice(0, 5); // Limit 5 aktivitas
-
-      console.log('📋 All activities:', allActivities); // Debug
 
       setAktivitasTerbaru(allActivities);
 
@@ -221,7 +187,7 @@ useEffect(() => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <span className="font-medium text-gray-600">Program:</span>
-                <p className="text-gray-800">{aktivitas.data.nama_barang}</p>
+                <p className="text-gray-800">{aktivitas.data.detail_program}</p>
               </div>
               <div>
                 <span className="font-medium text-gray-600">Nominal:</span>
@@ -259,7 +225,7 @@ useEffect(() => {
               <div>
                 <span className="font-medium text-gray-600">Bukti Transfer:</span>
                 <img 
-                  src={`http://localhost:5000/uploads/bukti/${aktivitas.data.bukti_transfer}`}
+                  src={aktivitas.data.bukti_transfer}
                   alt="Bukti Transfer"
                   className="mt-2 max-w-full h-auto rounded border"
                 />
@@ -276,10 +242,10 @@ useEffect(() => {
           </h2>
           <div className="space-y-4">
             {/* Foto Kegiatan */}
-            {aktivitas.data.foto ? (
+            {aktivitas.data.image_url ? (
               <img
-                src={`http://localhost:5000/uploads/${aktivitas.data.foto}`}
-                alt={aktivitas.data.nama_kegiatan}
+                src={aktivitas.data.image_url}
+                alt={aktivitas.data.judul}
                 className="w-full h-48 object-cover rounded-lg"
               />
             ) : (
@@ -291,7 +257,7 @@ useEffect(() => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <span className="font-medium text-gray-600">Nama Kegiatan:</span>
-                <p className="text-gray-800 font-semibold">{aktivitas.data.nama_kegiatan}</p>
+                <p className="text-gray-800 font-semibold">{aktivitas.data.judul}</p>
               </div>
               <div>
                 <span className="font-medium text-gray-600">Tanggal:</span>
