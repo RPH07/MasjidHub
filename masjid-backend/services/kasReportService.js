@@ -7,68 +7,84 @@ const BarangPengadaan = require("../models/BarangPengadaanModels");
 
 // ======== helper function ========
 const formatDateLocal = (date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
 };
 
+const createDateOnly = (year, monthIndex, day) => new Date(Date.UTC(year, monthIndex, day));
+
+const getJakartaTodayParts = () => {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Jakarta',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).formatToParts(new Date());
+
+    const getPart = (type) => Number(parts.find((part) => part.type === type)?.value);
+
+    return {
+        year: getPart('year'),
+        month: getPart('month') - 1,
+        date: getPart('day')
+    };
+};
+
 const getPeriodFilter = (period) => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth();
-    const date = today.getDate();
+    const { year, month, date } = getJakartaTodayParts();
 
     let startDate, endDate;
 
     switch (period) {
         case "hari-ini":
-            startDate = new Date(year, month, date);
-            endDate = new Date(year, month, date + 1);
+            startDate = createDateOnly(year, month, date);
+            endDate = createDateOnly(year, month, date + 1);
             break;
 
         case "kemarin":
-            startDate = new Date(year, month, date - 1);
-            endDate = new Date(year, month, date);
+            startDate = createDateOnly(year, month, date - 1);
+            endDate = createDateOnly(year, month, date);
             break;
 
         case "minggu-ini":
-            const dayOfWeek = today.getDay();
+            const dayOfWeek = createDateOnly(year, month, date).getUTCDay();
             const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Senin = 0
-            startDate = new Date(year, month, date - daysFromMonday);
-            endDate = new Date(year, month, date - daysFromMonday + 7);
+            startDate = createDateOnly(year, month, date - daysFromMonday);
+            endDate = createDateOnly(year, month, date - daysFromMonday + 7);
             break;
 
         case "minggu-lalu":
-            const lastWeekDay = today.getDay();
+            const lastWeekDay = createDateOnly(year, month, date).getUTCDay();
             const daysFromLastMonday = lastWeekDay === 0 ? 6 : lastWeekDay - 1;
-            startDate = new Date(year, month, date - daysFromLastMonday - 7);
-            endDate = new Date(year, month, date - daysFromLastMonday);
+            startDate = createDateOnly(year, month, date - daysFromLastMonday - 7);
+            endDate = createDateOnly(year, month, date - daysFromLastMonday);
             break;
 
         case "bulan-ini":
-            startDate = new Date(year, month, 1);
-            endDate = new Date(year, month + 1, 1);
+            startDate = createDateOnly(year, month, 1);
+            endDate = createDateOnly(year, month + 1, 1);
             break;
 
         case "bulan-lalu":
-            startDate = new Date(year, month - 1, 1);
-            endDate = new Date(year, month, 1);
+            startDate = createDateOnly(year, month - 1, 1);
+            endDate = createDateOnly(year, month, 1);
             break;
 
         case "tahun-ini":
-            startDate = new Date(year, 0, 1);
-            endDate = new Date(year + 1, 0, 1);
+            startDate = createDateOnly(year, 0, 1);
+            endDate = createDateOnly(year + 1, 0, 1);
             break;
 
         case "tahun-lalu":
-            startDate = new Date(year - 1, 0, 1);
-            endDate = new Date(year, 0, 1);
+            startDate = createDateOnly(year - 1, 0, 1);
+            endDate = createDateOnly(year, 0, 1);
             break;
 
         default:
-            startDate = new Date(year, month, 1);
-            endDate = new Date(year, month + 1, 1);
+            startDate = createDateOnly(year, month, 1);
+            endDate = createDateOnly(year, month + 1, 1);
     }
 
     return {
@@ -77,11 +93,18 @@ const getPeriodFilter = (period) => {
     };
 };
 
+const toLocalDateBoundary = (dateString) => {
+    const [year, month, day] = String(dateString).split('-').map(Number);
+    return new Date(Date.UTC(year, month - 1, day, -7));
+};
+
+const buildDateRange = (startDate, endDate) => ({
+    [Op.gte]: toLocalDateBoundary(startDate),
+    [Op.lt]: toLocalDateBoundary(endDate)
+});
+
 const buildDateWhere = (startDate, endDate) => ({
-    tanggal: {
-        [Op.gte]: startDate,
-        [Op.lt]: endDate
-    },
+    tanggal: buildDateRange(startDate, endDate),
     deleted_at: null,
     void_status: {
         [Op.ne]: 'approved'
@@ -246,40 +269,37 @@ const getPengeluaranKategori = async (where) => {
 };
 
 const getPreviousPeriod = (period) => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth();
-    const date = today.getDate();
+    const { year, month, date } = getJakartaTodayParts();
 
     let startDate, endDate;
 
     switch (period) {
         case 'hari-ini':
-            startDate = new Date(year, month, date - 1);
-            endDate = new Date(year, month, date);
+            startDate = createDateOnly(year, month, date - 1);
+            endDate = createDateOnly(year, month, date);
             break;
 
         case 'minggu-ini': {
-            const dayOfWeek = today.getDay();
+            const dayOfWeek = createDateOnly(year, month, date).getUTCDay();
             const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-            startDate = new Date(year, month, date - daysFromMonday - 7);
-            endDate = new Date(year, month, date - daysFromMonday);
+            startDate = createDateOnly(year, month, date - daysFromMonday - 7);
+            endDate = createDateOnly(year, month, date - daysFromMonday);
             break;
         }
 
         case 'bulan-ini':
-            startDate = new Date(year, month - 1, 1);
-            endDate = new Date(year, month, 1);
+            startDate = createDateOnly(year, month - 1, 1);
+            endDate = createDateOnly(year, month, 1);
             break;
 
         case 'tahun-ini':
-            startDate = new Date(year - 1, 0, 1);
-            endDate = new Date(year, 0, 1);
+            startDate = createDateOnly(year - 1, 0, 1);
+            endDate = createDateOnly(year, 0, 1);
             break;
     
         default:
-            startDate = new Date(year, month - 1, 1);
-            endDate = new Date(year, month, 1);
+            startDate = createDateOnly(year, month - 1, 1);
+            endDate = createDateOnly(year, month, 1);
     }
     return { 
         startDate: formatDateLocal(startDate),
@@ -374,10 +394,7 @@ const getKasHistory = async({
     ? {startDate, endDate}
     : getPeriodFilter(period);
 
-    const dateWhere = {
-        [Op.gte]: dateFilter.startDate,
-        [Op.lt]: dateFilter.endDate
-    };
+    const dateWhere = buildDateRange(dateFilter.startDate, dateFilter.endDate);
 
     const transactions = [];
 
@@ -613,7 +630,7 @@ const getKasSummary = async ({period = 'bulan-ini', startDate, endDate}) => {
 
     const prevTotalSaldoRows = await getTotalByJenis({
         tanggal: {
-            [Op.lt]: dateFilter.startDate
+            [Op.lt]: toLocalDateBoundary(dateFilter.startDate)
         },
         ...activeLedgerWhere
     });
