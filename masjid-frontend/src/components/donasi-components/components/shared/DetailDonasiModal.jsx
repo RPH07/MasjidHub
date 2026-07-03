@@ -536,7 +536,7 @@ const DetailDonasiModal = ({ program, onSubmit, onUploadProof, onClose, loading 
                         </div>
 
                         {/* Step Content */}
-                        <div className="min-h-[400px]">
+                        <div className="min-h-100">
                             {renderStepContent()}
                         </div>
 
