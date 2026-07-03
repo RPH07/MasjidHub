@@ -19,7 +19,7 @@ const ProgramCard = ({
         foto_barang,
         kategori_barang,
         status,
-        tanggal_dibuat,
+        created_at,
         total_donatur,
         deadline
     } = program
@@ -29,13 +29,8 @@ const ProgramCard = ({
 
     const getImageUrl = (filename) =>{
         if(!filename) return null;
-        
-        const pathImg = [
-            `http://localhost:5000/images/donasi-program/${filename}`,
-            `http://localhost:5000/uploads/${filename}`,
-            `http://localhost:5000/public/images/donasi-program/${filename}`
-        ];
-        return pathImg[0];
+        if (String(filename).startsWith('http')) return filename;
+        return filename;
     };
 
     const imgUrl = getImageUrl(foto_barang);
@@ -46,7 +41,7 @@ const ProgramCard = ({
                 <div className="flex items-start space-x-4">
                     {/* Foto Barang */}
                     {foto_barang && (
-                        <div className="flex-shrink-0">
+                        <div className="shrink-0">
                             <img
                                 src={imgUrl}
                                 alt={nama_barang}
@@ -70,7 +65,7 @@ const ProgramCard = ({
                                 {nama_barang}
                             </h3>
                             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadge(status)}`}>
-                                {status === 'aktif' ? 'Aktif' : status === 'selesai' ? 'Selesai' : status === 'draft' ? 'Draft' : 'Batal'}
+                                {status === 'aktif' ? 'Aktif' : status === 'selesai' ? 'Selesai' : 'Draft'}
                             </span>
                         </div>
 
@@ -87,7 +82,7 @@ const ProgramCard = ({
                             </div>
                             <div>
                                 <span className="text-gray-500">Dibuat:</span>
-                                <span className="ml-1">{formatDate(tanggal_dibuat)}</span>
+                                <span className="ml-1">{formatDate(created_at)}</span>
                             </div>
                         </div>
 
