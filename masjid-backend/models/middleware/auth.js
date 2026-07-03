@@ -30,6 +30,31 @@ const verifyToken = async (req, res, next) => {
     }
 }
 
+const optionalToken = async (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) return next();
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const user = await User.findByPk(decoded.userId, {
+            attributes: ['id', 'email', 'role', 'jabatan', 'status']
+        });
+
+        if (user && user.status === 'active') {
+            req.userId = user.id;
+            req.email = user.email;
+            req.role = user.role;
+            req.jabatan = user.jabatan || null;
+        }
+    } catch (error) {
+        // Endpoint publik tetap boleh lanjut tanpa identitas user.
+    }
+
+    next();
+};
+
 const adminOnly = (req, res, next) => {
     if(req.role !== "admin") {
         return res.status(403).json({ msg: "Akses Terlarang! Khusus Admin." });
@@ -62,4 +87,4 @@ const requireJabatan = (...allowedJabatan) => {
     }
 }
 
-module.exports = { verifyToken, adminOnly, dkmOrAdmin, requireJabatan };
+module.exports = { verifyToken, optionalToken, adminOnly, dkmOrAdmin, requireJabatan };
