@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
-import axios from 'axios';
+import api from '../../config/api';
 
 const KontribusiHistory = () => {
   const { user } = useAuth();
@@ -10,15 +10,7 @@ const KontribusiHistory = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    if (!axios.defaults.baseURL) {
-      axios.defaults.baseURL = 'http://localhost:5000';
-    }
-  }, []);
-
-  useEffect(() => {
-    console.log('🔍 Debug - User data:', user);
     if (user?.id) {
-      console.log('📞 Calling fetchHistory for user ID:', user.id);
       fetchHistory();
       fetchSummary();
     }
@@ -27,16 +19,8 @@ const KontribusiHistory = () => {
   const fetchHistory = async () => {
     try {
       setLoading(true);
-      const url = `http://localhost:5000/api/kontribusi/history/${user.id}`;
-      console.log('🌐 Fetching URL:', url);
+      const response = await api.get('/kontribusi/history');
 
-      const response = await axios.get(url, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`
-        }
-      });
-
-      console.log('📊 API Response:', response.data);
       setHistory(response.data.data || []);
     } catch (error) {
       console.error('❌ Error fetching history:', error);
@@ -49,16 +33,8 @@ const KontribusiHistory = () => {
 
   const fetchSummary = async () => {
     try {
-      const url = `http://localhost:5000/api/kontribusi/summary/${user.id}`;
-      console.log('📈 Fetching Summary URL:', url);
+      const response = await api.get('/kontribusi/summary');
 
-      const response = await axios.get(url, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`
-        }
-      });
-
-      console.log('📈 Summary Response:', response.data);
       const summaryData = response.data.data || response.data;
       setSummary(summaryData);
     } catch (error) {
@@ -148,27 +124,10 @@ const KontribusiHistory = () => {
     );
   }
 
-  const getBuktiTransferUrl = (buktiTransfer, type) => {
+  const getBuktiTransferUrl = (buktiTransfer) => {
     if (!buktiTransfer) return null;
-    
-    const baseUrl = axios.defaults.baseURL || 'http://localhost:5173';
-    let folderPath = '';
-    
-    if (type === 'zakat') {
-      folderPath = 'uploads/bukti-zakat';
-    } else if (type === 'donasi') {
-      folderPath = 'uploads/bukti-donasi';
-    } else {
-      if (buktiTransfer.startsWith('zakat-')) {
-        folderPath = 'uploads/bukti-zakat';
-      } else if (buktiTransfer.startsWith('bukti-')) {
-        folderPath = 'uploads/bukti-donasi';
-      } else {
-        folderPath = 'uploads';
-      }
-    }
-    
-    return `${baseUrl}/${folderPath}/${buktiTransfer}`;
+    if (String(buktiTransfer).startsWith('http')) return buktiTransfer;
+    return buktiTransfer;
   };
 
   return (
@@ -368,7 +327,7 @@ const KontribusiHistory = () => {
                       
                       {item.bukti_transfer && (
                         <button
-                          onClick={() => window.open(getBuktiTransferUrl(item.bukti_transfer, item.type), '_blank')}
+                          onClick={() => window.open(getBuktiTransferUrl(item.bukti_transfer), '_blank')}
                           className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 hover:border-blue-300 transition-colors duration-200"
                         >
                           <span className="mr-1">📄</span>
