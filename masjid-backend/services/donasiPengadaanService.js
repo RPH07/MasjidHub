@@ -1,4 +1,5 @@
 const sequelize = require('../config/db');
+const { Op } = require('sequelize');
 const KasBukuBesar = require('../models/KasBukuBesarModels');
 const DonasiPengadaan = require('../models/DonasiPengadaanModels');
 const BarangPengadaan = require('../models/BarangPengadaanModels');
@@ -185,7 +186,10 @@ const getPendingDonasiPengadaan = async() => {
     const donasi = await DonasiPengadaan.findAll({
         where: {
             status: 'pending',
-            deleted_at: null
+            deleted_at: null,
+            bukti_transfer: {
+                [Op.ne]: null
+            }
         },
         include: [{
             model: BarangPengadaan,
@@ -207,6 +211,28 @@ const getPendingDonasiPengadaan = async() => {
         total: donasi.length,
         donasi
     };
+};
+
+const uploadBuktiDonasiPengadaan = async(id, buktiTransfer) => {
+    const donasi = await DonasiPengadaan.findByPk(id);
+
+    if (!donasi) {
+        const error = new Error('Donasi pengadaan tidak ditemukan');
+        error.statusCode = 404;
+        throw error;
+    }
+
+    if (donasi.status !== 'pending') {
+        const error = new Error('Bukti hanya bisa diupload untuk donasi pending');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    await donasi.update({
+        bukti_transfer: buktiTransfer
+    });
+
+    return donasi;
 };
 
 const generatedKodeUnik = async(nominal, barangId) => {
@@ -276,5 +302,6 @@ module.exports = {
     verifyDonasiPengadaan,
     createDonasiPengadaan,
     getDonasiByProgram,
-    getPendingDonasiPengadaan
+    getPendingDonasiPengadaan,
+    uploadBuktiDonasiPengadaan
 };
