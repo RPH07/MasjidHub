@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import Swal from 'sweetalert2'
 import { ProgramCard } from '../shared'
 import { useDonasi } from '../../hooks/'
 import { DONASI_STATUS } from '../../utils/'
@@ -52,10 +53,10 @@ const DaftarDonasi = () => {
             const result = await updateProgramDonasi(editingProgram.id, formData, formData.foto_barang);
             
             if (result.success) {
-                alert('Program donasi berhasil diperbarui!');
+                Swal.fire('Berhasil', result.message || 'Program donasi berhasil diperbarui!', 'success');
                 setEditingProgram(null);
             } else {
-                alert(result.message);
+                Swal.fire('Gagal', result.message, 'error');
             }
         } finally {
             setIsSubmitting(false);
@@ -69,50 +70,58 @@ const DaftarDonasi = () => {
 
     // Update handleDelete method
     const handleDelete = async (programId) => {
-        if (window.confirm('Apakah Anda yakin ingin menghapus program donasi ini?')) {
-            try {
-                const result = await deleteProgramDonasi(programId);
-                if (result.success) {
-                    alert('Program donasi berhasil dihapus');
-                    await fetchProgramDonasi();
-                } else {
-                    alert(result.message || 'Gagal menghapus program donasi');
-                }
-            } catch (error) {
-                console.error('Error deleting program:', error);
-                alert(error.response?.data?.message || 'Terjadi kesalahan saat menghapus program');
+        try {
+            const result = await deleteProgramDonasi(programId);
+            if (result.success) {
+                Swal.fire('Berhasil', result.message || 'Program donasi berhasil dihapus', 'success');
+                await fetchProgramDonasi();
+            } else {
+                Swal.fire('Belum tersedia', result.message || 'Fitur hapus program belum tersedia', 'info');
             }
+        } catch (error) {
+            console.error('Error deleting program:', error);
+            Swal.fire('Gagal', error.response?.data?.message || 'Terjadi kesalahan saat menghapus program', 'error');
         }
     };
 
     const handleActivate = async (programId) => {
         const result = await activateProgram(programId)
         if (result.success) {
-            alert('Program donasi berhasil diaktifkan')
+            Swal.fire('Berhasil', result.message || 'Program donasi berhasil diaktifkan', 'success')
         } else {
-            alert(result.message)
+            Swal.fire('Gagal', result.message, 'error')
         }
     }
 
     const handleDeactivate = async (programId) => {
-        if (window.confirm('Apakah Anda yakin ingin menonaktifkan program ini?')) {
-            const result = await deactivateProgram(programId)
-            if (result.success) {
-                alert('Program donasi berhasil dinonaktifkan')
-            } else {
-                alert(result.message)
-            }
+        const result = await deactivateProgram(programId)
+        if (result.success) {
+            Swal.fire('Berhasil', result.message || 'Program donasi berhasil dinonaktifkan', 'success')
+        } else {
+            Swal.fire('Belum tersedia', result.message, 'info')
         }
     }
 
     const handleComplete = async (programId) => {
-        if (window.confirm('Apakah Anda yakin ingin menyelesaikan program ini?')) {
-            const result = await completeProgram(programId)
-            if (result.success) {
-                alert('Program donasi berhasil diselesaikan')
-            } else {
-                alert(result.message)
-            }
+        const confirmation = await Swal.fire({
+            title: 'Selesaikan program?',
+            text: 'Program yang selesai akan masuk ke riwayat dan laporan.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Selesaikan',
+            cancelButtonText: 'Batal',
+            confirmButtonColor: '#2563eb',
+            cancelButtonColor: '#6b7280',
+            reverseButtons: true
+        })
+
+        if (!confirmation.isConfirmed) return
+
+        const result = await completeProgram(programId)
+        if (result.success) {
+            Swal.fire('Berhasil', result.message || 'Program donasi berhasil diselesaikan', 'success')
+        } else {
+            Swal.fire('Gagal', result.message, 'error')
         }
     }
 
@@ -195,7 +204,6 @@ const DaftarDonasi = () => {
                             <option value={DONASI_STATUS.DRAFT}>Draft</option>
                             <option value={DONASI_STATUS.AKTIF}>Aktif</option>
                             <option value={DONASI_STATUS.SELESAI}>Selesai</option>
-                            <option value={DONASI_STATUS.BATAL}>Batal</option>
                         </select>
                     </div>
                 </div>
@@ -235,7 +243,6 @@ const DaftarDonasi = () => {
                 </div>
             )}
 
-            {/* ✅ FIX: Edit Modal di luar conditional rendering */}
             {editingProgram && (
                 <EditDonasi 
                     program={editingProgram}
