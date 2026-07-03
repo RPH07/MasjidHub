@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../../config/api';
 
 const UserKegiatan = () => {
   const [kegiatan, setKegiatan] = useState([]);
@@ -14,37 +14,35 @@ const UserKegiatan = () => {
 
 const fetchKegiatan = async () => {
     try {
-      console.log('🔍 Fetching kegiatan data...');
-      const response = await axios.get('http://localhost:5000/api/kegiatan');
-      
-      console.log('📊 Response:', response.data);
-      
-      // ✅ FIX: Backend mengirim response.data.data, bukan langsung response.data
+      const response = await api.get('/kegiatan');
       const kegiatanData = response.data.data || response.data || [];
-      
-      console.log('📋 Kegiatan data:', kegiatanData);
-      
-      // Urutkan berdasarkan tanggal terbaru
+
       const sortedKegiatan = kegiatanData.sort((a, b) => {
         return new Date(b.tanggal) - new Date(a.tanggal);
       });
       
       setKegiatan(sortedKegiatan);
-      console.log('✅ Kegiatan loaded:', sortedKegiatan.length, 'items');
     } catch (error) {
       console.error('❌ Error fetching kegiatan:', error);
-      console.error('Response details:', error.response?.data);
     } finally {
       setLoading(false);
     }
   };
 
+  const getTitle = (item) => item.judul || item.nama_kegiatan || 'Kegiatan Masjid';
+  const getCategory = (item) => item.kategori?.nama_kategori || item.kategori_nama || 'Umum';
+  const getImage = (item) => item.image_url || item.foto || null;
+  const normalizeLabel = (value) => String(value || '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+  const includesSearch = (value) => String(value || '').toLowerCase().includes(searchTerm.toLowerCase());
+
   // Filter kegiatan berdasarkan search
   const filteredKegiatan = kegiatan.filter(item => 
-    item.nama_kegiatan.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.deskripsi.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.lokasi.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (item.kategori_nama && item.kategori_nama.toLowerCase().includes(searchTerm.toLowerCase()))
+    includesSearch(getTitle(item)) ||
+    includesSearch(item.deskripsi) ||
+    includesSearch(item.lokasi) ||
+    includesSearch(getCategory(item))
   );
 
   const openModal = (kegiatanItem) => {
@@ -66,8 +64,9 @@ const fetchKegiatan = async () => {
     });
   };
 
-  const formatTime = (dateString) => {
-    return new Date(dateString).toLocaleTimeString('id-ID', {
+  const formatTime = (item) => {
+    if (item?.jam) return item.jam;
+    return new Date(item?.tanggal).toLocaleTimeString('id-ID', {
       hour: '2-digit',
       minute: '2-digit'
     });
@@ -132,10 +131,10 @@ const fetchKegiatan = async () => {
               <div key={item.id} className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 cursor-pointer">
                 {/* Image */}
                 <div className="relative h-48 overflow-hidden">
-                  {item.foto ? (
+                  {getImage(item) ? (
                     <img
-                      src={`http://localhost:5000/uploads/${item.foto}`}
-                      alt={item.nama_kegiatan}
+                      src={getImage(item)}
+                      alt={getTitle(item)}
                       className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
                     />
                   ) : (
@@ -144,19 +143,17 @@ const fetchKegiatan = async () => {
                     </div>
                   )}
                   {/* Kategori Badge */}
-                  {item.kategori_nama && (
-                    <div className="absolute top-3 left-3">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white/90 text-gray-800 backdrop-blur-sm">
-                        {item.kategori_nama}
-                      </span>
-                    </div>
-                  )}
+                  <div className="absolute top-3 left-3">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white/90 text-gray-800 backdrop-blur-sm">
+                      {normalizeLabel(getCategory(item))}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Content */}
                 <div className="p-6">
                   <h3 className="text-xl font-bold text-gray-900 mb-2 line-clamp-2">
-                    {item.nama_kegiatan}
+                    {getTitle(item)}
                   </h3>
                   
                   {/* Date & Time */}
@@ -217,10 +214,10 @@ const fetchKegiatan = async () => {
           <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="relative">
-              {selectedKegiatan.foto ? (
+              {getImage(selectedKegiatan) ? (
                 <img
-                  src={`http://localhost:5000/uploads/${selectedKegiatan.foto}`}
-                  alt={selectedKegiatan.nama_kegiatan}
+                  src={getImage(selectedKegiatan)}
+                  alt={getTitle(selectedKegiatan)}
                   className="w-full h-64 object-cover"
                 />
               ) : (
@@ -240,19 +237,17 @@ const fetchKegiatan = async () => {
               </button>
 
               {/* Kategori Badge */}
-              {selectedKegiatan.kategori_nama && (
-                <div className="absolute top-4 left-4">
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-white/90 text-gray-800 backdrop-blur-sm">
-                    {selectedKegiatan.kategori_nama}
-                  </span>
-                </div>
-              )}
+              <div className="absolute top-4 left-4">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-white/90 text-gray-800 backdrop-blur-sm">
+                  {normalizeLabel(getCategory(selectedKegiatan))}
+                </span>
+              </div>
             </div>
 
             {/* Modal Content */}
             <div className="p-6">
               <h2 className="text-3xl font-bold text-gray-900 mb-4">
-                {selectedKegiatan.nama_kegiatan}
+                {getTitle(selectedKegiatan)}
               </h2>
 
               {/* Date, Time & Location Info */}
@@ -266,7 +261,7 @@ const fetchKegiatan = async () => {
                   <div>
                     <p className="font-medium">Tanggal & Waktu</p>
                     <p className="text-sm text-gray-600">
-                      {formatDate(selectedKegiatan.tanggal)} • {formatTime(selectedKegiatan.tanggal)}
+                      {formatDate(selectedKegiatan.tanggal)} • {formatTime(selectedKegiatan)}
                     </p>
                   </div>
                 </div>
