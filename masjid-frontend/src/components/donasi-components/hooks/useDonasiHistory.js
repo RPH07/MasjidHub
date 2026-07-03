@@ -2,6 +2,14 @@ import { useState, useCallback } from 'react'
 import { donasiService } from '../services/DonasiService'
 import { createFormData } from '../utils/helpers'
 
+const getResponseData = (response, fallback = []) => response.data?.data ?? fallback;
+const getErrorMessage = (error, fallback) =>
+    error.response?.data?.msg ||
+    error.response?.data?.error ||
+    error.response?.data?.message ||
+    error.message ||
+    fallback;
+
 export const useDonasiHistory = () => {    
     const [state, setState] = useState({
         historyDonasi: [],
@@ -16,7 +24,7 @@ export const useDonasiHistory = () => {
         try {
             setState(prev => ({ ...prev, loading: true, error: null }))
             const response = await donasiService.getPrograms()
-            const completedPrograms = response.data.filter(program => 
+            const completedPrograms = getResponseData(response).filter(program =>
                 program.status === 'selesai' || program.dana_terkumpul >= program.target_dana
             )
             
@@ -41,16 +49,14 @@ export const useDonasiHistory = () => {
             setState(prev => ({ ...prev, loading: true, error: null }))
             
             // Ambil detail program
-            const programResponse = await donasiService.getPrograms()
-            const program = programResponse.data.find(p => p.id === programId)
-            
-            // Ambil daftar donatur untuk program ini
+            const programResponse = await donasiService.getProgramById(programId)
+            const program = getResponseData(programResponse, null)
             const donatursResponse = await donasiService.getDonationHistory(programId)
             
             setState(prev => ({
                 ...prev,
                 detailProgram: program,
-                donatursPerProgram: donatursResponse.data || [],
+                donatursPerProgram: donatursResponse.data?.data?.donasi || [],
                 loading: false
             }))
         } catch (error) {
@@ -76,60 +82,26 @@ export const useDonasiHistory = () => {
     const exportLaporanDonasi = useCallback(async (programId, format = 'csv') => {
         try {
             setState(prev => ({ ...prev, loading: true, error: null }));
-            const token = localStorage.getItem('accessToken');
-            
-            let endpoint;
-            if (format === 'pdf') {
-                endpoint = `http://localhost:5000/api/donasi/program/${programId}/export/pdf`;
-            } else {
-                endpoint = `http://localhost:5000/api/donasi/program/${programId}/export?format=${format}`;
+            if (format !== 'pdf') {
+                throw new Error('Export CSV/Excel program donasi belum tersedia di backend baru');
             }
 
-            console.log('📡 Fetching from:', endpoint);
+            const response = await donasiService.exportProgramPdf(programId);
+            const blob = new Blob([response.data], { type: 'application/pdf' });
 
-            const response = await fetch(endpoint, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            // Handle PDF differently
-            if (format === 'pdf') {
-                const blob = await response.blob();
-                console.log('📄 PDF Blob size:', blob.size, 'bytes');
-                console.log('📄 PDF Blob type:', blob.type);
-                
-                if (blob.size === 0) {
-                    throw new Error('PDF file is empty');
-                }
-
-                const url = window.URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `laporan-donasi-program-${programId}-${Date.now()}.pdf`;
-                link.target = '_blank';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                window.URL.revokeObjectURL(url);
-                
-                console.log('✅ PDF download completed');
-            } else {
-                // Handle CSV/Excel
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `laporan-donasi-program-${programId}-${Date.now()}.${format}`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                window.URL.revokeObjectURL(url);
+            if (blob.size === 0) {
+                throw new Error('PDF file kosong');
             }
 
-            // ✅ UPDATE STATE SUCCESS
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `laporan-donasi-program-${programId}-${Date.now()}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+
             setState(prev => ({ ...prev, loading: false, error: null }));
             return { success: true, message: 'Laporan berhasil diexport' };
             
@@ -140,7 +112,7 @@ export const useDonasiHistory = () => {
                 loading: false, 
                 error: error.message 
             }));
-            return { success: false, message: error.message };
+            return { success: false, message: getErrorMessage(error, error.message) };
         }
     }, []);
 
@@ -170,7 +142,7 @@ export const useDonasi = () => {
         try {
             setState(prev => ({ ...prev, loading: true, error: null }))
             const response = await donasiService.getPrograms()
-            let programs = response.data
+            let programs = getResponseData(response)
             
             if (status !== 'all') {
                 programs = programs.filter(program => program.status === status)
@@ -197,7 +169,7 @@ export const useDonasi = () => {
             const response = await donasiService.getActivePrograms()
             setState(prev => ({
                 ...prev,
-                programAktif: response.data
+                programAktif: getResponseData(response)
             }))
         } catch (error) {
             console.error('Error fetching program aktif:', error)
@@ -212,7 +184,7 @@ export const useDonasi = () => {
     const fetchDonasiHistory = useCallback(async () => {
         try {
             const response = await donasiService.getPrograms()
-            const completedPrograms = response.data.filter(program => 
+            const completedPrograms = getResponseData(response).filter(program =>
                 program.status === 'selesai' || program.dana_terkumpul >= program.target_dana
             )
             setState(prev => ({
@@ -242,7 +214,7 @@ export const useDonasi = () => {
             setState(prev => ({ ...prev, loading: false }))
             return {
                 success: false,
-                message: error.response?.data?.message || error.message || 'Gagal menambah program donasi'
+                message: getErrorMessage(error, 'Gagal menambah program donasi')
             }
         }
     }, [fetchProgramDonasi])
@@ -261,7 +233,7 @@ export const useDonasi = () => {
             setState(prev => ({ ...prev, loading: false }))
             return {
                 success: false,
-                message: error.response?.data?.message || error.message || 'Gagal memperbarui program donasi'
+                message: getErrorMessage(error, 'Gagal memperbarui program donasi')
             }
         }
     }, [fetchProgramDonasi])
@@ -275,7 +247,7 @@ export const useDonasi = () => {
         } catch (error) {
             return {
                 success: false,
-                message: error.response?.data?.message || 'Gagal menghapus program donasi'
+                message: getErrorMessage(error, 'Gagal menghapus program donasi')
             }
         }
     }, [fetchProgramDonasi])
@@ -290,7 +262,7 @@ export const useDonasi = () => {
         } catch (error) {
             return {
                 success: false,
-                message: error.response?.data?.message || 'Gagal mengaktifkan program'
+                message: getErrorMessage(error, 'Gagal mengaktifkan program')
             }
         }
     }, [fetchProgramDonasi, fetchProgramAktif])
@@ -305,7 +277,7 @@ export const useDonasi = () => {
         } catch (error) {
             return {
                 success: false,
-                message: error.response?.data?.message || 'Gagal menonaktifkan program'
+                message: getErrorMessage(error, 'Gagal menonaktifkan program')
             }
         }
     }, [fetchProgramDonasi, fetchProgramAktif])
@@ -321,7 +293,7 @@ export const useDonasi = () => {
         } catch (error) {
             return {
                 success: false,
-                message: error.response?.data?.message || 'Gagal menyelesaikan program'
+                message: getErrorMessage(error, 'Gagal menyelesaikan program')
             }
         }
     }, [fetchProgramDonasi, fetchProgramAktif, fetchDonasiHistory])
