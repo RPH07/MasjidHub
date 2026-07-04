@@ -1,5 +1,5 @@
 import React, { lazy, Suspense } from 'react';
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Navigate, useLocation } from 'react-router-dom';
 import AdminLayout from './components/layouts/AdminLayout';
 import AdminRoute from './components/route-guard/AdminRoute';
 import ProtectedRoute from './components/route-guard/ProtectedRoute';
@@ -27,6 +27,11 @@ const DonasiPage = lazy(() => import('./pages/admin/Donasi'));
 const UserAccessPage = lazy(() => import('./pages/admin/UserAccess'));
 const VerifikasiTransaksi = lazy(() => import('./pages/admin/VerifikasiTransaksi'));
 const TransparansiAdmin = lazy(() => import('./pages/admin/TransparansiAdmin'));
+const Maintenance = lazy(() => import('./pages/Maintenance'));
+const MAINTENANCE = {
+  zakat: import.meta.env.VITE_MAINTENANCE_ZAKAT === 'true',
+};
+
 
 const PageLoader = () => (
   <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 text-sm text-gray-500">
@@ -41,118 +46,149 @@ const lazyPage = (element) => (
   </Suspense>
 );
 
+const MaintenanceGuard = ({enabled, children}) => {
+  const location = useLocation();
+
+  if (enabled) {
+    return (
+      <Navigate 
+        to='/maintenance'
+        replace
+        state={{from: location.pathname}}
+      />
+    );
+  }
+
+  return children;
+};
+
+const maintenancePage = (key, element) => (
+  <MaintenanceGuard enabled={MAINTENANCE[key]}>
+    {lazyPage(element)}
+  </MaintenanceGuard>
+);
+
 const router = createBrowserRouter([
   {
-    path: "/",
-    element: lazyPage(<HomePage />),
-    errorElement: <RouteError />
-  },
-  {
-    path: "/about", 
-    element: lazyPage(<About />)
-  },
-  {
-    path: "/contact",
-    element: lazyPage(<Contact />)
-  },
-  {
-    path: "/transparansi",
-    element: lazyPage(<TransparansiDana />)
-  },
-  {
-    path: "/login",
-    element: lazyPage(<LoginPages />),
-  },
-  {
-    path: "/signup",
-    element: lazyPage(<RegisterPages />)
-  },
-  {
-    path: "/admin/signup",
-    element: lazyPage(<AdminSignup />)
-  },
-  {
-    path: "/zakat",
-    element: lazyPage(<ZakatForm />),
-  },
-  {
-    path: "/crowdfunding",
-    element: lazyPage(<Crowdfunding />)
-  },
-  {
-    path: "/dashboard",
-    element: (
-      <ProtectedRoute>
-        <UserLayout />
-      </ProtectedRoute>
-    ),
     errorElement: <RouteError />,
     children: [
       {
-        index: true,
-        element: lazyPage(<UserDashboard />)
+        path: "/",
+        element: lazyPage(<HomePage />)
       },
       {
-        path: "zakat",
-        element: lazyPage(<ZakatForm />)
+        path: "/maintenance",
+        element: lazyPage(<Maintenance />)
       },
       {
-        path: "crowdfunding",
+        path: "/about",
+        element: lazyPage(<About />)
+      },
+      {
+        path: "/contact",
+        element: lazyPage(<Contact />)
+      },
+      {
+        path: "/transparansi",
+        element: lazyPage(<TransparansiDana />)
+      },
+      {
+        path: "/login",
+        element: lazyPage(<LoginPages />)
+      },
+      {
+        path: "/signup",
+        element: lazyPage(<RegisterPages />)
+      },
+      {
+        path: "/admin/signup",
+        element: lazyPage(<AdminSignup />)
+      },
+      {
+        path: "/zakat",
+        element: maintenancePage('zakat', <ZakatForm />)
+      },
+      {
+        path: "/crowdfunding",
         element: lazyPage(<Crowdfunding />)
       },
       {
-        path: "kegiatan",
-        element: lazyPage(<UserKegiatan />)
+        path: "/dashboard",
+        element: (
+          <ProtectedRoute>
+            <UserLayout />
+          </ProtectedRoute>
+        ),
+        errorElement: <RouteError />,
+        children: [
+          {
+            index: true,
+            element: lazyPage(<UserDashboard />)
+          },
+          {
+            path: "zakat",
+            element: maintenancePage('zakat', <ZakatForm />)
+          },
+          {
+            path: "crowdfunding",
+            element: lazyPage(<Crowdfunding />)
+          },
+          {
+            path: "kegiatan",
+            element: lazyPage(<UserKegiatan />)
+          },
+          {
+            path: "kontribusi-history",
+            element: lazyPage(<KontribusiHistory />)
+          }
+        ]
       },
+      // Admin routes
       {
-        path: "kontribusi-history",
-        element: lazyPage(<KontribusiHistory />)
-      }
-    ]
-  },
-  // Admin routes
-  {
-    path: "/admin",
-    element: (
-      <AdminRoute>
-        <ProtectedRoute>
-          <AdminLayout />
-        </ProtectedRoute>
-      </AdminRoute>
-    ),
-    errorElement: <RouteError />,
-    children: [
-      {
-        index: true,
-        element: lazyPage(<Dashboard />)
-      },
-      {
-        path: "kegiatan",
-        element: lazyPage(<KegiatanPage />)
-      },
-      {
-        path: "kas",
-        element: lazyPage(<KasPage />)
-      },
-      {
-        path: "verifikasi-transaksi",
-        element: lazyPage(<VerifikasiTransaksi />)
-      },
-      {
-        path: "transparansi",
-        element: lazyPage(<TransparansiAdmin />)
-      },
-      {
-        path: "donasi",
-        element: lazyPage(<DonasiPage />)
-      },
-      {
-        path: "users",
-        element: lazyPage(<UserAccessPage />)
+        path: "/admin",
+        element: (
+          <AdminRoute>
+            <ProtectedRoute>
+              <AdminLayout />
+            </ProtectedRoute>
+          </AdminRoute>
+        ),
+        errorElement: <RouteError />,
+        children: [
+          {
+            index: true,
+            element: lazyPage(<Dashboard />)
+          },
+          {
+            path: "kegiatan",
+            element: lazyPage(<KegiatanPage />)
+          },
+          {
+            path: "kas",
+            element: lazyPage(<KasPage />)
+          },
+          {
+            path: "verifikasi-transaksi",
+            element: lazyPage(<VerifikasiTransaksi />)
+          },
+          {
+            path: "transparansi",
+            element: lazyPage(<TransparansiAdmin />)
+          },
+          {
+            path: "donasi",
+            element: lazyPage(<DonasiPage />)
+          },
+          {
+            path: "users",
+            element: lazyPage(<UserAccessPage />)
+          }
+        ]
       }
     ]
   }
 ]);
+
 
 const App = () => {
   return (
