@@ -1,27 +1,22 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { ExternalLink, Copy, X } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 const BuktiModal = ({ isOpen, onClose, buktiTransfer, transactionInfo }) => {
+  const [imageError, setImageError] = useState(false);
   if (!isOpen) return null;
 
   const getImageUrl = (urlOrFilename) => {
     if (!urlOrFilename) return null;
-    
-    if (urlOrFilename.startsWith('http')) {
-      return urlOrFilename;
-    }
-
-    const apiBaseUrl = import.meta.env.VITE_API_URL || '';
-    const backendBaseUrl = apiBaseUrl.replace(/\/api\/?$/, '');
-
-    return backendBaseUrl ? `${backendBaseUrl}/uploads/bukti-donasi/${urlOrFilename}` : urlOrFilename;
+    return urlOrFilename;
   };
 
   const imageUrl = getImageUrl(buktiTransfer);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto">
-        <div className="p-4 border-b flex justify-between items-center">
+    <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4 overflow-auto">
+      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="p-4 border-b flex justify-between items-center shrink-0">
           <h3 className="text-lg font-semibold">
             Bukti Transfer
             {transactionInfo && (
@@ -31,14 +26,16 @@ const BuktiModal = ({ isOpen, onClose, buktiTransfer, transactionInfo }) => {
             )}
           </h3>
           <button
+            type="button"
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 text-2xl font-bold"
+            aria-label="Tutup modal"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
           >
-            ×
+            <X size={18} />
           </button>
         </div>
         
-        <div className="p-6">
+        <div className="p-6 overflow-y-auto flex-1 min-h-0">
           {transactionInfo && (
             <div className="mb-4 p-4 bg-gray-50 rounded-lg">
               <div className="grid grid-cols-2 gap-4 text-sm">
@@ -96,28 +93,10 @@ const BuktiModal = ({ isOpen, onClose, buktiTransfer, transactionInfo }) => {
                 <img
                   src={imageUrl}
                   alt="Bukti Transfer"
-                  className="max-w-full h-auto mx-auto rounded-lg shadow-lg"
-                  style={{ maxHeight: '70vh' }}
-                  onError={(e) => {
+                  className="max-w-full max-h-[calc(90vh-260px)] object-contain mx-auto rounded-lg shadow-lg"
+                  onError={() => {
                     console.error('Error loading image:', imageUrl);
-                    e.target.src = 'https://via.placeholder.com/400x300?text=Gambar+Tidak+Ditemukan';
-                    e.target.alt = 'Gambar tidak dapat dimuat';
-                    
-                    // Show error details
-                    const errorDiv = document.createElement('div');
-                    errorDiv.className = 'mt-2 p-2 bg-red-100 text-red-700 text-xs rounded';
-                    errorDiv.innerHTML = `
-                      <strong>Error loading image:</strong><br>
-                      URL: ${imageUrl}<br>
-                      Pastikan file ada di folder yang benar
-                    `;
-                    if (!e.target.parentNode.querySelector('.error-detail')) {
-                      errorDiv.classList.add('error-detail');
-                      e.target.parentNode.appendChild(errorDiv);
-                    }
-                  }}
-                  onLoad={() => {
-                    console.log('✅ Image loaded successfully:', imageUrl);
+                    setImageError(true);
                   }}
                 />
                 
@@ -128,28 +107,48 @@ const BuktiModal = ({ isOpen, onClose, buktiTransfer, transactionInfo }) => {
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                   >
-                    🔗 Buka di Tab Baru
+                    <ExternalLink className="w-4 h-4" />
+                    Buka di Tab Baru
                   </a>
                   
                   <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(imageUrl);
-                      alert('URL gambar disalin ke clipboard!');
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(imageUrl);
+                        toast.success('URL Berhasil disalin!')
+                      } catch (error) {
+                        console.error('Gagal menyalin url: ', error);
+                        toast.error('Gagal menyalin url');
+                      }
+                      
                     }}
                     className="inline-flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
                   >
-                    📋 Copy URL
+                    <Copy className="w-4 h-4" />
+                    Copy URL
                   </button>
                 </div>
                 
-                <div className="mt-2 text-xs text-gray-500">
-                  URL: {imageUrl}
-                </div>
+                {import.meta.env.DEV === 'development' && (
+                  <div className="mt-2 text-xs text-gray-500">
+                    URL: {imageUrl}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="py-12">
-                <div className="text-gray-500 text-lg mb-2">❌ Bukti transfer tidak tersedia</div>
+                <div className="text-gray-500 text-lg mb-2">Bukti transfer tidak tersedia</div>
                 <div className="text-gray-400 text-sm">File: {buktiTransfer || 'tidak ada'}</div>
+
+                {import.meta.env.DEV === 'development' && imageUrl && (
+                  <div className="mt-3 p-2 bg-red-100 text-red-700 text-xs rounded break-all">
+                    <strong>Error Loading Image: </strong>
+                    <br />
+                    URL: {imageUrl}
+                    <br />
+                    {imageError && <span>Pastikan file ada di folder yang benar</span>}
+                  </div>
+                )}
               </div>
             )}
           </div>
