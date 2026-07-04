@@ -21,7 +21,6 @@ export const useModal = () => {
   };
 
   const openBuktiModal = (buktiTransfer, transactionInfo = null) => {
-    console.log('Opening bukti modal:', { buktiTransfer, transactionInfo });
     setSelectedBukti(buktiTransfer);
     setBuktiTransactionInfo(transactionInfo);
     setShowBuktiModal(true);
