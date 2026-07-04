@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FloatingInput, FloatingSelect, FloatingTextarea } from '../components/form';
 import toast, { Toaster } from 'react-hot-toast';
 import { useAuth } from '../hooks/useAuth'
+import api from '../config/api';
 
 const ZakatForm = () => {
   const { user } = useAuth();
@@ -27,13 +28,11 @@ const ZakatForm = () => {
     metodePembayaran: '',
     
     // Step 5: Upload & Submit
-    bukti: null,
-    kode_unik: null,
-    total_bayar: null
+    bukti: null
   });
 
   const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingKode, setIsLoadingKode] = useState(false); // ✅ FIX: Add missing state
+  const [paymentInfo, setPaymentInfo] = useState(null);
   
   const zakatSettings = {
     fitrah: 35000,
@@ -68,7 +67,7 @@ const ZakatForm = () => {
 
   // Data metode pembayaran
   const metodePembayaran = {
-    transfer: {
+    transfer_bank: {
       label: 'Transfer Bank',
       icon: '🏦',
       description: 'Transfer melalui bank ke rekening masjid',
@@ -86,7 +85,7 @@ const ZakatForm = () => {
         description: 'Scan QR Code di bawah untuk pembayaran'
       }
     },
-    cash: {
+    tunai: {
       label: 'Tunai',
       icon: '💵',
       description: 'Bayar langsung di masjid'
@@ -101,45 +100,6 @@ const ZakatForm = () => {
     { number: 4, title: 'Metode Bayar', icon: '💳' },
     { number: 5, title: 'Konfirmasi', icon: '✅' }
   ];
-
-  // ✅ FIX: Generate kode unik dari backend
-  const generateKodeUnikFromBackend = async () => {
-    setIsLoadingKode(true);
-    try {
-      console.log('🔄 Generating kode unik from backend...');
-      
-      const response = await fetch('http://localhost:5173/api/zakat/generate-kode', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          nominal: formData.nominal_zakat
-        }),
-      });
-
-      const result = await response.json();
-      console.log('📊 Kode unik response:', result);
-      
-      if (response.ok) {
-        setFormData(prev => ({
-          ...prev,
-          kode_unik: result.data.kode_unik,
-          total_bayar: result.data.total_bayar
-        }));
-        
-        console.log('✅ Kode unik generated:', result.data.kode_unik);
-        console.log('💰 Total bayar:', result.data.total_bayar);
-      } else {
-        toast.error(result.message || 'Gagal generate kode unik');
-      }
-    } catch (err) {
-      console.error('❌ Error generating kode unik:', err);
-      toast.error('Terjadi kesalahan saat generate kode unik.');
-    } finally {
-      setIsLoadingKode(false);
-    }
-  };
 
   // Kalkulasi zakat berdasarkan jenis
   const hitungZakat = () => {
@@ -186,10 +146,10 @@ const ZakatForm = () => {
       setFormData(prev => ({ ...prev, bukti: files[0] }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
+      setPaymentInfo(null);
     }
   };
 
-  // ✅ FIX: Update kalkulasi dan auto-generate kode unik
   useEffect(() => {
     if (currentStep >= 3) {
       const nominal = hitungZakat();
@@ -199,10 +159,6 @@ const ZakatForm = () => {
       }));
     }
 
-    // Auto generate kode unik saat masuk step 5
-    if (currentStep === 5 && formData.nominal_zakat > 0 && !formData.kode_unik) {
-      generateKodeUnikFromBackend();
-    }
   }, [formData.jenisZakat, formData.jumlah_jiwa, formData.total_harta, formData.gaji_kotor, currentStep]); // ✅ FIX: Add proper dependencies
 
   // Navigation functions
@@ -234,7 +190,8 @@ const ZakatForm = () => {
       case 4:
         return formData.metodePembayaran !== '';
       case 5:
-        return formData.metodePembayaran === 'cash' || formData.bukti !== null;
+        if (!paymentInfo) return true;
+        return formData.metodePembayaran === 'tunai' || formData.bukti !== null;
       default:
         return false;
     }
@@ -260,81 +217,97 @@ const ZakatForm = () => {
     }
   }, [user]);
 
+  const createZakatPaymentRequest = async () => {
+      const createResponse = await api.post('/zakat', {
+        nama: formData.nama,
+        email: formData.email,
+        no_telepon: formData.no_telepon,
+        jenis_zakat: formData.jenisZakat,
+        jumlah_jiwa: formData.jumlah_jiwa,
+        total_harta: formData.total_harta.replace(/,/g, '') || null,
+        gaji_kotor: formData.gaji_kotor.replace(/,/g, '') || null,
+        jumlah: formData.nominal_zakat,
+        metode_pembayaran: formData.metodePembayaran
+      });
+
+      const zakat = createResponse.data?.data;
+      const instruction = createResponse.data?.instruction || {};
+      const kodeUnik = instruction.kode_unik ?? zakat?.kode_unik;
+      const totalBayar = instruction.total_transfer ?? zakat?.total_bayar;
+
+      const nextPaymentInfo = {
+        zakat,
+        kode_unik: kodeUnik,
+        total_bayar: totalBayar
+      };
+
+      setPaymentInfo(nextPaymentInfo);
+
+      toast.success(
+        `Kode pembayaran dibuat. Transfer sebesar ${formatCurrency(totalBayar)} dengan kode unik +${kodeUnik}.`,
+        { duration: 7000 }
+      );
+
+      return nextPaymentInfo;
+  };
+
+  const resetForm = () => {
+      setFormData({
+        jenisZakat: '',
+        nama: user?.nama || '',
+        email: user?.email || '',
+        no_telepon: '',
+        jumlah_jiwa: 1,
+        total_harta: '',
+        gaji_kotor: '',
+        nominal_zakat: 0,
+        metodePembayaran: '',
+        bukti: null
+      });
+      setPaymentInfo(null);
+      setCurrentStep(1);
+  };
+
   // Handle submit
   const handleSubmit = async () => {
     setIsLoading(true);
-    console.log('👤 Current user:', user); // ✅ DEBUG
-    console.log('💳 Submitting zakat with token...');
-
-    const submitData = new FormData();
-    submitData.append('nama', formData.nama);
-    submitData.append('email', formData.email);
-    submitData.append('no_telepon', formData.no_telepon);
-    submitData.append('jenis_zakat', formData.jenisZakat);
-    submitData.append('jumlah_jiwa', formData.jumlah_jiwa);
-    submitData.append('total_harta', formData.total_harta.replace(/,/g, '') || 0);
-    submitData.append('gaji_kotor', formData.gaji_kotor.replace(/,/g, '') || 0);
-    submitData.append('nominal', formData.nominal_zakat);
-    submitData.append('metode_pembayaran', formData.metodePembayaran);
-    
-    if (formData.kode_unik) {
-      submitData.append('kode_unik', formData.kode_unik);
-      submitData.append('total_bayar', formData.total_bayar);
-    }
-
-    if (formData.bukti) {
-      submitData.append('bukti', formData.bukti);
-    }
 
     try {
-      console.log('🚀 Sending zakat data to backend...');
+      const activePaymentInfo = paymentInfo || await createZakatPaymentRequest();
 
-      const token = localStorage.getItem('accessToken');
-      console.log('🎫 Token from localStorage:', token ? 'EXISTS' : 'NOT_FOUND');
+      if (!paymentInfo) return;
 
-      const headers = {};
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-      
-      const response = await fetch('http://localhost:5173/api/zakat', {
-        method: 'POST',
-        headers: headers, 
-        body: submitData,
-      });
+      if (formData.bukti && activePaymentInfo?.zakat?.id) {
+        const buktiData = new FormData();
+        buktiData.append('bukti', formData.bukti);
 
-      const result = await response.json();
-      console.log('📊 Backend response:', result);
-      
-      if (response.ok) {
-        toast.success(
-          `Zakat berhasil disubmit! Kode unik: ${formData.kode_unik}. Total bayar: ${formatCurrency(formData.total_bayar)}`, 
-          { duration: 7000 }
-        );
-        
-        // Reset form
-        setFormData({
-          jenisZakat: '',
-          nama: '',
-          email: '',
-          no_telepon: '',
-          jumlah_jiwa: 1,
-          total_harta: '',
-          gaji_kotor: '',
-          nominal_zakat: 0,
-          metodePembayaran: '',
-          bukti: null,
-          kode_unik: null,
-          total_bayar: null
+        await api.patch(`/zakat/${activePaymentInfo.zakat.id}/upload`, buktiData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
         });
-        setCurrentStep(1);
-      } else {
-        console.error('❌ Backend error:', result);
-        toast.error(result.message || 'Terjadi kesalahan saat mengirim data.');
+
+        toast.success('Bukti pembayaran berhasil diupload. Zakat menunggu verifikasi DKM.', {
+          duration: 7000
+        });
+        resetForm();
+        return;
+      }
+
+      if (formData.metodePembayaran === 'tunai') {
+        toast.success('Data zakat tunai berhasil dibuat dan menunggu verifikasi DKM.', {
+          duration: 7000
+        });
+        resetForm();
       }
     } catch (err) {
       console.error('❌ Network error:', err);
-      toast.error('Terjadi kesalahan jaringan. Pastikan server backend berjalan.');
+      toast.error(
+        err.response?.data?.msg ||
+        err.response?.data?.error ||
+        err.response?.data?.message ||
+        'Terjadi kesalahan saat mengirim zakat.'
+      );
     } finally {
       setIsLoading(false);
     }
@@ -346,7 +319,7 @@ const ZakatForm = () => {
       <Toaster position="top-center" />
       
       {/* Header dengan Progress */}
-      <div className="bg-gradient-to-r from-green-500 to-teal-600 p-6 text-white">
+      <div className="bg-linear-to-r from-green-500 to-teal-600 p-6 text-white">
         <h1 className="text-2xl font-bold text-center mb-4">Form Pembayaran Zakat</h1>
         
         {/* Progress Steps - Desktop */}
@@ -662,43 +635,29 @@ const ZakatForm = () => {
                   <span className="font-medium">{formatCurrency(formData.nominal_zakat)}</span>
                 </div>
                 
-                {/* ✅ FIX: Kode unik section */}
-                {isLoadingKode ? (
-                  <div className="flex justify-center items-center py-4">
-                    <svg className="animate-spin h-5 w-5 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span className="text-blue-600">Generating kode unik...</span>
-                  </div>
-                ) : formData.kode_unik ? (
+                {paymentInfo ? (
                   <>
                     <div className="flex justify-between">
                       <span>Kode Unik:</span>
-                      <span className="font-medium text-orange-600">+{formData.kode_unik}</span>
+                      <span className="font-medium text-orange-600">+{paymentInfo.kode_unik}</span>
                     </div>
                     <hr className="my-2" />
                     <div className="flex justify-between text-lg font-semibold">
                       <span>Total Bayar:</span>
-                      <span className="text-green-600">{formatCurrency(formData.total_bayar)}</span>
+                      <span className="text-green-600">{formatCurrency(paymentInfo.total_bayar)}</span>
                     </div>
-                    
-                    {/* Info tentang kode unik */}
-                    <div className="bg-orange-50 border border-orange-200 rounded p-3 mt-3">
-                      <p className="text-sm text-orange-800">
-                        <span className="font-medium">💡 Kode Unik:</span><br />
-                        Kode unik {formData.kode_unik} ditambahkan untuk memudahkan verifikasi pembayaran Anda.
+                    <div className="bg-green-50 border border-green-200 rounded p-3 mt-3">
+                      <p className="text-sm text-green-800">
+                        Transfer atau bayar sesuai total di atas, lalu upload bukti pembayaran.
                       </p>
                     </div>
                   </>
                 ) : (
-                  <div className="text-center py-2">
-                    <button 
-                      onClick={generateKodeUnikFromBackend}
-                      className="text-blue-600 hover:text-blue-800 underline"
-                    >
-                      Generate Kode Unik
-                    </button>
+                  <div className="bg-orange-50 border border-orange-200 rounded p-3 mt-3">
+                    <p className="text-sm text-orange-800">
+                      <span className="font-medium">Kode unik pembayaran</span><br />
+                      Klik tombol <strong>Buat Kode Pembayaran</strong> untuk mendapatkan kode unik dan total transfer sebelum membayar.
+                    </p>
                   </div>
                 )}
               </div>
@@ -711,26 +670,24 @@ const ZakatForm = () => {
                   Informasi {metodePembayaran[formData.metodePembayaran].label}
                 </h4>
                 
-                {formData.metodePembayaran === 'transfer' && (
+                {formData.metodePembayaran === 'transfer_bank' && (
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span>Bank:</span>
-                      <span className="font-medium">{metodePembayaran.transfer.info.bank}</span>
+                      <span className="font-medium">{metodePembayaran.transfer_bank.info.bank}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>No. Rekening:</span>
-                      <span className="font-mono font-medium">{metodePembayaran.transfer.info.norek}</span>
+                      <span className="font-mono font-medium">{metodePembayaran.transfer_bank.info.norek}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Atas Nama:</span>
-                      <span className="font-medium">{metodePembayaran.transfer.info.atas_nama}</span>
+                      <span className="font-medium">{metodePembayaran.transfer_bank.info.atas_nama}</span>
                     </div>
-                    
-                    {/* ✅ NEW: Tampilkan total yang harus dibayar */}
-                    {formData.total_bayar && (
+                    {paymentInfo && (
                       <div className="bg-green-50 border border-green-200 rounded p-3 mt-3">
                         <p className="text-sm text-green-800 font-medium">
-                          💰 Transfer sebesar: {formatCurrency(formData.total_bayar)}
+                          Transfer sebesar: {formatCurrency(paymentInfo.total_bayar)}
                         </p>
                       </div>
                     )}
@@ -745,19 +702,18 @@ const ZakatForm = () => {
                         QR Code Masjid
                       </div>
                     </div>
-                    
-                    {/* ✅ NEW: Tampilkan total yang harus dibayar */}
-                    {formData.total_bayar && (
+                    {paymentInfo && (
                       <div className="bg-green-50 border border-green-200 rounded p-3 mt-3">
                         <p className="text-sm text-green-800 font-medium">
-                          💰 Scan & bayar sebesar: {formatCurrency(formData.total_bayar)}
+                          Scan dan bayar sebesar: {formatCurrency(paymentInfo.total_bayar)}
                         </p>
                       </div>
                     )}
+                    
                   </div>
                 )}
 
-                {formData.metodePembayaran === 'cash' && (
+                {formData.metodePembayaran === 'tunai' && (
                   <div className="text-center">
                     <div className="bg-yellow-50 rounded-lg border border-yellow-200 p-3">
                       <p className="text-sm text-yellow-800">
@@ -765,11 +721,9 @@ const ZakatForm = () => {
                         Jl. Contoh No. 123, Kota, Provinsi<br />
                         <strong>Waktu:</strong> 08:00 - 20:00 WIB
                       </p>
-                      
-                      {/* ✅ NEW: Tampilkan total yang harus dibayar */}
-                      {formData.total_bayar && (
+                      {paymentInfo && (
                         <p className="text-sm font-medium mt-2 text-green-800">
-                          💰 Bayar tunai sebesar: {formatCurrency(formData.total_bayar)}
+                          Bayar tunai sebesar: {formatCurrency(paymentInfo.total_bayar)}
                         </p>
                       )}
                     </div>
@@ -779,10 +733,11 @@ const ZakatForm = () => {
             )}
 
             {/* Upload Bukti */}
+            {paymentInfo && (
             <div>
               <label className="block mb-2 font-medium">
                 Upload Bukti Pembayaran
-                {formData.metodePembayaran === 'cash' && (
+                {formData.metodePembayaran === 'tunai' && (
                   <span className="text-sm text-gray-500 font-normal"> (opsional)</span>
                 )}
               </label>
@@ -793,7 +748,7 @@ const ZakatForm = () => {
                   name="bukti"
                   accept="image/*"
                   onChange={handleChange}
-                  required={formData.metodePembayaran !== 'cash'}
+                  required={formData.metodePembayaran !== 'tunai'}
                   className="hidden"
                   id="bukti-upload"
                 />
@@ -819,6 +774,7 @@ const ZakatForm = () => {
                 </label>
               </div>
             </div>
+            )}
           </div>
         )}
 
@@ -861,7 +817,13 @@ const ZakatForm = () => {
                   : 'bg-green-600 text-white hover:bg-green-700'
               }`}
             >
-              {isLoading ? 'Mengirim...' : 'Kirim Data'}
+              {isLoading
+                ? 'Memproses...'
+                : !paymentInfo
+                  ? 'Buat Kode Pembayaran'
+                  : formData.metodePembayaran === 'tunai'
+                    ? 'Selesai'
+                    : 'Upload Bukti Pembayaran'}
             </button>
           )}
         </div>
