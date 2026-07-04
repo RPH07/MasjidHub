@@ -13,7 +13,7 @@ import {
   TransactionModal,
   BuktiModal
 } from '../../components/kas-components/components';
-import { TABS } from '../../components/kas-components/utils/constants';
+import { TABS, PERIOD_OPTIONS } from '../../components/kas-components/utils/constants';
 
 const Kas = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -112,15 +112,11 @@ const Kas = () => {
             value={selectedPeriod}
             onChange={(e) => handlePeriodChange(e.target.value)}
           >
-            <option value="hari-ini">Hari Ini</option>
-            <option value="kemarin">Kemarin</option>
-            <option value="minggu-ini">Minggu Ini</option>
-            <option value="minggu-lalu">Minggu Lalu</option>
-            <option value="bulan-ini">Bulan Ini</option>
-            <option value="bulan-lalu">Bulan Lalu</option>
-            <option value="tahun-ini">Tahun Ini</option>
-            <option value="tahun-lalu">Tahun Lalu</option>
-            <option value="custom">Periode Kustom</option>
+            {PERIOD_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
           </select>
         </div>
       </div>
