@@ -6,6 +6,7 @@ import ProtectedRoute from './components/route-guard/ProtectedRoute';
 import UserLayout from './components/layouts/UserLayout'; 
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary';
 import RouteError from './components/RouteError';
+import { Toaster } from 'react-hot-toast';
 
 const HomePage = lazy(() => import('./pages/HomePage'));
 const About = lazy(() => import('./pages/About'));
@@ -157,6 +158,12 @@ const App = () => {
   return (
   <ErrorBoundary>
     <RouterProvider router={router} />
+    <Toaster 
+      position="top-right"
+      toastOptions={{
+        duration: 3000,
+      }}
+    />
   </ErrorBoundary>
 );
 
