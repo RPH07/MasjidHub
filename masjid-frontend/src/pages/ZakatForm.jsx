@@ -1,307 +1,477 @@
-import React, { useState, useEffect } from 'react';
-import { FloatingInput, FloatingSelect, FloatingTextarea } from '../components/form';
+import React, { useEffect, useMemo, useState } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
-import { useAuth } from '../hooks/useAuth'
+import {
+  ArrowLeft,
+  ArrowRight,
+  Banknote,
+  Briefcase,
+  Check,
+  CheckCircle2,
+  Coins,
+  CreditCard,
+  Landmark,
+  Loader2,
+  Minus,
+  Moon,
+  Plus,
+  QrCode,
+  ReceiptText,
+  RefreshCcw,
+  UploadCloud,
+  User,
+  Wallet
+} from 'lucide-react';
+import { FloatingInput } from '../components/form';
+import { useAuth } from '../hooks/useAuth';
 import api from '../config/api';
+
+const INITIAL_COUNTS = { istri: 0, anak: 0, lain: 0 };
+
+const DEFAULT_ZAKAT_SETTINGS = {
+  label: 'BAZNAS RI 2026',
+  sumber: 'BAZNAS RI',
+  fitrah_uang: 50000,
+  fitrah_beras_kg: 2.5,
+  fitrah_beras_liter: 3.5,
+  nisab_maal: 91681728,
+  nisab_penghasilan_bulanan: 7640144,
+  nisab_penghasilan_tahunan: 91681728,
+  kadar_zakat: 0.025
+};
+
+const STEPS = [
+  { number: 1, label: 'Jenis' },
+  { number: 2, label: 'Data Diri' },
+  { number: 3, label: 'Hitung' },
+  { number: 4, label: 'Konfirmasi' },
+  { number: 5, label: 'Selesai' }
+];
+
+const ZAKAT_TYPES = [
+  {
+    value: 'fitrah',
+    label: 'Zakat Fitrah',
+    Icon: Moon,
+    description: 'Zakat wajib untuk setiap Muslim menjelang Idul Fitri'
+  },
+  {
+    value: 'maal',
+    label: 'Zakat Maal',
+    Icon: Coins,
+    description: 'Zakat atas harta yang telah mencapai nisab dan haul'
+  },
+  {
+    value: 'profesi',
+    label: 'Zakat Profesi',
+    Icon: Briefcase,
+    description: 'Zakat atas penghasilan atau gaji bulanan'
+  }
+];
+
+const PAYMENT_METHODS = [
+  {
+    value: 'tunai',
+    label: 'Tunai',
+    Icon: Banknote,
+    description: 'Bayar langsung ke panitia masjid'
+  },
+  {
+    value: 'transfer_bank',
+    label: 'Transfer Bank',
+    Icon: Landmark,
+    description: 'Transfer ke rekening resmi masjid'
+  },
+  {
+    value: 'qris',
+    label: 'QRIS',
+    Icon: QrCode,
+    description: 'Bayar menggunakan QRIS'
+  }
+];
+
+const createInitialForm = (user) => ({
+  jenisZakat: '',
+  nama: user?.nama || '',
+  email: user?.email || '',
+  no_telepon: user?.no_telepon || user?.no_hp || user?.phone || '',
+  jumlah_jiwa: 1,
+  total_harta: '',
+  gaji_kotor: '',
+  metodePembayaran: '',
+  bukti: null
+});
+
+const getTotalJiwa = (counts) => 1 + counts.istri + counts.anak + counts.lain;
+
+const sanitizeNumber = (value) => String(value || '').replace(/[^\d]/g, '');
+
+const parseAmount = (value) => Number(sanitizeNumber(value) || 0);
+
+const formatCurrency = (amount) => {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0
+  }).format(Number(amount || 0));
+};
+
+const SectionTitle = ({ title, description }) => (
+  <div className="text-center">
+    <h2 className="font-serif text-2xl font-bold text-[#1B4332]">{title}</h2>
+    <p className="mt-1 text-sm leading-6 text-gray-500">{description}</p>
+  </div>
+);
+
+const Field = ({ label, hint, children }) => (
+  <div className="space-y-2">
+    <label className="text-xs font-semibold uppercase tracking-wide text-[#1B4332]">
+      {label}
+    </label>
+    {children}
+    {hint && <p className="text-xs leading-5 text-gray-500">{hint}</p>}
+  </div>
+);
+
+const SummaryRow = ({ label, value, total = false }) => (
+  <div
+    className={`flex items-center justify-between gap-4 px-4 py-3 ${
+      total ? 'text-[#1B4332]' : 'text-gray-600'
+    }`}
+  >
+    <span className={total ? 'text-sm font-semibold' : 'text-sm'}>{label}</span>
+    <span className={total ? 'text-base font-bold' : 'text-right text-sm font-medium text-gray-900'}>
+      {value}
+    </span>
+  </div>
+);
+
+const CounterRow = ({ label, hint, value, onDecrease, onIncrease, readonly = false }) => (
+  <div className="flex items-center justify-between rounded-xl border border-[#EDE6D6] px-4 py-3">
+    <div>
+      <div className="text-sm font-medium text-gray-900">{label}</div>
+      <div className="text-xs text-gray-500">{hint}</div>
+    </div>
+
+    {readonly ? (
+      <div className="min-w-8 text-center text-lg font-semibold text-[#1B4332]">{value}</div>
+    ) : (
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onDecrease}
+          className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#EDE6D6] text-[#2D6A4F] hover:border-[#1B4332] hover:bg-[#1B4332] hover:text-white"
+          aria-label={`Kurangi ${label}`}
+        >
+          <Minus className="h-4 w-4" aria-hidden="true" />
+        </button>
+        <div className="min-w-6 text-center text-lg font-semibold text-[#1B4332]">{value}</div>
+        <button
+          type="button"
+          onClick={onIncrease}
+          className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#EDE6D6] text-[#2D6A4F] hover:border-[#1B4332] hover:bg-[#1B4332] hover:text-white"
+          aria-label={`Tambah ${label}`}
+        >
+          <Plus className="h-4 w-4" aria-hidden="true" />
+        </button>
+      </div>
+    )}
+  </div>
+);
 
 const ZakatForm = () => {
   const { user } = useAuth();
 
-  // State untuk step management
+  // State inti form dibuat kecil: step, data form, tanggungan fitrah, pembayaran, dan sukses.
   const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState({
-    // Step 1: Jenis Zakat
-    jenisZakat: '',
-    
-    // Step 2: Data Personal
-    nama: user?.nama || '',
-    email: user?.email || '',
-    no_telepon: '',
-    
-    // Step 3: Kalkulasi
-    jumlah_jiwa: 1,
-    total_harta: '',
-    gaji_kotor: '',
-    nominal_zakat: 0,
-    
-    // Step 4: Metode Pembayaran
-    metodePembayaran: '',
-    
-    // Step 5: Upload & Submit
-    bukti: null
-  });
-
-  const [isLoading, setIsLoading] = useState(false);
+  const [counts, setCounts] = useState(INITIAL_COUNTS);
+  const [formData, setFormData] = useState(() => createInitialForm(user));
+  const [zakatSettings, setZakatSettings] = useState(DEFAULT_ZAKAT_SETTINGS);
   const [paymentInfo, setPaymentInfo] = useState(null);
-  
-  const zakatSettings = {
-    fitrah: 35000,
-    nisab_emas: 85,
-    nisab_perak: 595,
-    harga_emas: 1200000,
-    harga_perak: 15000,
-    kebutuhan_pokok: 4500000
-  };
+  const [successInfo, setSuccessInfo] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Data jenis zakat
-  const jenisZakatOptions = [
-    { 
-      value: 'fitrah', 
-      label: 'Zakat Fitrah',
-      icon: '🌙',
-      description: 'Zakat yang wajib dibayar setiap Muslim pada bulan Ramadan'
-    },
-    { 
-      value: 'maal', 
-      label: 'Zakat Maal',
-      icon: '💰',
-      description: 'Zakat dari harta yang telah mencapai nisab dan haul'
-    },
-    { 
-      value: 'profesi', 
-      label: 'Zakat Profesi',
-      icon: '💼',
-      description: 'Zakat dari penghasilan profesi/gaji bulanan'
-    }
-  ];
+  const totalJiwa = getTotalJiwa(counts);
+  const selectedPayment = PAYMENT_METHODS.find((item) => item.value === formData.metodePembayaran);
 
-  // Data metode pembayaran
-  const metodePembayaran = {
-    transfer_bank: {
-      label: 'Transfer Bank',
-      icon: '🏦',
-      description: 'Transfer melalui bank ke rekening masjid',
-      info: {
-        bank: 'Bank Syariah Indonesia',
-        norek: '123-456-7890',
-        atas_nama: 'Masjid Al-Muhajirin'
-      }
-    },
-    qris: {
-      label: 'QRIS',
-      icon: '📱',
-      description: 'Bayar menggunakan QR Code',
-      info: {
-        description: 'Scan QR Code di bawah untuk pembayaran'
-      }
-    },
-    tunai: {
-      label: 'Tunai',
-      icon: '💵',
-      description: 'Bayar langsung di masjid'
-    }
-  };
-
-  // Steps configuration
-  const steps = [
-    { number: 1, title: 'Jenis Zakat', icon: '📋' },
-    { number: 2, title: 'Data Diri', icon: '👤' },
-    { number: 3, title: 'Kalkulasi', icon: '🧮' },
-    { number: 4, title: 'Metode Bayar', icon: '💳' },
-    { number: 5, title: 'Konfirmasi', icon: '✅' }
-  ];
-
-  // Kalkulasi zakat berdasarkan jenis
-  const hitungZakat = () => {
-    const { jenisZakat, jumlah_jiwa, total_harta, gaji_kotor } = formData;
-    let nominal = 0;
-
-    switch (jenisZakat) {
-      case 'fitrah': {
-        nominal = jumlah_jiwa * zakatSettings.fitrah;
-        break;
-      }
-        
-      case 'maal': {
-        const nisabRupiah = zakatSettings.nisab_perak * zakatSettings.harga_perak;
-        const hartaBersih = parseFloat(total_harta.replace(/,/g, '') || 0);
-        if (hartaBersih >= nisabRupiah) {
-          nominal = hartaBersih * 0.025; // 2.5%
-        }
-        break;
-      }
-        
-      case 'profesi': {
-        const gajiKotor = parseFloat(gaji_kotor.replace(/,/g, '') || 0);
-        const gajiNetto = gajiKotor - zakatSettings.kebutuhan_pokok;
-        if (gajiNetto > 0) {
-          nominal = gajiNetto * 0.025; // 2.5%
-        }
-        break;
-      }
-        
-      default: {
-        nominal = 0;
-        break;
-      }
+  // Nominal selalu dihitung dari state terbaru, jadi tidak perlu disimpan terpisah.
+  const nominalZakat = useMemo(() => {
+    if (formData.jenisZakat === 'fitrah') {
+      return totalJiwa * zakatSettings.fitrah_uang;
     }
 
-    return Math.round(nominal);
-  };
-
-  // Handle change
-  const handleChange = (e) => {
-    const { name, value, files } = e.target;
-    if (name === 'bukti') {
-      setFormData(prev => ({ ...prev, bukti: files[0] }));
-    } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
-      setPaymentInfo(null);
+    if (formData.jenisZakat === 'maal') {
+      const totalHarta = parseAmount(formData.total_harta);
+      return totalHarta >= zakatSettings.nisab_maal
+        ? Math.round(totalHarta * zakatSettings.kadar_zakat)
+        : 0;
     }
-  };
 
+    if (formData.jenisZakat === 'profesi') {
+      const gajiKotor = parseAmount(formData.gaji_kotor);
+      return gajiKotor >= zakatSettings.nisab_penghasilan_bulanan
+        ? Math.round(gajiKotor * zakatSettings.kadar_zakat)
+        : 0;
+    }
+
+    return 0;
+  }, [formData.gaji_kotor, formData.jenisZakat, formData.total_harta, totalJiwa, zakatSettings]);
+
+  // Setting aktif diambil dari backend supaya angka zakat bisa diubah dari dashboard admin.
   useEffect(() => {
-    if (currentStep >= 3) {
-      const nominal = hitungZakat();
-      setFormData(prev => ({
+    let mounted = true;
+
+    const fetchActiveSetting = async () => {
+      try {
+        const response = await api.get('/zakat-settings/active');
+        const activeSetting = response.data?.data;
+
+        if (mounted && activeSetting) {
+          setZakatSettings({
+            ...DEFAULT_ZAKAT_SETTINGS,
+            ...activeSetting
+          });
+        }
+      } catch (error) {
+        console.error('Gagal mengambil setting zakat aktif:', error);
+      }
+    };
+
+    fetchActiveSetting();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Autofill data user login. Field yang sudah diketik manual tidak ditimpa.
+  useEffect(() => {
+    if (!user) return;
+
+    setFormData((prev) => ({
+      ...prev,
+      nama: prev.nama || user.nama || '',
+      email: prev.email || user.email || '',
+      no_telepon: prev.no_telepon || user.no_telepon || user.no_hp || user.phone || ''
+    }));
+  }, [user]);
+
+  const scrollToTop = () => {
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const resetGeneratedPayment = () => {
+    setPaymentInfo(null);
+    setSuccessInfo(null);
+  };
+
+  // Kalau user mengubah data yang memengaruhi pembayaran, kode unik lama harus dibuang.
+  const updateFormField = (name, value, shouldResetPayment = true) => {
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+      ...(shouldResetPayment ? { bukti: null } : {})
+    }));
+
+    if (shouldResetPayment) {
+      resetGeneratedPayment();
+    }
+  };
+
+  const handleChange = (event) => {
+    const { name, value, files } = event.target;
+
+    if (name === 'bukti') {
+      updateFormField('bukti', files?.[0] || null, false);
+      return;
+    }
+
+    updateFormField(name, value);
+  };
+
+  const selectZakat = (value) => {
+    setCounts(INITIAL_COUNTS);
+    setFormData((prev) => ({
+      ...prev,
+      jenisZakat: value,
+      jumlah_jiwa: 1,
+      total_harta: '',
+      gaji_kotor: '',
+      metodePembayaran: '',
+      bukti: null
+    }));
+    resetGeneratedPayment();
+  };
+
+  const changeCount = (key, delta) => {
+    setCounts((prev) => {
+      const nextCounts = {
         ...prev,
-        nominal_zakat: nominal
+        [key]: Math.max(0, prev[key] + delta)
+      };
+
+      setFormData((current) => ({
+        ...current,
+        jumlah_jiwa: getTotalJiwa(nextCounts),
+        bukti: null
       }));
+
+      return nextCounts;
+    });
+
+    resetGeneratedPayment();
+  };
+
+  const getZakatLabel = (value) => {
+    return ZAKAT_TYPES.find((item) => item.value === value)?.label || '-';
+  };
+
+  const getPaymentLabel = (value) => {
+    return PAYMENT_METHODS.find((item) => item.value === value)?.label || '-';
+  };
+
+  // Validasi dipisah per step supaya tombol bawah gampang dibaca.
+  const isCurrentStepValid = () => {
+    if (currentStep === 1) return Boolean(formData.jenisZakat);
+
+    if (currentStep === 2) {
+      return Boolean(
+        formData.nama.trim() &&
+        formData.email.trim() &&
+        formData.no_telepon.trim()
+      );
     }
 
-  }, [formData.jenisZakat, formData.jumlah_jiwa, formData.total_harta, formData.gaji_kotor, currentStep]); // ✅ FIX: Add proper dependencies
+    if (currentStep === 3) {
+      if (formData.jenisZakat === 'fitrah') return totalJiwa > 0;
+      if (formData.jenisZakat === 'maal') return Boolean(formData.total_harta) && nominalZakat > 0;
+      if (formData.jenisZakat === 'profesi') return Boolean(formData.gaji_kotor) && nominalZakat > 0;
+      return false;
+    }
 
-  // Navigation functions
+    if (currentStep === 4) {
+      if (!formData.metodePembayaran || nominalZakat <= 0) return false;
+      if (!paymentInfo) return true;
+      if (formData.metodePembayaran === 'tunai') return true;
+      return Boolean(formData.bukti);
+    }
+
+    return false;
+  };
+
   const nextStep = () => {
-    if (currentStep < 5) {
-      setCurrentStep(currentStep + 1);
-    }
+    if (!isCurrentStepValid()) return;
+    setCurrentStep((prev) => Math.min(prev + 1, 4));
+    scrollToTop();
   };
 
   const prevStep = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
+    setCurrentStep((prev) => Math.max(prev - 1, 1));
+    scrollToTop();
   };
 
-  // Validasi per step
-  const isStepValid = () => {
-    switch (currentStep) {
-      case 1:
-        return formData.jenisZakat !== '';
-      case 2:
-        return formData.nama.trim() && formData.email.trim() && formData.no_telepon.trim();
-      case 3: {
-        if (formData.jenisZakat === 'fitrah') return formData.jumlah_jiwa > 0;
-        if (formData.jenisZakat === 'maal') return formData.total_harta.trim();
-        if (formData.jenisZakat === 'profesi') return formData.gaji_kotor.trim();
-        return false;
-      }
-      case 4:
-        return formData.metodePembayaran !== '';
-      case 5:
-        if (!paymentInfo) return true;
-        return formData.metodePembayaran === 'tunai' || formData.bukti !== null;
-      default:
-        return false;
-    }
-  };
-
-  // Format currency
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0
-    }).format(amount);
-  };
-
-  useEffect(() => {
-    if (user) {
-      setFormData(prev => ({
-        ...prev,
-        nama: user.nama || '',
-        email: user.email || '',
-        // no_telepon: user.no_hp || '', // Jika ada field ini di user
-      }));
-    }
-  }, [user]);
-
+  // Tahap pertama submit: backend membuat record zakat, kode unik, dan total bayar.
   const createZakatPaymentRequest = async () => {
-      const createResponse = await api.post('/zakat', {
-        nama: formData.nama,
-        email: formData.email,
-        no_telepon: formData.no_telepon,
-        jenis_zakat: formData.jenisZakat,
-        jumlah_jiwa: formData.jumlah_jiwa,
-        total_harta: formData.total_harta.replace(/,/g, '') || null,
-        gaji_kotor: formData.gaji_kotor.replace(/,/g, '') || null,
-        jumlah: formData.nominal_zakat,
-        metode_pembayaran: formData.metodePembayaran
-      });
+    const createResponse = await api.post('/zakat', {
+      nama: formData.nama,
+      email: formData.email,
+      no_telepon: formData.no_telepon,
+      jenis_zakat: formData.jenisZakat,
+      jumlah_jiwa: formData.jenisZakat === 'fitrah' ? totalJiwa : null,
+      total_harta: sanitizeNumber(formData.total_harta) || null,
+      gaji_kotor: sanitizeNumber(formData.gaji_kotor) || null,
+      jumlah: nominalZakat,
+      metode_pembayaran: formData.metodePembayaran
+    });
 
-      const zakat = createResponse.data?.data;
-      const instruction = createResponse.data?.instruction || {};
-      const kodeUnik = instruction.kode_unik ?? zakat?.kode_unik;
-      const totalBayar = instruction.total_transfer ?? zakat?.total_bayar;
+    const zakat = createResponse.data?.data;
+    const instruction = createResponse.data?.instruction || {};
+    const kodeUnik = instruction.kode_unik ?? zakat?.kode_unik;
+    const totalBayar = instruction.total_transfer ?? zakat?.total_bayar;
 
-      const nextPaymentInfo = {
-        zakat,
-        kode_unik: kodeUnik,
-        total_bayar: totalBayar
-      };
+    const nextPaymentInfo = {
+      zakat,
+      kode_unik: kodeUnik,
+      total_bayar: totalBayar,
+      rekening_tujuan: instruction.rekening_tujuan || []
+    };
 
-      setPaymentInfo(nextPaymentInfo);
+    setPaymentInfo(nextPaymentInfo);
 
-      toast.success(
-        `Kode pembayaran dibuat. Transfer sebesar ${formatCurrency(totalBayar)} dengan kode unik +${kodeUnik}.`,
-        { duration: 7000 }
-      );
+    toast.success(
+      `Kode pembayaran dibuat. Total bayar ${formatCurrency(totalBayar)}.`,
+      { duration: 7000 }
+    );
 
-      return nextPaymentInfo;
+    return nextPaymentInfo;
   };
 
   const resetForm = () => {
-      setFormData({
-        jenisZakat: '',
-        nama: user?.nama || '',
-        email: user?.email || '',
-        no_telepon: '',
-        jumlah_jiwa: 1,
-        total_harta: '',
-        gaji_kotor: '',
-        nominal_zakat: 0,
-        metodePembayaran: '',
-        bukti: null
-      });
-      setPaymentInfo(null);
-      setCurrentStep(1);
+    setCounts(INITIAL_COUNTS);
+    setFormData(createInitialForm(user));
+    setPaymentInfo(null);
+    setSuccessInfo(null);
+    setCurrentStep(1);
+    scrollToTop();
   };
 
-  // Handle submit
+  // Tahap kedua submit: setelah kode ada, upload bukti kalau perlu lalu tampilkan sukses.
   const handleSubmit = async () => {
+    if (!isCurrentStepValid()) return;
+
     setIsLoading(true);
 
     try {
-      const activePaymentInfo = paymentInfo || await createZakatPaymentRequest();
+      if (!paymentInfo) {
+        await createZakatPaymentRequest();
+        return;
+      }
 
-      if (!paymentInfo) return;
+      if (formData.metodePembayaran !== 'tunai' && !formData.bukti) {
+        toast.error('Silakan upload bukti pembayaran terlebih dahulu.');
+        return;
+      }
 
-      if (formData.bukti && activePaymentInfo?.zakat?.id) {
+      if (formData.bukti) {
+        if (!paymentInfo?.zakat?.id) {
+          toast.error('Data pembayaran tidak ditemukan. Buat kode pembayaran ulang.');
+          return;
+        }
+
         const buktiData = new FormData();
         buktiData.append('bukti', formData.bukti);
 
-        await api.patch(`/zakat/${activePaymentInfo.zakat.id}/upload`, buktiData, {
+        await api.patch(`/zakat/${paymentInfo.zakat.id}/upload`, buktiData, {
           headers: {
             'Content-Type': 'multipart/form-data'
           }
         });
-
-        toast.success('Bukti pembayaran berhasil diupload. Zakat menunggu verifikasi DKM.', {
-          duration: 7000
-        });
-        resetForm();
-        return;
       }
 
-      if (formData.metodePembayaran === 'tunai') {
-        toast.success('Data zakat tunai berhasil dibuat dan menunggu verifikasi DKM.', {
-          duration: 7000
-        });
-        resetForm();
-      }
+      const nextSuccessInfo = {
+        nama: formData.nama,
+        jenisZakat: formData.jenisZakat,
+        jumlahJiwa: formData.jenisZakat === 'fitrah' ? totalJiwa : null,
+        nominal: nominalZakat,
+        metodePembayaran: formData.metodePembayaran,
+        kode_unik: paymentInfo.kode_unik,
+        total_bayar: paymentInfo.total_bayar
+      };
+
+      setSuccessInfo(nextSuccessInfo);
+      setCurrentStep(5);
+
+      toast.success(
+        formData.metodePembayaran === 'tunai'
+          ? 'Data zakat tunai berhasil dibuat dan menunggu verifikasi DKM.'
+          : 'Bukti pembayaran berhasil diupload. Zakat menunggu verifikasi DKM.',
+        { duration: 7000 }
+      );
+
+      scrollToTop();
     } catch (err) {
-      console.error('❌ Network error:', err);
+      console.error('Network error:', err);
       toast.error(
         err.response?.data?.msg ||
         err.response?.data?.error ||
@@ -313,199 +483,235 @@ const ZakatForm = () => {
     }
   };
 
+  const primaryLabel = currentStep < 4
+    ? 'Lanjut'
+    : isLoading
+      ? 'Memproses...'
+      : !paymentInfo
+        ? 'Buat Kode Pembayaran'
+        : formData.metodePembayaran === 'tunai'
+          ? 'Selesaikan Zakat'
+          : 'Upload Bukti Pembayaran';
+
+  const bankList = paymentInfo?.rekening_tujuan || [];
+
   return (
-    <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden mt-10">
-      {/* Toast Container */}
+    <main className="min-h-screen bg-[#F5F0E8] px-0 pb-10 text-gray-900 md:px-6 md:py-10 lg:flex lg:items-center lg:px-8">
       <Toaster position="top-center" />
-      
-      {/* Header dengan Progress */}
-      <div className="bg-linear-to-r from-green-500 to-teal-600 p-6 text-white">
-        <h1 className="text-2xl font-bold text-center mb-4">Form Pembayaran Zakat</h1>
-        
-        {/* Progress Steps - Desktop */}
-        <div className="hidden md:flex items-center justify-center space-x-4">
-          {steps.map((step, index) => (
-            <React.Fragment key={step.number}>
-              <div className="flex flex-col items-center">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
-                  currentStep >= step.number 
-                    ? 'bg-white text-green-600' 
-                    : 'bg-green-400 text-white'
-                }`}>
-                  {currentStep > step.number ? '✓' : step.icon}
-                </div>
-                <span className="text-xs mt-1 text-center">{step.title}</span>
-              </div>
-              
-              {index < steps.length - 1 && (
-                <div className={`w-12 h-0.5 transition-all duration-300 ${
-                  currentStep > step.number ? 'bg-white' : 'bg-green-400'
-                }`} />
-              )}
-            </React.Fragment>
-          ))}
-        </div>
-        
-        {/* Progress Steps - Mobile */}
-        <div className="flex md:hidden items-center justify-between">
-          {steps.map((step) => (
-            <div key={step.number} className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-              currentStep >= step.number 
-                ? 'bg-white text-green-600' 
-                : 'bg-green-400 text-white'
-            }`}>
-              {currentStep > step.number ? '✓' : step.number}
-            </div>
-          ))}
-        </div>
-        
-        {/* Progress Bar - Mobile */}
-        <div className="flex md:hidden mt-2 bg-green-400 rounded-full h-1">
-          <div 
-            className="bg-white rounded-full h-1 transition-all duration-300"
-            style={{ width: `${(currentStep / steps.length) * 100}%` }}
-          />
-        </div>
-      </div>
 
-      {/* Form Content */}
-      <div className="p-6">
-        {/* Step 1: Pilih Jenis Zakat */}
-        {currentStep === 1 && (
-          <div className="space-y-6">
-            <div className="text-center">
-              <h2 className="text-xl font-semibold mb-2">Pilih Jenis Zakat</h2>
-              <p className="text-gray-600">Pilih jenis zakat yang ingin Anda bayarkan</p>
+      <div className="mx-auto flex min-h-screen w-full max-w-105 flex-col overflow-hidden bg-white shadow-2xl md:min-h-0 md:rounded-2xl lg:grid lg:min-h-180 lg:max-w-6xl lg:grid-cols-[360px_minmax(0,1fr)] lg:grid-rows-[1fr_auto]">
+        <header className="relative overflow-hidden bg-[#1B4332] px-6 pb-5 pt-7 lg:row-span-2 lg:flex lg:flex-col lg:justify-between lg:px-8 lg:py-8">
+          <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-[#C9A84C]/10" />
+          <div className="absolute -left-6 bottom-2 h-24 w-24 rounded-full bg-[#52B788]/10" />
+
+          <div className="relative">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#E8C96A]">
+              Masjid Nur Ul-Ilmi
             </div>
-            
-            <div className="space-y-4">
-              {jenisZakatOptions.map((option) => (
-                <label
-                  key={option.value}
-                  className={`block p-4 border rounded-lg cursor-pointer transition-all hover:shadow-md ${
-                    formData.jenisZakat === option.value
-                      ? 'border-green-500 bg-green-50 shadow-md'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="jenisZakat"
-                    value={option.value}
-                    checked={formData.jenisZakat === option.value}
-                    onChange={handleChange}
-                    className="sr-only"
-                  />
-                  <div className="flex items-start">
-                    <span className="text-3xl mr-4">{option.icon}</span>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-lg">{option.label}</h3>
-                      <p className="text-gray-600 text-sm mt-1">{option.description}</p>
+            <h1 className="mt-1 font-serif text-[27px] font-bold leading-tight text-white">
+              Pembayaran Zakat
+            </h1>
+
+            <div className="mt-6 flex items-start lg:mt-10">
+              {STEPS.map((step, index) => {
+                const isDone = currentStep > step.number;
+                const isActive = currentStep === step.number;
+
+                return (
+                  <React.Fragment key={step.number}>
+                    <div className="flex flex-1 flex-col items-center">
+                      <div
+                        className={`flex h-6 w-6 items-center justify-center rounded-full border text-[11px] font-bold transition ${
+                          isDone
+                            ? 'border-[#C9A84C] bg-[#C9A84C] text-[#1B4332]'
+                            : isActive
+                              ? 'border-white bg-white text-[#1B4332]'
+                              : 'border-white/25 bg-white/15 text-white/50'
+                        }`}
+                      >
+                        {isDone ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : step.number}
+                      </div>
+                      <div
+                        className={`mt-2 text-center text-[10px] font-medium leading-tight ${
+                          isDone
+                            ? 'text-[#E8C96A]'
+                            : isActive
+                              ? 'text-white'
+                              : 'text-white/40'
+                        }`}
+                      >
+                        {step.label}
+                      </div>
                     </div>
-                    {formData.jenisZakat === option.value && (
-                      <span className="text-green-500 ml-2">
-                        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                        </svg>
-                      </span>
+
+                    {index < STEPS.length - 1 && (
+                      <div
+                        className={`mt-3 h-px w-4 shrink-0 ${
+                          currentStep > step.number ? 'bg-[#C9A84C]' : 'bg-white/20'
+                        }`}
+                      />
                     )}
-                  </div>
-                </label>
-              ))}
+                  </React.Fragment>
+                );
+              })}
             </div>
-          </div>
-        )}
 
-        {/* Step 2: Data Personal */}
-        {currentStep === 2 && (
-          <div className="space-y-6">
-            <div className="text-center">
-              <h2 className="text-xl font-semibold mb-2">Data Pribadi</h2>
-              <p className="text-gray-600">Masukkan data pribadi Anda</p>
-            </div>
-            
-            <div className="space-y-4">
-              <FloatingInput
-                label="Nama Lengkap"
-                type="text"
-                name="nama"
-                value={formData.nama}
-                onChange={handleChange}
-                required
-                icon={
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                }
-              />
-              
-              <FloatingInput
-                label="Email"
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                required
-                icon={
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
-                  </svg>
-                }
-              />
-              
-              <FloatingInput
-                label="No. Telepon"
-                type="tel"
-                name="no_telepon"
-                value={formData.no_telepon}
-                onChange={handleChange}
-                required
-                icon={
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                  </svg>
-                }
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Step 3: Kalkulasi */}
-        {currentStep === 3 && (
-          <div className="space-y-6">
-            <div className="text-center">
-              <h2 className="text-xl font-semibold mb-2">Kalkulasi Zakat</h2>
-              <p className="text-gray-600">
-                {formData.jenisZakat === 'fitrah' && 'Masukkan jumlah jiwa yang akan dibayarkan zakatnya'}
-                {formData.jenisZakat === 'maal' && 'Masukkan total harta yang Anda miliki'}
-                {formData.jenisZakat === 'profesi' && 'Masukkan gaji kotor bulanan Anda'}
+            <div className="mt-10 hidden rounded-2xl border border-white/10 bg-white/5 p-5 lg:block">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#E8C96A]">
+                Alur Pembayaran
+              </div>
+              <p className="mt-3 text-sm leading-7 text-white/70">
+                Isi data zakat, buat kode pembayaran dari sistem, lalu upload bukti transfer setelah total bayar muncul.
               </p>
             </div>
-            
-            <div className="space-y-4">
+          </div>
+        </header>
+
+        <section className="flex-1 px-6 py-7 lg:min-h-0 lg:px-10 lg:py-8">
+          {currentStep === 1 && (
+            <div className="space-y-6">
+              <SectionTitle
+                title="Pilih Jenis Zakat"
+                description="Pilih jenis zakat yang ingin Anda tunaikan."
+              />
+
+              <div className="space-y-3 lg:grid lg:grid-cols-3 lg:gap-3 lg:space-y-0">
+                {ZAKAT_TYPES.map((zakatType) => {
+                  const selected = formData.jenisZakat === zakatType.value;
+
+                  return (
+                    <button
+                      key={zakatType.value}
+                      type="button"
+                      onClick={() => selectZakat(zakatType.value)}
+                      className={`flex w-full items-center gap-4 rounded-xl border bg-white p-4 text-left transition lg:flex-col lg:items-start ${
+                        selected
+                          ? 'border-[#2D6A4F] border-l-4 bg-emerald-50'
+                          : 'border-[#EDE6D6] hover:border-[#52B788] hover:bg-emerald-50/50'
+                      }`}
+                    >
+                      <span
+                        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
+                          selected ? 'bg-emerald-100 text-[#2D6A4F]' : 'bg-[#F5F0E8] text-[#1B4332]'
+                        }`}
+                      >
+                        {React.createElement(zakatType.Icon, {
+                          className: 'h-5 w-5',
+                          'aria-hidden': true
+                        })}
+                      </span>
+                      <span>
+                        <span className={`block text-sm font-semibold ${selected ? 'text-[#2D6A4F]' : 'text-gray-900'}`}>
+                          {zakatType.label}
+                        </span>
+                        <span className="mt-1 block text-xs leading-5 text-gray-500">
+                          {zakatType.description}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {currentStep === 2 && (
+            <div className="space-y-6">
+              <SectionTitle
+                title="Data Muzakki"
+                description="Data orang yang menunaikan zakat."
+              />
+
+              <div className="space-y-4 rounded-2xl bg-gray-50 p-4 lg:grid lg:grid-cols-3 lg:gap-4 lg:space-y-0">
+                <FloatingInput
+                  label="Nama Lengkap"
+                  type="text"
+                  name="nama"
+                  value={formData.nama}
+                  onChange={handleChange}
+                  required
+                  icon={<User className="h-5 w-5" aria-hidden="true" />}
+                  labelBgClass="bg-gray-50"
+                />
+
+                <FloatingInput
+                  label="Email"
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  required
+                  icon="@"
+                  labelBgClass="bg-gray-50"
+                />
+
+                <FloatingInput
+                  label="No. Telepon"
+                  type="tel"
+                  name="no_telepon"
+                  value={formData.no_telepon}
+                  onChange={handleChange}
+                  required
+                  icon="08"
+                  labelBgClass="bg-gray-50"
+                />
+              </div>
+
+              <p className="text-xs leading-5 text-gray-500">
+                Kalau Anda login, nama dan email otomatis terisi dari akun. Nomor telepon tetap bisa Anda isi manual.
+              </p>
+            </div>
+          )}
+
+          {currentStep === 3 && (
+              <div className="space-y-6">
+              <SectionTitle
+                title={formData.jenisZakat === 'fitrah' ? 'Jumlah Tanggungan' : 'Perhitungan Zakat'}
+                description={
+                  formData.jenisZakat === 'fitrah'
+                    ? 'Zakat fitrah ditunaikan untuk setiap jiwa yang ditanggung.'
+                    : 'Masukkan data dasar untuk menghitung nominal zakat.'
+                }
+              />
+
               {formData.jenisZakat === 'fitrah' && (
-                <div>
-                  <FloatingInput
-                    label="Jumlah Jiwa"
-                    type="number"
-                    name="jumlah_jiwa"
-                    value={formData.jumlah_jiwa}
-                    onChange={handleChange}
-                    required
-                    icon={
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-                      </svg>
-                    }
-                  />
-                  <p className="text-sm text-gray-600 mt-2">
-                    Tarif per jiwa: {formatCurrency(zakatSettings.fitrah)}
-                  </p>
+                <div className="space-y-4 lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start lg:gap-5 lg:space-y-0">
+                  <Field label="Bentuk Pembayaran" hint="Sistem saat ini mencatat pembayaran zakat fitrah dalam nominal rupiah.">
+                    <div className="flex items-center gap-3 rounded-xl border border-[#EDE6D6] px-4 py-3 text-sm">
+                      <Wallet className="h-4 w-4 text-[#2D6A4F]" aria-hidden="true" />
+                      <span>Uang ({formatCurrency(zakatSettings.fitrah_uang)} / jiwa)</span>
+                    </div>
+                  </Field>
+
+                  <div className="space-y-3 lg:row-span-2">
+                    <CounterRow label="Muzakki (Diri Sendiri)" hint="Wajib" value={1} readonly />
+                    <CounterRow
+                      label="Istri"
+                      hint="Tanggungan"
+                      value={counts.istri}
+                      onDecrease={() => changeCount('istri', -1)}
+                      onIncrease={() => changeCount('istri', 1)}
+                    />
+                    <CounterRow
+                      label="Anak"
+                      hint="Tanggungan"
+                      value={counts.anak}
+                      onDecrease={() => changeCount('anak', -1)}
+                      onIncrease={() => changeCount('anak', 1)}
+                    />
+                    <CounterRow
+                      label="Lainnya"
+                      hint="Anggota keluarga lain"
+                      value={counts.lain}
+                      onDecrease={() => changeCount('lain', -1)}
+                      onIncrease={() => changeCount('lain', 1)}
+                    />
+                  </div>
                 </div>
               )}
 
               {formData.jenisZakat === 'maal' && (
-                <div>
+                <div className="space-y-4 rounded-2xl bg-gray-50 p-4">
                   <FloatingInput
                     label="Total Harta"
                     type="currency"
@@ -514,15 +720,23 @@ const ZakatForm = () => {
                     onChange={handleChange}
                     required
                     icon="Rp"
+                    labelBgClass="bg-gray-50"
                   />
-                  <p className="text-sm text-gray-600 mt-2">
-                    Nisab (minimal harta): {formatCurrency(zakatSettings.nisab_perak * zakatSettings.harga_perak)}
+
+                  <p className="text-xs leading-5 text-gray-500">
+                    Nisab saat ini: {formatCurrency(zakatSettings.nisab_maal)}.
                   </p>
+
+                  {formData.total_harta && nominalZakat === 0 && (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800">
+                      Harta belum mencapai nisab zakat maal.
+                    </div>
+                  )}
                 </div>
               )}
 
               {formData.jenisZakat === 'profesi' && (
-                <div>
+                <div className="space-y-4 rounded-2xl bg-gray-50 p-4">
                   <FloatingInput
                     label="Gaji Kotor Bulanan"
                     type="currency"
@@ -531,304 +745,309 @@ const ZakatForm = () => {
                     onChange={handleChange}
                     required
                     icon="Rp"
+                    labelBgClass="bg-gray-50"
                   />
-                  <p className="text-sm text-gray-600 mt-2">
-                    Kebutuhan pokok: {formatCurrency(zakatSettings.kebutuhan_pokok)}
+
+                  <p className="text-xs leading-5 text-gray-500">
+                    Nisab penghasilan bulanan: {formatCurrency(zakatSettings.nisab_penghasilan_bulanan)}.
                   </p>
-                </div>
-              )}
 
-              {/* Hasil Kalkulasi */}
-              {formData.nominal_zakat > 0 && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <h3 className="font-semibold text-green-800 mb-2">Hasil Kalkulasi</h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span>Nominal Zakat:</span>
-                      <span className="font-semibold">{formatCurrency(formData.nominal_zakat)}</span>
+                  {formData.gaji_kotor && nominalZakat === 0 && (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800">
+                      Penghasilan bersih belum melewati acuan perhitungan zakat profesi.
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
 
-              {formData.jenisZakat === 'maal' && formData.total_harta && 
-               parseFloat(formData.total_harta.replace(/,/g, '')) < (zakatSettings.nisab_perak * zakatSettings.harga_perak) && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <p className="text-yellow-800 text-sm">
-                    ⚠️ Harta Anda belum mencapai nisab. Zakat maal tidak wajib, namun Anda tetap bisa bersedekah.
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Step 4: Metode Pembayaran */}
-        {currentStep === 4 && (
-          <div className="space-y-6">
-            <div className="text-center">
-              <h2 className="text-xl font-semibold mb-2">Pilih Metode Pembayaran</h2>
-              <p className="text-gray-600">Pilih cara pembayaran yang Anda inginkan</p>
-            </div>
-            
-            <div className="space-y-4">
-              {Object.entries(metodePembayaran).map(([key, method]) => (
-                <label
-                  key={key}
-                  className={`block p-4 border rounded-lg cursor-pointer transition-all hover:shadow-md ${
-                    formData.metodePembayaran === key
-                      ? 'border-green-500 bg-green-50 shadow-md'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="metodePembayaran"
-                    value={key}
-                    checked={formData.metodePembayaran === key}
-                    onChange={handleChange}
-                    className="sr-only"
-                  />
-                  <div className="flex items-center">
-                    <span className="text-2xl mr-4">{method.icon}</span>
-                    <div className="flex-1">
-                      <h3 className="font-semibold">{method.label}</h3>
-                      <p className="text-gray-600 text-sm">{method.description}</p>
-                    </div>
-                    {formData.metodePembayaran === key && (
-                      <span className="text-green-500 ml-2">
-                        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                        </svg>
-                      </span>
-                    )}
-                  </div>
-                </label>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Step 5: Konfirmasi & Upload */}
-        {currentStep === 5 && (
-          <div className="space-y-6">
-            <div className="text-center">
-              <h2 className="text-xl font-semibold mb-2">Konfirmasi Pembayaran</h2>
-              <p className="text-gray-600">Periksa kembali data Anda dan upload bukti pembayaran</p>
-            </div>
-
-            {/* Informasi Pembayaran */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h3 className="font-semibold text-blue-800 mb-3">Detail Pembayaran</h3>
-              
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span>Nama:</span>
-                  <span className="font-medium">{formData.nama}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Jenis Zakat:</span>
-                  <span className="font-medium capitalize">{formData.jenisZakat}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Nominal Zakat:</span>
-                  <span className="font-medium">{formatCurrency(formData.nominal_zakat)}</span>
-                </div>
-                
-                {paymentInfo ? (
+              <div className="overflow-hidden rounded-xl bg-[#F5F0E8] lg:max-w-sm">
+                {formData.jenisZakat === 'fitrah' && (
                   <>
-                    <div className="flex justify-between">
-                      <span>Kode Unik:</span>
-                      <span className="font-medium text-orange-600">+{paymentInfo.kode_unik}</span>
-                    </div>
-                    <hr className="my-2" />
-                    <div className="flex justify-between text-lg font-semibold">
-                      <span>Total Bayar:</span>
-                      <span className="text-green-600">{formatCurrency(paymentInfo.total_bayar)}</span>
-                    </div>
-                    <div className="bg-green-50 border border-green-200 rounded p-3 mt-3">
-                      <p className="text-sm text-green-800">
-                        Transfer atau bayar sesuai total di atas, lalu upload bukti pembayaran.
-                      </p>
-                    </div>
+                    <SummaryRow label="Total jiwa" value={`${totalJiwa} jiwa`} />
+                    <SummaryRow label="Satuan" value={`${formatCurrency(zakatSettings.fitrah_uang)} / jiwa`} />
                   </>
+                )}
+                <div className="border-t border-[#EDE6D6]">
+                  <SummaryRow label="Total Zakat" value={formatCurrency(nominalZakat)} total />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {currentStep === 4 && (
+            <div className="space-y-6 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start lg:gap-6 lg:space-y-0">
+              {formData.jenisZakat === 'fitrah' ? (
+                <div className="relative overflow-hidden rounded-2xl bg-[#1B4332] px-5 py-6 text-center">
+                  <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-[#C9A84C]/10" />
+                  <div className="relative space-y-4">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#E8C96A]">
+                      Niat Zakat Fitrah
+                    </div>
+                    <div className="font-serif text-xl leading-loose text-white" dir="rtl">
+                      نَوَيْتُ أَنْ أُخْرِجَ زَكَاةَ الْفِطْرِ عَنْ نَفْسِي وَعَنْ جَمِيعِ مَا يَلْزَمُنِي نَفَقَتُهُمْ فَرْضًا لِلَّهِ تَعَالَى
+                    </div>
+                    <div className="mx-auto h-px w-10 bg-[#C9A84C]/40" />
+                    <p className="font-serif text-sm italic leading-7 text-white/80">
+                      Nawaitu an ukhrija zakatal fitri an nafsi wa an jami'i ma yalzamuni nafaqatuhum fardhan lillahi ta'ala
+                    </p>
+                    <p className="text-xs leading-6 text-white/60">
+                      Saya niat mengeluarkan zakat fitrah untuk diri saya dan semua orang yang nafkahnya menjadi tanggungan saya, fardhu karena Allah Ta'ala.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-2xl bg-[#1B4332] px-5 py-6 text-center">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#E8C96A]">
+                    Konfirmasi Zakat
+                  </div>
+                  <p className="mt-3 text-sm leading-7 text-white/75">
+                    Periksa kembali data zakat sebelum membuat kode pembayaran.
+                  </p>
+                </div>
+              )}
+
+              <div className="overflow-hidden rounded-xl border border-[#EDE6D6]">
+                <div className="bg-[#F5F0E8] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#1B4332]">
+                  Data Pembayaran
+                </div>
+                <div className="divide-y divide-[#F5F0E8]">
+                  <SummaryRow label="Muzakki" value={formData.nama || '-'} />
+                  <SummaryRow label="Jenis Zakat" value={getZakatLabel(formData.jenisZakat)} />
+                  {formData.jenisZakat === 'fitrah' && (
+                    <SummaryRow label="Jumlah Jiwa" value={`${totalJiwa} jiwa`} />
+                  )}
+                  <SummaryRow label="Total Zakat" value={formatCurrency(nominalZakat)} total />
+                </div>
+              </div>
+
+              <Field label="Metode Pembayaran">
+                <div className="space-y-2">
+                  {PAYMENT_METHODS.map((paymentMethod) => {
+                    const selected = formData.metodePembayaran === paymentMethod.value;
+
+                    return (
+                      <button
+                        key={paymentMethod.value}
+                        type="button"
+                        onClick={() => updateFormField('metodePembayaran', paymentMethod.value)}
+                        className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition ${
+                          selected
+                            ? 'border-[#2D6A4F] border-l-4 bg-emerald-50'
+                            : 'border-[#EDE6D6] hover:border-[#52B788]'
+                        }`}
+                      >
+                        {React.createElement(paymentMethod.Icon, {
+                          className: 'h-5 w-5 shrink-0 text-[#2D6A4F]',
+                          'aria-hidden': true
+                        })}
+                        <span className="flex-1">
+                          <span className="block text-sm font-medium text-gray-900">{paymentMethod.label}</span>
+                          <span className="block text-xs text-gray-500">{paymentMethod.description}</span>
+                        </span>
+                        <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-semibold text-[#2D6A4F]">
+                          Tersedia
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </Field>
+
+              <div className={`rounded-xl border p-4 ${
+                paymentInfo
+                  ? 'border-emerald-200 bg-emerald-50'
+                  : 'border-amber-200 bg-amber-50'
+              }`}>
+                {paymentInfo ? (
+                  <div className="space-y-3 text-sm">
+                    <SummaryRow label="Kode Unik" value={`+${paymentInfo.kode_unik}`} />
+                    <SummaryRow label="Total Bayar" value={formatCurrency(paymentInfo.total_bayar)} total />
+                    <p className="text-xs leading-5 text-emerald-800">
+                      Bayar sesuai total di atas. Setelah itu upload bukti pembayaran.
+                    </p>
+                  </div>
                 ) : (
-                  <div className="bg-orange-50 border border-orange-200 rounded p-3 mt-3">
-                    <p className="text-sm text-orange-800">
-                      <span className="font-medium">Kode unik pembayaran</span><br />
-                      Klik tombol <strong>Buat Kode Pembayaran</strong> untuk mendapatkan kode unik dan total transfer sebelum membayar.
+                  <div className="flex gap-3 text-sm leading-6 text-amber-800">
+                    <ReceiptText className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                    <p>
+                      Klik tombol <strong>Buat Kode Pembayaran</strong> untuk membuat record zakat,
+                      kode unik, dan total bayar dari backend.
                     </p>
                   </div>
                 )}
               </div>
-            </div>
 
-            {/* Info Metode Pembayaran */}
-            {formData.metodePembayaran && (
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                <h4 className="font-semibold mb-2">
-                  Informasi {metodePembayaran[formData.metodePembayaran].label}
-                </h4>
-                
-                {formData.metodePembayaran === 'transfer_bank' && (
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span>Bank:</span>
-                      <span className="font-medium">{metodePembayaran.transfer_bank.info.bank}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>No. Rekening:</span>
-                      <span className="font-mono font-medium">{metodePembayaran.transfer_bank.info.norek}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Atas Nama:</span>
-                      <span className="font-medium">{metodePembayaran.transfer_bank.info.atas_nama}</span>
-                    </div>
-                    {paymentInfo && (
-                      <div className="bg-green-50 border border-green-200 rounded p-3 mt-3">
-                        <p className="text-sm text-green-800 font-medium">
-                          Transfer sebesar: {formatCurrency(paymentInfo.total_bayar)}
-                        </p>
-                      </div>
-                    )}
+              {formData.metodePembayaran && (
+                <div className="rounded-xl border border-[#EDE6D6] bg-[#F8F6F0] p-4">
+                  <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-[#1B4332]">
+                    <CreditCard className="h-4 w-4" aria-hidden="true" />
+                    Informasi {selectedPayment?.label}
                   </div>
-                )}
 
-                {formData.metodePembayaran === 'qris' && (
-                  <div className="text-center">
-                    <p className="text-sm mb-3">{metodePembayaran.qris.info.description}</p>
-                    <div className="inline-block p-4 bg-white rounded-lg border">
-                      <div className="w-48 h-48 bg-gray-100 rounded flex items-center justify-center text-gray-500">
-                        QR Code Masjid
-                      </div>
-                    </div>
-                    {paymentInfo && (
-                      <div className="bg-green-50 border border-green-200 rounded p-3 mt-3">
-                        <p className="text-sm text-green-800 font-medium">
-                          Scan dan bayar sebesar: {formatCurrency(paymentInfo.total_bayar)}
-                        </p>
-                      </div>
-                    )}
-                    
-                  </div>
-                )}
-
-                {formData.metodePembayaran === 'tunai' && (
-                  <div className="text-center">
-                    <div className="bg-yellow-50 rounded-lg border border-yellow-200 p-3">
-                      <p className="text-sm text-yellow-800">
-                        <strong>Alamat Masjid:</strong><br />
-                        Jl. Contoh No. 123, Kota, Provinsi<br />
-                        <strong>Waktu:</strong> 08:00 - 20:00 WIB
-                      </p>
-                      {paymentInfo && (
-                        <p className="text-sm font-medium mt-2 text-green-800">
-                          Bayar tunai sebesar: {formatCurrency(paymentInfo.total_bayar)}
-                        </p>
+                  {formData.metodePembayaran === 'transfer_bank' && (
+                    <div className="space-y-3 text-sm">
+                      {bankList.length > 0 ? (
+                        bankList.map((bank) => (
+                          <div key={`${bank.nama_bank}-${bank.no_rekening}`} className="rounded-lg bg-white">
+                            <SummaryRow label="Bank" value={bank.nama_bank} />
+                            <SummaryRow label="No. Rekening" value={bank.no_rekening} />
+                            <SummaryRow label="Atas Nama" value={bank.atas_nama} />
+                          </div>
+                        ))
+                      ) : (
+                        <div className="rounded-lg bg-white">
+                          <SummaryRow label="Bank" value="Bank Syariah Indonesia" />
+                          <SummaryRow label="No. Rekening" value="123-456-7890" />
+                          <SummaryRow label="Atas Nama" value="Masjid Al-Muhajirin" />
+                        </div>
                       )}
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
+                  )}
 
-            {/* Upload Bukti */}
-            {paymentInfo && (
-            <div>
-              <label className="block mb-2 font-medium">
-                Upload Bukti Pembayaran
-                {formData.metodePembayaran === 'tunai' && (
-                  <span className="text-sm text-gray-500 font-normal"> (opsional)</span>
-                )}
-              </label>
-              
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
-                <input
-                  type="file"
-                  name="bukti"
-                  accept="image/*"
-                  onChange={handleChange}
-                  required={formData.metodePembayaran !== 'tunai'}
-                  className="hidden"
-                  id="bukti-upload"
-                />
-                
-                <label htmlFor="bukti-upload" className="cursor-pointer">
-                  {formData.bukti ? (
-                    <div className="text-green-600">
-                      <svg className="w-12 h-12 mx-auto mb-2" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                      <p className="font-medium">File berhasil dipilih</p>
-                      <p className="text-sm">{formData.bukti.name}</p>
-                    </div>
-                  ) : (
-                    <div className="text-gray-500">
-                      <svg className="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                      </svg>
-                      <p>Klik untuk upload bukti pembayaran</p>
-                      <p className="text-sm">PNG, JPG, JPEG (Max. 5MB)</p>
+                  {formData.metodePembayaran === 'qris' && (
+                    <div className="text-center text-sm text-gray-600">
+                      <div className="mx-auto flex h-44 w-44 items-center justify-center rounded-xl border bg-white">
+                        <QrCode className="h-16 w-16 text-gray-400" aria-hidden="true" />
+                      </div>
+                      <p className="mt-3">Scan QRIS masjid, lalu upload screenshot bukti pembayaran.</p>
                     </div>
                   )}
-                </label>
-              </div>
+
+                  {formData.metodePembayaran === 'tunai' && (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-800">
+                      <strong>Alamat Masjid:</strong>
+                      <br />
+                      Perumahan Talaga Bestari, Kabupaten Tangerang
+                      <br />
+                      <strong>Waktu:</strong> 08:00 - 20:00 WIB
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {paymentInfo && (
+                <Field
+                  label="Upload Bukti Pembayaran"
+                  hint={formData.metodePembayaran === 'tunai' ? 'Opsional untuk pembayaran tunai.' : 'Wajib untuk transfer bank atau QRIS.'}
+                >
+                  <div className="rounded-xl border-2 border-dashed border-[#EDE6D6] p-5 text-center transition hover:border-[#52B788]">
+                    <input
+                      id="bukti-upload"
+                      type="file"
+                      name="bukti"
+                      accept="image/*"
+                      onChange={handleChange}
+                      className="hidden"
+                    />
+
+                    <label htmlFor="bukti-upload" className="block cursor-pointer">
+                      {formData.bukti ? (
+                        <div className="space-y-2 text-[#2D6A4F]">
+                          <CheckCircle2 className="mx-auto h-10 w-10" aria-hidden="true" />
+                          <p className="text-sm font-semibold">File berhasil dipilih</p>
+                          <p className="break-all text-xs text-gray-500">{formData.bukti.name}</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2 text-gray-500">
+                          <UploadCloud className="mx-auto h-10 w-10" aria-hidden="true" />
+                          <p className="text-sm font-medium">Klik untuk upload bukti pembayaran</p>
+                          <p className="text-xs">PNG, JPG, JPEG</p>
+                        </div>
+                      )}
+                    </label>
+                  </div>
+                </Field>
+              )}
             </div>
-            )}
-          </div>
-        )}
-
-        {/* Navigation Buttons */}
-        <div className="flex justify-between mt-8 pt-6 border-t">
-          <button
-            type="button"
-            onClick={prevStep}
-            disabled={currentStep === 1}
-            className={`px-6 py-2 rounded-lg font-medium transition-all ${
-              currentStep === 1
-                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
-            }`}
-          >
-            ← Sebelumnya
-          </button>
-
-          {currentStep < 5 ? (
-            <button
-              type="button"
-              onClick={nextStep}
-              disabled={!isStepValid()}
-              className={`px-6 py-2 rounded-lg font-medium transition-all ${
-                !isStepValid()
-                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  : 'bg-green-500 text-white hover:bg-green-600'
-              }`}
-            >
-              Selanjutnya →
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={!isStepValid() || isLoading}
-              className={`px-6 py-2 rounded-lg font-medium transition-all ${
-                !isStepValid() || isLoading
-                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  : 'bg-green-600 text-white hover:bg-green-700'
-              }`}
-            >
-              {isLoading
-                ? 'Memproses...'
-                : !paymentInfo
-                  ? 'Buat Kode Pembayaran'
-                  : formData.metodePembayaran === 'tunai'
-                    ? 'Selesai'
-                    : 'Upload Bukti Pembayaran'}
-            </button>
           )}
-        </div>
+
+          {currentStep === 5 && (
+            <div className="flex flex-col items-center gap-5 py-4 text-center lg:grid lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start lg:text-left">
+              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 text-[#2D6A4F]">
+                <CheckCircle2 className="h-10 w-10" aria-hidden="true" />
+              </div>
+
+              <div>
+                <h2 className="font-serif text-2xl font-bold text-[#1B4332]">Zakat Diterima</h2>
+                <p className="mt-2 max-w-xs text-sm leading-6 text-gray-500 lg:max-w-none">
+                  Jazākumullāhu khayran. Data zakat Anda sudah masuk dan menunggu verifikasi DKM.
+                </p>
+              </div>
+
+              <div className="w-full rounded-xl bg-[#F5F0E8] p-4 text-left lg:col-start-1">
+                <div className="text-xs text-gray-500">Kode unik pembayaran</div>
+                <div className="mt-1 font-serif text-2xl font-bold tracking-widest text-[#1B4332]">
+                  +{successInfo?.kode_unik || paymentInfo?.kode_unik || '-'}
+                </div>
+                <div className="mt-2 text-sm text-gray-600">
+                  {successInfo?.nama || formData.nama} · {getZakatLabel(successInfo?.jenisZakat || formData.jenisZakat)}
+                </div>
+                <div className="mt-1 text-sm text-gray-600">
+                  Metode: {getPaymentLabel(successInfo?.metodePembayaran || formData.metodePembayaran)}
+                </div>
+                <div className="mt-1 text-sm font-semibold text-[#1B4332]">
+                  {formatCurrency(successInfo?.total_bayar || paymentInfo?.total_bayar)}
+                </div>
+              </div>
+
+              <div className="relative w-full overflow-hidden rounded-2xl bg-[#1B4332] px-5 py-6 lg:row-span-2">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#E8C96A]">
+                  Doa Amil Zakat
+                </div>
+                <div className="mt-4 font-serif text-lg leading-loose text-white" dir="rtl">
+                  آجَرَكَ اللَّهُ فِيمَا أَعْطَيْتَ وَبَارَكَ فِيمَا أَبْقَيْتَ وَجَعَلَهُ لَكَ طَهُورًا
+                </div>
+                <div className="mx-auto my-4 h-px w-10 bg-[#C9A84C]/40" />
+                <p className="font-serif text-sm italic leading-7 text-white/80">
+                  Ajarakallahu fima a'thayta wa baraka fima abqayta wa ja'alahu laka tahura
+                </p>
+                <p className="mt-3 text-xs leading-6 text-white/60">
+                  Semoga Allah memberimu pahala atas apa yang engkau berikan, memberkahi apa yang engkau sisakan, dan menjadikannya sebagai penyuci bagimu.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={resetForm}
+                className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-[#2D6A4F] px-4 py-3.5 text-sm font-semibold text-white hover:bg-[#1B4332] lg:col-start-1"
+              >
+                <RefreshCcw className="h-4 w-4" aria-hidden="true" />
+                Bayar Zakat Lagi
+              </button>
+            </div>
+          )}
+        </section>
+
+        {currentStep < 5 && (
+          <footer className="flex gap-3 border-t border-[#EDE6D6] bg-white px-6 pb-7 pt-4 lg:col-start-2 lg:px-10">
+            <button
+              type="button"
+              onClick={prevStep}
+              disabled={currentStep === 1 || isLoading}
+              className="flex items-center justify-center gap-2 rounded-xl bg-[#F5F0E8] px-4 py-3.5 text-sm font-semibold text-gray-500 hover:bg-[#EDE6D6] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+              Kembali
+            </button>
+
+            <button
+              type="button"
+              onClick={currentStep < 4 ? nextStep : handleSubmit}
+              disabled={!isCurrentStepValid() || isLoading}
+              className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 ${
+                currentStep === 4 && !paymentInfo
+                  ? 'bg-[#C9A84C] text-[#1B4332] hover:bg-[#E8C96A]'
+                  : 'bg-[#2D6A4F] text-white hover:bg-[#1B4332]'
+              }`}
+            >
+              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
+              {primaryLabel}
+              {!isLoading && currentStep < 4 ? <ArrowRight className="h-4 w-4" aria-hidden="true" /> : null}
+            </button>
+          </footer>
+        )}
       </div>
-    </div>
+    </main>
   );
 };
 
