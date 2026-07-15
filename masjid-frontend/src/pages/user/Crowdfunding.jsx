@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import Navbar from '@/components/nav';
 import toast, { Toaster } from 'react-hot-toast';
+import { CheckCircle2, Download, Loader2 } from 'lucide-react';
 import DetailDonasiModal from '../../components/donasi-components/components/shared/DetailDonasiModal';
 import { useAuth } from '../../hooks/useAuth'
 import { donasiService } from '../../components/donasi-components/services/DonasiService';
@@ -15,73 +16,55 @@ const Crowdfunding = () => {
     const [filterStatus, setFilterStatus] = useState('all');
     const [downloadingPdf, setDownloadingPdf] = useState(null);
 
-    const location = useLocation();
-    const isLoggedIn = location.pathname.startsWith('/dashboard');
+    const isLoggedIn = Boolean(user);
 
-    // ✅ FIX: Perbaiki fetch function
-    const fetchPrograms = async () => {
+    const fetchPrograms = useCallback (async () => {
         try {
             setLoading(true);
-            const response = await donasiService.getPrograms(filterStatus === 'all' ? undefined : filterStatus);
+            const response = await donasiService.getPrograms(
+                filterStatus === 'all' 
+                ? undefined 
+                : filterStatus
+            );
             setPrograms(response.data?.data || []);
         } catch (error) {
-            console.error('❌ Error fetching programs:', error);
+            console.error('Error fetching programs:', error);
             console.error('Response:', error.response?.data);
-            // ✅ TOAST: Error saat fetch data
             toast.error('Gagal memuat data program donasi');
         } finally {
             setLoading(false);
         }
-    };
+    }, [filterStatus]);
 
     useEffect(() => {
         fetchPrograms();
-    }, [filterStatus]);
+    }, [fetchPrograms]);
 
-    // ✅ UPDATE: Function download PDF dengan Toast
     const handleDownloadPdf = async (programId, programName) => {
         try {
             setDownloadingPdf(programId);
-            
-            // ✅ TOAST: Loading state
             const loadingToast = toast.loading('Sedang menyiapkan laporan PDF...');
-            
+
             await transparansiService.downloadProgramPdf(programId);
-            
-            console.log('✅ PDF downloaded successfully');
-            
-            // ✅ TOAST: Success - dismiss loading toast dan show success
+
             toast.dismiss(loadingToast);
-            toast.success(
-                `Laporan PDF "${programName}" berhasil diunduh!`,
-                {
-                    duration: 4000,
-                    icon: '📄',
-                }
-            );
-            
+            toast.success(`Laporan PDF "${programName}" berhasil diunduh`, {
+                duration: 4000,
+            });
         } catch (error) {
-            console.error('❌ Error downloading PDF:', error);
-            
-            // ✅ TOAST: Error
-            toast.error(
-                'Gagal mengunduh laporan. Silakan coba lagi.',
-                {
-                    duration: 5000,
-                    icon: '❌',
-                }
-            );
+            console.error('Error downloading PDF:', error);
+            toast.error('Gagal mengunduh laporan. Silakan coba lagi.', {
+                duration: 5000,
+            });
         } finally {
             setDownloadingPdf(null);
         }
     };
 
-    // ✅ UPDATE: Submit donasi dengan Toast
     const handleSubmitDonasi = async (donasiData) => {
         try {
-            // ✅ TOAST: Loading saat submit
             const loadingToast = toast.loading('Sedang mengirim donasi...');
-            
+
             if (selectedProgram?.id && !donasiData.get('barang_id')) {
                 donasiData.append('barang_id', selectedProgram.id);
             }
@@ -89,36 +72,27 @@ const Crowdfunding = () => {
             if (user?.id && !donasiData.get('user_id')) {
                 donasiData.append('user_id', user.id);
             }
-            
+
             const response = await donasiService.submitDonation(donasiData);
 
-            // ✅ TOAST: Success
             toast.dismiss(loadingToast);
             toast.success(
-                response.data.msg || response.data.message || 'Donasi berhasil dikirim!',
-                {
-                    duration: 4000,
-                    icon: '🎉',
-                }
+                response.data.msg || response.data.message || 'Donasi berhasil dikirim',
+                { duration: 4000 }
             );
 
             return {
                 success: true,
-                message: response.data.msg || response.data.message || 'Donasi berhasil dikirim!',
+                message: response.data.msg || response.data.message || 'Donasi berhasil dikirim',
                 data: response.data.data
             };
         } catch (error) {
             console.error('Error submitting donasi:', error);
-            
-            // ✅ TOAST: Error
             toast.error(
                 error.response?.data?.msg || error.response?.data?.error || 'Gagal mengirim donasi',
-                {
-                    duration: 5000,
-                    icon: '😞',
-                }
+                { duration: 5000 }
             );
-            
+
             return {
                 success: false,
                 message: error.response?.data?.msg || error.response?.data?.error || 'Gagal mengirim donasi'
@@ -146,10 +120,7 @@ const Crowdfunding = () => {
             console.error('Error uploading bukti donasi:', error);
             toast.error(
                 error.response?.data?.msg || error.response?.data?.error || 'Gagal upload bukti transfer',
-                {
-                    duration: 5000,
-                    icon: '😞',
-                }
+                { duration: 5000 }
             );
 
             return {
@@ -159,39 +130,31 @@ const Crowdfunding = () => {
         }
     };
 
-    // Fungsi untuk membuka modal donasi
     const handleDonateClick = (program) => {
         if (program.status === 'aktif') {
             setSelectedProgram(program);
             setIsModalOpen(true);
         } else {
-            // ✅ TOAST: Info ketika program tidak aktif
-            toast('Program donasi ini sedang tidak aktif', {
-                icon: 'ℹ️',
-                duration: 3000,
-            });
+            toast('Program donasi ini sedang tidak aktif', { duration: 3000 });
         }
     };
 
-    // Fungsi untuk menutup modal
     const handleCloseModal = () => {
         setIsModalOpen(false);
         setSelectedProgram(null);
         fetchPrograms();
     };
 
-    // ✅ FIX: Perbaiki filtering
     const filteredPrograms = programs.filter(program => {
         if (filterStatus === 'all') return ['aktif', 'selesai'].includes(program.status);
-        
+
         const programStatus = program.status;
-        
+
         if (filterStatus === 'aktif') return programStatus === 'aktif';
         if (filterStatus === 'selesai') return programStatus === 'selesai';
         return true;
     });
-    
-    // Helper untuk format Rupiah
+
     const formatRupiah = (angka) => {
         return new Intl.NumberFormat('id-ID', {
             style: 'currency',
@@ -203,7 +166,7 @@ const Crowdfunding = () => {
     if (loading) {
         return (
             <div className="flex justify-center items-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
+                <Loader2 className="h-8 w-8 animate-spin text-green-500" />
                 <p className="ml-4 text-gray-600">Memuat program donasi...</p>
             </div>
         );
@@ -211,16 +174,13 @@ const Crowdfunding = () => {
 
     return (
         <div className={`${isLoggedIn ? '' : 'bg-gray-50 min-h-screen'}`}>
-            {/* ✅ TOAST CONTAINER - WAJIB ADA! */}
+            {!isLoggedIn && <Navbar />}
+
             <Toaster
                 position="top-right"
                 reverseOrder={false}
                 gutter={8}
-                containerClassName=""
-                containerStyle={{}}
                 toastOptions={{
-                    // Default options
-                    className: '',
                     duration: 4000,
                     style: {
                         background: '#363636',
@@ -230,34 +190,16 @@ const Crowdfunding = () => {
                         fontSize: '14px',
                         maxWidth: '400px',
                     },
-                    // Success style
                     success: {
-                        style: {
-                            background: '#10b981',
-                            color: '#fff',
-                        },
-                        iconTheme: {
-                            primary: '#fff',
-                            secondary: '#10b981',
-                        },
+                        style: { background: '#10b981', color: '#fff' },
+                        iconTheme: { primary: '#fff', secondary: '#10b981' },
                     },
-                    // Error style
                     error: {
-                        style: {
-                            background: '#ef4444',
-                            color: '#fff',
-                        },
-                        iconTheme: {
-                            primary: '#fff',
-                            secondary: '#ef4444',
-                        },
+                        style: { background: '#ef4444', color: '#fff' },
+                        iconTheme: { primary: '#fff', secondary: '#ef4444' },
                     },
-                    // Loading style
                     loading: {
-                        style: {
-                            background: '#3b82f6',
-                            color: '#fff',
-                        },
+                        style: { background: '#3b82f6', color: '#fff' },
                     },
                 }}
             />
@@ -266,25 +208,17 @@ const Crowdfunding = () => {
                 <div className="text-center mb-12">
                     <h1 className="text-4xl font-bold text-gray-800">Program Donasi Masjid</h1>
                     <p className="text-lg text-gray-600 mt-2">
-                        {isLoggedIn 
+                        {isLoggedIn
                             ? 'Mari lanjutkan kontribusi Anda untuk masjid'
                             : 'Mari bantu penuhi kebutuhan masjid melalui program pengadaan barang.'
                         }
                     </p>
                 </div>
 
-                {/* FILTER TABS */}
                 <div className="flex justify-center mb-8">
                     <div className="bg-white rounded-lg p-1 shadow-sm border">
                         <button
-                            onClick={() => {
-                                setFilterStatus('all');
-                                // ✅ TOAST: Feedback filter change (opsional)
-                                toast('Menampilkan semua program', { 
-                                    icon: '📋', 
-                                    duration: 2000 
-                                });
-                            }}
+                            onClick={() => setFilterStatus('all')}
                             className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
                                 filterStatus === 'all'
                                     ? 'bg-blue-500 text-white'
@@ -294,13 +228,7 @@ const Crowdfunding = () => {
                             Semua Program ({programs.length})
                         </button>
                         <button
-                            onClick={() => {
-                                setFilterStatus('aktif');
-                                toast('Menampilkan program aktif', { 
-                                    icon: '🔥', 
-                                    duration: 2000 
-                                });
-                            }}
+                            onClick={() => setFilterStatus('aktif')}
                             className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
                                 filterStatus === 'aktif'
                                     ? 'bg-green-500 text-white'
@@ -310,13 +238,7 @@ const Crowdfunding = () => {
                             Sedang Berjalan
                         </button>
                         <button
-                            onClick={() => {
-                                setFilterStatus('selesai');
-                                toast('Menampilkan program selesai', { 
-                                    icon: '✅', 
-                                    duration: 2000 
-                                });
-                            }}
+                            onClick={() => setFilterStatus('selesai')}
                             className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
                                 filterStatus === 'selesai'
                                     ? 'bg-purple-500 text-white'
@@ -328,7 +250,6 @@ const Crowdfunding = () => {
                     </div>
                 </div>
 
-                {/* Rest of the component remains the same... */}
                 {filteredPrograms.length === 0 ? (
                     <div className="text-center py-12">
                         <div className="text-gray-500 text-lg mb-4">
@@ -344,15 +265,14 @@ const Crowdfunding = () => {
                             const programStatus = program.status;
                             const isCompleted = progress >= 100 || programStatus === 'selesai';
                             const isDownloading = downloadingPdf === program.id;
-                            
+
                             return (
                                 <div key={program.id} className="bg-white rounded-lg shadow-lg overflow-hidden transform hover:-translate-y-2 transition-transform duration-300">
-                                    {/* BADGE STATUS */}
                                     <div className="relative">
                                         {program.foto_barang ? (
-                                            <img 
-                                                src={String(program.foto_barang).startsWith('http') ? program.foto_barang : program.foto_barang}
-                                                alt={program.nama_barang} 
+                                            <img
+                                                src={program.foto_barang}
+                                                alt={program.nama_barang}
                                                 className="w-full h-56 object-cover"
                                                 onError={(e) => {
                                                     e.target.src = 'https://via.placeholder.com/400x300?text=No+Image';
@@ -363,33 +283,34 @@ const Crowdfunding = () => {
                                                 <span className="text-gray-400">No Image</span>
                                             </div>
                                         )}
-                                        
-                                        {/* Badge Status */}
+
                                         {programStatus === 'selesai' && (
-                                            <div className="absolute top-4 right-4 bg-green-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
-                                                ✓ Selesai
+                                            <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-green-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                                                <CheckCircle2 size={14} />
+                                                Selesai
                                             </div>
                                         )}
                                         {programStatus === 'aktif' && (
-                                            <div className="absolute top-4 right-4 bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
-                                                🔥 Aktif
+                                            <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                                                <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                                                Aktif
                                             </div>
                                         )}
                                     </div>
-                                    
+
                                     <div className="p-6">
                                         <h2 className="text-2xl font-bold text-gray-800 mb-2">{program.nama_barang}</h2>
                                         <p className="text-gray-600 text-sm mb-4 line-clamp-3">{program.deskripsi}</p>
-                                        
+
                                         <div className="w-full bg-gray-200 rounded-full h-2.5 mb-2">
-                                            <div 
+                                            <div
                                                 className={`h-2.5 rounded-full transition-all duration-300 ${
                                                     isCompleted ? 'bg-green-500' : 'bg-blue-500'
                                                 }`}
                                                 style={{ width: `${Math.min(progress, 100)}%` }}
                                             ></div>
                                         </div>
-                                        
+
                                         <div className="flex justify-between items-center text-sm mb-4">
                                             <span className="font-semibold text-green-700">
                                                 Terkumpul: {formatRupiah(program.dana_terkumpul || 0)}
@@ -403,55 +324,56 @@ const Crowdfunding = () => {
                                             {program.total_donatur || 0} donatur • {progress.toFixed(1)}% tercapai
                                         </div>
 
-                                        {/* CONDITIONAL BUTTONS BERDASARKAN STATUS */}
                                         {programStatus === 'selesai' ? (
                                             <div className="space-y-2">
-                                                {/* Badge Selesai */}
-                                                <div className="w-full bg-green-100 text-green-800 font-bold py-2 px-4 rounded-lg text-center">
-                                                    ✓ Program Telah Selesai
+                                                <div className="flex items-center justify-center gap-1.5 w-full bg-green-100 text-green-800 font-bold py-2 px-4 rounded-lg">
+                                                    <CheckCircle2 size={16} />
+                                                    Program Telah Selesai
                                                 </div>
-                                                
-                                                {/* Download PDF Button */}
-                                                <button 
+
+                                                <button
                                                     onClick={() => handleDownloadPdf(program.id, program.nama_barang)}
                                                     disabled={isDownloading}
-                                                    className={`w-full font-bold py-2 px-4 rounded-lg transition-colors duration-300 ${
+                                                    className={`w-full flex items-center justify-center gap-2 font-bold py-2 px-4 rounded-lg transition-colors duration-300 ${
                                                         isDownloading
                                                             ? 'bg-gray-400 text-white cursor-not-allowed'
                                                             : 'bg-purple-600 text-white hover:bg-purple-700'
                                                     }`}
                                                 >
                                                     {isDownloading ? (
-                                                        <div className="flex items-center justify-center">
-                                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                                        <>
+                                                            <Loader2 size={16} className="animate-spin" />
                                                             Mengunduh...
-                                                        </div>
+                                                        </>
                                                     ) : (
                                                         <>
-                                                            📄 Download Laporan PDF
+                                                            <Download size={16} />
+                                                            Download Laporan PDF
                                                         </>
                                                     )}
                                                 </button>
                                             </div>
                                         ) : (
-                                            /* Button untuk program aktif */
-                                            <button 
+                                            <button
                                                 onClick={() => handleDonateClick(program)}
-                                                className={`w-full font-bold py-2 px-4 rounded-lg transition-colors duration-300 ${
+                                                className={`w-full flex items-center justify-center gap-2 font-bold py-2 px-4 rounded-lg transition-colors duration-300 ${
                                                     isCompleted || programStatus !== 'aktif'
-                                                        ? 'bg-gray-400 text-white cursor-not-allowed' 
+                                                        ? 'bg-gray-400 text-white cursor-not-allowed'
                                                         : 'bg-blue-600 text-white hover:bg-blue-700'
                                                 }`}
                                                 disabled={isCompleted || programStatus !== 'aktif'}
                                             >
-                                                {isCompleted 
-                                                    ? '✓ Target Tercapai' 
-                                                    : 'Donasi Sekarang'
-                                                }
+                                                {isCompleted ? (
+                                                    <>
+                                                        <CheckCircle2 size={16} />
+                                                        Target Tercapai
+                                                    </>
+                                                ) : (
+                                                    'Donasi Sekarang'
+                                                )}
                                             </button>
                                         )}
 
-                                        {/* INFO TANGGAL SELESAI */}
                                         {programStatus === 'selesai' && program.tanggal_selesai && (
                                             <div className="mt-2 text-center text-xs text-gray-500">
                                                 Diselesaikan pada: {new Date(program.tanggal_selesai).toLocaleDateString('id-ID')}
@@ -465,9 +387,8 @@ const Crowdfunding = () => {
                 )}
             </div>
 
-            {/* Modal */}
             {isModalOpen && selectedProgram && (
-                <DetailDonasiModal 
+                <DetailDonasiModal
                     program={selectedProgram}
                     onSubmit={handleSubmitDonasi}
                     onUploadProof={handleUploadDonasiProof}
