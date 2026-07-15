@@ -27,6 +27,7 @@ const DonasiPage = lazy(() => import('./pages/admin/Donasi'));
 const UserAccessPage = lazy(() => import('./pages/admin/UserAccess'));
 const VerifikasiTransaksi = lazy(() => import('./pages/admin/VerifikasiTransaksi'));
 const TransparansiAdmin = lazy(() => import('./pages/admin/TransparansiAdmin'));
+const ZakatSettingsPage = lazy(() => import('./pages/admin/ZakatSettings'));
 const Maintenance = lazy(() => import('./pages/Maintenance'));
 const MAINTENANCE = {
   zakat: import.meta.env.VITE_MAINTENANCE_ZAKAT === 'true',
@@ -182,6 +183,10 @@ const router = createBrowserRouter([
           {
             path: "users",
             element: lazyPage(<UserAccessPage />)
+          },
+          {
+            path: "zakat-settings",
+            element: lazyPage(<ZakatSettingsPage />)
           }
         ]
       }
