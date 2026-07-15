@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from '../partials/Sidebar';
 import { ChevronRight, Menu } from 'lucide-react';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../../hooks/useAuth';
+import { preloadAdminDashboardPages } from '../../utils/routePreloaders';
 
 const AdminLayout = () => {
   const { user } = useAuth();
@@ -15,6 +16,10 @@ const AdminLayout = () => {
     setIsCollapsed(!isCollapsed);
   };
 
+  useEffect(() => {
+    preloadAdminDashboardPages();
+  }, []);
+
   return (
     <div className="flex h-screen w-full bg-gray-50">
       {/* Sidebar untuk desktop */}
@@ -23,7 +28,11 @@ const AdminLayout = () => {
           "hidden md:block transition-all duration-300 ease-in-out", 
           isCollapsed ? "w-16" : "w-64"
         )}>
-          <Sidebar isCollapsed={isCollapsed} role={user?.role || 'jamaah'} />
+          <Sidebar
+            isCollapsed={isCollapsed}
+            role={user?.role || 'jamaah'}
+            jabatan={user?.jabatan || null}
+          />
         </div>
       )}
 
@@ -32,7 +41,11 @@ const AdminLayout = () => {
         {/* Header dengan toggle sidebar */}
         <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-white px-4 md:px-6">
           {isMobile ? (
-            <Sidebar isMobile={true} role={user?.role || 'jamaah'} />
+            <Sidebar
+              isMobile={true}
+              role={user?.role || 'jamaah'}
+              jabatan={user?.jabatan || null}
+            />
           ) : (
             <button 
               onClick={toggleSidebar} 
