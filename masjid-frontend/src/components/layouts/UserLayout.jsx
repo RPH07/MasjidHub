@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from '../partials/Sidebar';
 import { useAuth } from '../../hooks/useAuth';
 import { ChevronRight, Menu } from 'lucide-react';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { cn } from '../../lib/utils';
+import { preloadUserDashboardPages } from '../../utils/routePreloaders';
 
 const UserLayout = () => {
   const { user, loading } = useAuth();
@@ -14,6 +15,10 @@ const UserLayout = () => {
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed);
   };
+
+  useEffect(() => {
+    preloadUserDashboardPages();
+  }, []);
 
   if (loading) {
     return (
