@@ -1,6 +1,10 @@
 import { Navigate } from 'react-router-dom';
 // import { useAuth } from '@/hooks/useAuth';
-import api, { AUTH_SESSION_EXPIRED_MESSAGE, AUTH_SESSION_MESSAGE_KEY } from '@/config/api';
+import api, { 
+    AUTH_SESSION_EXPIRED_MESSAGE, 
+    AUTH_SESSION_MESSAGE_KEY,
+    AUTH_CHANGED_EVENT
+} from '@/config/api';
 import { useEffect, useState } from 'react';
 
 
@@ -23,6 +27,7 @@ const ProtectedRoute = ({ children }) => {
             } catch {
                 localStorage.removeItem('accessToken');
                 localStorage.removeItem('user');
+                window.dispatchEvent(new  Event(AUTH_CHANGED_EVENT));
                 sessionStorage.setItem(AUTH_SESSION_MESSAGE_KEY, AUTH_SESSION_EXPIRED_MESSAGE);
                 setValid(false);
             } finally {
