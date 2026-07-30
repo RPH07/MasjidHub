@@ -1,8 +1,6 @@
 const ExcelJS = require('exceljs');
 const kasReportService = require('./kasReportService');
-
-// Utils
-const formatRupiahNumber = (value) => Number(value || 0);
+const { formatRupiahCompact, formatRupiahNumber } = require('../utils/currencyFormatter');
 
 const formatDate = (value) => {
     if (!value) return '-';
@@ -203,16 +201,12 @@ const generateExportExcel = async (query = {}) => {
         align: 'center'
     });
 
-    // summary grid
-    const fmRp = (val) => 
-        `Rp${Number(val || 0).toLocaleString('id-ID')}`;
-
     const summaryRows = [
         ['Total Transaksi', summary.total, null, null],
-        ['Approved', summary.approved, 'Total Approved', fmRp(summary.totalAmount.approved)],
-        ['Pending', summary.pending, 'Total Pending', fmRp(summary.totalAmount.pending)],
-        ['Rejected', summary.rejected, 'Total Rejected', fmRp(summary.totalAmount.rejected)],
-        ['Voided', summary.voided || 0, 'Total Voided', fmRp(summary.totalAmount.voided)]
+        ['Approved', summary.approved, 'Total Approved', formatRupiahCompact(summary.totalAmount.approved)],
+        ['Pending', summary.pending, 'Total Pending', formatRupiahCompact(summary.totalAmount.pending)],
+        ['Rejected', summary.rejected, 'Total Rejected', formatRupiahCompact(summary.totalAmount.rejected)],
+        ['Voided', summary.voided || 0, 'Total Voided', formatRupiahCompact(summary.totalAmount.voided)]
     ];
 
     const SUM_VAL_COLOR = {
@@ -374,5 +368,4 @@ const generateKasHistoryExport = async (query = {}) => {
 module.exports = {
     generateKasHistoryExport
 }
-
 
