@@ -3,8 +3,7 @@ const { Op } = require('sequelize');
 const KasReportService = require('./kasReportService');
 const KasBukuBesar = require('../models/KasBukuBesarModels');
 const User = require('../models/UserModels');
-
-const formatRupiah = (value) => `Rp ${Number(value || 0).toLocaleString('id-ID')}`;
+const { formatRupiah } = require('../utils/currencyFormatter');
 
 const formatDate = (value) => {
     if(!value) return '-';
