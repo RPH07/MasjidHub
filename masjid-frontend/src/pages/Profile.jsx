@@ -25,6 +25,8 @@ const statusLabels = {
   inactive: 'Tidak Aktif'
 };
 
+const MIN_PASSWORD_LENGTH = 6;
+
 const getInitials = (name = '') => {
   const words = name.trim().split(/\s+/).filter(Boolean);
   if (words.length === 0) return 'U';
@@ -145,6 +147,11 @@ const Profile = () => {
       return;
     }
 
+    if (formData.password.length < MIN_PASSWORD_LENGTH) {
+      toast.error(`Password baru minimal ${MIN_PASSWORD_LENGTH} karakter`);
+      return;
+    }
+
     try {
       setSaving(true);
       const response = await api.patch('/user/me/password', formData);
@@ -232,7 +239,9 @@ const Profile = () => {
             </span>
             <div>
               <h3 className="text-lg font-semibold text-gray-900">Ganti Password</h3>
-              <p className="text-sm text-gray-500">Masukkan password lama sebelum membuat password baru.</p>
+              <p className="text-sm text-gray-500">
+                Masukkan password lama. Password baru minimal {MIN_PASSWORD_LENGTH} karakter.
+              </p>
             </div>
           </div>
 
@@ -255,6 +264,9 @@ const Profile = () => {
               onChange={handleChange}
               onToggle={() => togglePassword('password')}
             />
+            <p className="-mt-2 text-xs text-gray-500">
+              Gunakan minimal {MIN_PASSWORD_LENGTH} karakter.
+            </p>
             <PasswordInput
               label="Konfirmasi Password Baru"
               name="confirmPassword"
