@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import api from '@/config/api';
 import { AuthShell, Banner, Field, PasswordField, SubmitButton } from '@/components/layout/AuthLayout';
 
+const MIN_PASSWORD_LENGTH = 6;
+
 const RegisterPages = () => {
   const [formData, setFormData] = useState({
     nama: '',
@@ -13,6 +15,8 @@ const RegisterPages = () => {
 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [touchedFields, setTouchedFields] = useState({});
+  const [serverErrors, setServerErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
@@ -33,19 +37,37 @@ const RegisterPages = () => {
   }, [success, navigate]);
 
   const handleChange = (e) => {
+    const { name, value } = e.target;
+
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [name]: value
     });
+    setServerErrors((prev) => ({ ...prev, [name]: '' }));
+  };
+
+  const handleBlur = (e) => {
+    const { name } = e.target;
+    setTouchedFields((prev) => ({ ...prev, [name]: true }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
+    setServerErrors({});
+    setTouchedFields({
+      password: true,
+      confirmPassword: true
+    });
 
     if (formData.password !== formData.confirmPassword) {
       setError('Password dan konfirmasi password tidak cocok');
+      return;
+    }
+
+    if (formData.password.length < MIN_PASSWORD_LENGTH) {
+      setError(`Password minimal ${MIN_PASSWORD_LENGTH} karakter`);
       return;
     }
 
@@ -62,10 +84,15 @@ const RegisterPages = () => {
         password: '',
         confirmPassword: '',
       });
+      setTouchedFields({});
+      setServerErrors({});
 
       setSuccess('Registrasi berhasil! Anda akan dialihkan ke halaman login dalam 3 detik.');
     } catch (err) {
       const errorMessage = err.response?.data?.message || err.response?.data?.msg || 'Terjadi kesalahan saat registrasi';
+      if (errorMessage.toLowerCase().includes('password')) {
+        setServerErrors((prev) => ({ ...prev, password: errorMessage }));
+      }
       setError(errorMessage);
 
       if (import.meta.env.DEV) {
@@ -74,6 +101,15 @@ const RegisterPages = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const passwordErrors = {
+    password: serverErrors.password || (touchedFields.password && formData.password.length > 0 && formData.password.length < MIN_PASSWORD_LENGTH
+      ? `Password minimal ${MIN_PASSWORD_LENGTH} karakter`
+      : ''),
+    confirmPassword: touchedFields.confirmPassword && formData.confirmPassword.length > 0 && formData.password !== formData.confirmPassword
+      ? 'Konfirmasi password tidak cocok'
+      : ''
   };
 
   return (
@@ -118,8 +154,10 @@ const RegisterPages = () => {
           name="password"
           value={formData.password}
           onChange={handleChange}
+          onBlur={handleBlur}
           show={showPassword}
           onToggle={() => setShowPassword(!showPassword)}
+          error={passwordErrors.password}
           required
         />
 
@@ -128,8 +166,10 @@ const RegisterPages = () => {
           name="confirmPassword"
           value={formData.confirmPassword}
           onChange={handleChange}
+          onBlur={handleBlur}
           show={showConfirmPassword}
           onToggle={() => setShowConfirmPassword(!showConfirmPassword)}
+          error={passwordErrors.confirmPassword}
           required
         />
 

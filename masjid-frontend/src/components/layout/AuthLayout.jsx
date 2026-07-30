@@ -4,6 +4,7 @@ import { FloatingInput } from '@/components/form';
 import { Button } from "@/components/ui/button";
 
 const authInputClassName = "border-[#1B1A15]/30 bg-[#F7F3E7] text-[#1B1A15] font-['Inter'] focus:border-[#14532D]";
+const authInputErrorClassName = "border-[#A23B2E] bg-[#F7F3E7] text-[#1B1A15] font-['Inter'] focus:border-[#A23B2E]";
 const authIconClassName = 'text-[#1B1A15]/45';
 const authLabelBgClass = 'bg-[#F7F3E7]';
 
@@ -160,7 +161,7 @@ export const Field = ({ label, icon, className = '', ...props }) => (
 );
 
 /** Input password auth: FloatingInput global + tombol show/hide. */
-export const PasswordField = ({ label, show, onToggle, className = '', ...props }) => {
+export const PasswordField = ({ label, show, onToggle, error, className = '', ...props }) => {
     const ToggleIcon = show ? EyeOff : Eye;
     const LeadingIcon = props.name === 'secret' ? KeyRound : LockKeyhole;
 
@@ -171,11 +172,12 @@ export const PasswordField = ({ label, show, onToggle, className = '', ...props 
                 type={show ? 'text' : 'password'}
                 icon={<LeadingIcon className="h-4.5 w-4.5" />}
                 labelBgClass={authLabelBgClass}
-                inputClassName={authInputClassName}
+                inputClassName={error ? authInputErrorClassName : authInputClassName}
                 iconClassName={authIconClassName}
-                focusRingClass="focus:ring-[#14532D]/20"
-                labelFocusClass="peer-focus:text-[#14532D]"
+                focusRingClass={error ? 'focus:ring-[#A23B2E]/20' : 'focus:ring-[#14532D]/20'}
+                labelFocusClass={error ? 'text-[#A23B2E] peer-focus:text-[#A23B2E]' : 'peer-focus:text-[#14532D]'}
                 className={className}
+                aria-invalid={Boolean(error)}
                 rightElement={
                     <Button
                         type="button"
@@ -188,6 +190,7 @@ export const PasswordField = ({ label, show, onToggle, className = '', ...props 
                 }
                 {...props}
             />
+            {error && <p className="mt-1.5 text-xs font-medium text-[#A23B2E]">{error}</p>}
         </div>
     );
 };

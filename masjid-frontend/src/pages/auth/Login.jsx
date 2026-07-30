@@ -12,14 +12,18 @@ const LoginPages = () => {
 
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [fieldErrors, setFieldErrors] = useState({});
     const [isLoading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
 
     const handleChange = (e) => {
+        const { name, value } = e.target;
+
         setFormData({
             ...formData,
-            [e.target.name]: e.target.value
+            [name]: value
         });
+        setFieldErrors((prev) => ({ ...prev, [name]: '' }));
     };
 
     const handleSubmit = async (e) => {
@@ -27,6 +31,7 @@ const LoginPages = () => {
         setLoading(true);
         setError('');
         setSuccess('');
+        setFieldErrors({});
 
         try {
             const payload = {
@@ -54,6 +59,11 @@ const LoginPages = () => {
                 err.response?.data?.msg ||
                 err.response?.data?.error ||
                 'Terjadi kesalahan saat login';
+
+            if (errorMessage.toLowerCase().includes('password')) {
+                setFieldErrors((prev) => ({ ...prev, password: errorMessage }));
+            }
+
             setError(errorMessage);
         } finally {
             setLoading(false);
@@ -95,6 +105,7 @@ const LoginPages = () => {
                     onChange={handleChange}
                     show={showPassword}
                     onToggle={() => setShowPassword(!showPassword)}
+                    error={fieldErrors.password}
                     required
                 />
 
