@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import api from '@/config/api';
+import api, { AUTH_SESSION_MESSAGE_KEY } from '@/config/api';
 import { AuthShell, Banner, Field, PasswordField, SubmitButton } from '@/components/layout/AuthLayout';
 
 const LoginPages = () => {
@@ -15,6 +15,14 @@ const LoginPages = () => {
     const [fieldErrors, setFieldErrors] = useState({});
     const [isLoading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+
+    useEffect(() => {
+        const authMessage = sessionStorage.getItem(AUTH_SESSION_MESSAGE_KEY);
+        if (!authMessage) return;
+
+        setError(authMessage);
+        sessionStorage.removeItem(AUTH_SESSION_MESSAGE_KEY);
+    }, []);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
