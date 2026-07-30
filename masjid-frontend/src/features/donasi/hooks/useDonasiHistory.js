@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import { donasiService } from '../services/DonasiService'
 import { createFormData } from '../utils/helpers'
+import { toNumber } from '@/utils/formatters';
 
 const getResponseData = (response, fallback = []) => response.data?.data ?? fallback;
 const getErrorMessage = (error, fallback) =>
@@ -25,7 +26,7 @@ export const useDonasiHistory = () => {
             setState(prev => ({ ...prev, loading: true, error: null }))
             const response = await donasiService.getPrograms()
             const completedPrograms = getResponseData(response).filter(program =>
-                program.status === 'selesai' || program.dana_terkumpul >= program.target_dana
+                program.status === 'selesai' || toNumber(program.dana_terkumpul) >= toNumber(program.target_dana)
             )
             
             setState(prev => ({
