@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
+import { useLocation } from 'react-router-dom';
+import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
   ArrowRight,
@@ -21,9 +23,11 @@ import {
   User,
   Wallet
 } from 'lucide-react';
-import { FloatingInput } from '../components/form';
-import { useAuth } from '../hooks/useAuth';
-import api from '../config/api';
+import { FloatingInput } from '@/components/form';
+import { useAuth } from '@/hooks/useAuth';
+import api from '@/config/api';
+import Navbar from '@/components/navigation/Navbar';
+import { formatCurrency } from '@/utils/formatters';
 
 const INITIAL_COUNTS = { istri: 0, anak: 0, lain: 0 };
 
@@ -107,14 +111,6 @@ const sanitizeNumber = (value) => String(value || '').replace(/[^\d]/g, '');
 
 const parseAmount = (value) => Number(sanitizeNumber(value) || 0);
 
-const formatCurrency = (amount) => {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0
-  }).format(Number(amount || 0));
-};
-
 const SectionTitle = ({ title, description }) => (
   <div className="text-center">
     <h2 className="font-serif text-2xl font-bold text-[#1B4332]">{title}</h2>
@@ -156,23 +152,23 @@ const CounterRow = ({ label, hint, value, onDecrease, onIncrease, readonly = fal
       <div className="min-w-8 text-center text-lg font-semibold text-[#1B4332]">{value}</div>
     ) : (
       <div className="flex items-center gap-3">
-        <button
+        <Button
           type="button"
           onClick={onDecrease}
           className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#EDE6D6] text-[#2D6A4F] hover:border-[#1B4332] hover:bg-[#1B4332] hover:text-white"
           aria-label={`Kurangi ${label}`}
         >
           <Minus className="h-4 w-4" aria-hidden="true" />
-        </button>
+        </Button>
         <div className="min-w-6 text-center text-lg font-semibold text-[#1B4332]">{value}</div>
-        <button
+        <Button
           type="button"
           onClick={onIncrease}
           className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#EDE6D6] text-[#2D6A4F] hover:border-[#1B4332] hover:bg-[#1B4332] hover:text-white"
           aria-label={`Tambah ${label}`}
         >
           <Plus className="h-4 w-4" aria-hidden="true" />
-        </button>
+        </Button>
       </div>
     )}
   </div>
@@ -180,6 +176,8 @@ const CounterRow = ({ label, hint, value, onDecrease, onIncrease, readonly = fal
 
 const ZakatForm = () => {
   const { user } = useAuth();
+  const location = useLocation();
+  const showPublicNavbar = location.pathname === '/zakat';
 
   // State inti form dibuat kecil: step, data form, tanggungan fitrah, pembayaran, dan sukses.
   const [currentStep, setCurrentStep] = useState(1);
@@ -496,7 +494,9 @@ const ZakatForm = () => {
   const bankList = paymentInfo?.rekening_tujuan || [];
 
   return (
-    <main className="min-h-screen bg-[#F5F0E8] px-0 pb-10 text-gray-900 md:px-6 md:py-10 lg:flex lg:items-center lg:px-8">
+    
+    <main className={`min-h-screen bg-[#F5F0E8] px-0 pb-10 text-gray-900 md:px-6 lg:flex lg:items-center lg:px-8 ${showPublicNavbar ? 'pt-20 md:pt-24 lg:pt-28' : 'md:py-10'}`}>
+      {showPublicNavbar && <Navbar />}
       <Toaster position="top-center" />
 
       <div className="mx-auto flex min-h-screen w-full max-w-105 flex-col overflow-hidden bg-white shadow-2xl md:min-h-0 md:rounded-2xl lg:grid lg:min-h-180 lg:max-w-6xl lg:grid-cols-[360px_minmax(0,1fr)] lg:grid-rows-[1fr_auto]">
@@ -580,11 +580,11 @@ const ZakatForm = () => {
                   const selected = formData.jenisZakat === zakatType.value;
 
                   return (
-                    <button
+                    <Button
                       key={zakatType.value}
                       type="button"
                       onClick={() => selectZakat(zakatType.value)}
-                      className={`flex w-full items-center gap-4 rounded-xl border bg-white p-4 text-left transition lg:flex-col lg:items-start ${
+                      className={`flex w-full h-auto whitespace-normal items-center gap-4 rounded-xl border bg-white p-4 text-left transition lg:flex-col lg:items-start ${
                         selected
                           ? 'border-[#2D6A4F] border-l-4 bg-emerald-50'
                           : 'border-[#EDE6D6] hover:border-[#52B788] hover:bg-emerald-50/50'
@@ -608,7 +608,7 @@ const ZakatForm = () => {
                           {zakatType.description}
                         </span>
                       </span>
-                    </button>
+                    </Button>
                   );
                 })}
               </div>
@@ -826,7 +826,7 @@ const ZakatForm = () => {
                     const selected = formData.metodePembayaran === paymentMethod.value;
 
                     return (
-                      <button
+                      <Button
                         key={paymentMethod.value}
                         type="button"
                         onClick={() => updateFormField('metodePembayaran', paymentMethod.value)}
@@ -847,7 +847,7 @@ const ZakatForm = () => {
                         <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-semibold text-[#2D6A4F]">
                           Tersedia
                         </span>
-                      </button>
+                      </Button>
                     );
                   })}
                 </div>
@@ -1006,21 +1006,21 @@ const ZakatForm = () => {
                 </p>
               </div>
 
-              <button
+              <Button
                 type="button"
                 onClick={resetForm}
                 className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-[#2D6A4F] px-4 py-3.5 text-sm font-semibold text-white hover:bg-[#1B4332] lg:col-start-1"
               >
                 <RefreshCcw className="h-4 w-4" aria-hidden="true" />
                 Bayar Zakat Lagi
-              </button>
+              </Button>
             </div>
           )}
         </section>
 
         {currentStep < 5 && (
           <footer className="flex gap-3 border-t border-[#EDE6D6] bg-white px-6 pb-7 pt-4 lg:col-start-2 lg:px-10">
-            <button
+            <Button
               type="button"
               onClick={prevStep}
               disabled={currentStep === 1 || isLoading}
@@ -1028,9 +1028,9 @@ const ZakatForm = () => {
             >
               <ArrowLeft className="h-4 w-4" aria-hidden="true" />
               Kembali
-            </button>
+            </Button>
 
-            <button
+            <Button
               type="button"
               onClick={currentStep < 4 ? nextStep : handleSubmit}
               disabled={!isCurrentStepValid() || isLoading}
@@ -1043,7 +1043,7 @@ const ZakatForm = () => {
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
               {primaryLabel}
               {!isLoading && currentStep < 4 ? <ArrowRight className="h-4 w-4" aria-hidden="true" /> : null}
-            </button>
+            </Button>
           </footer>
         )}
       </div>
