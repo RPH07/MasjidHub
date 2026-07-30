@@ -1,34 +1,35 @@
 import React, { lazy, Suspense } from 'react';
 import { createBrowserRouter, RouterProvider, Navigate, useLocation } from 'react-router-dom';
-import AdminLayout from './components/layouts/AdminLayout';
-import AdminRoute from './components/route-guard/AdminRoute';
-import ProtectedRoute from './components/route-guard/ProtectedRoute';
-import UserLayout from './components/layouts/UserLayout'; 
-import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary';
-import RouteError from './components/RouteError';
+import AdminLayout from '@/components/layout/AdminLayout';
+import AdminRoute from '@/components/routeGuard/AdminRoute';
+import ProtectedRoute from '@/components/routeGuard/ProtectedRoute';
+import UserLayout from '@/components/layout/UserLayout'; 
+import ErrorBoundary from '@/components/feedback/ErrorBoundary';
+import RouteError from '@/components/feedback/RouteError';
 import { Toaster } from 'react-hot-toast';
 
-const HomePage = lazy(() => import('./pages/HomePage'));
-const About = lazy(() => import('./pages/About'));
-const Contact = lazy(() => import('./pages/Contact'));
-const TransparansiDana = lazy(() => import('./pages/TransparansiDana'));
-const LoginPages = lazy(() => import('./auth/Login'));
-const RegisterPages = lazy(() => import('./auth/Signup'));
-const AdminSignup = lazy(() => import('./auth/AdminSignup'));
-const ZakatForm = lazy(() => import('./pages/ZakatForm'));
-const Crowdfunding = lazy(() => import('./pages/user/Crowdfunding'));
-const UserDashboard = lazy(() => import('./pages/user/userDashoard'));
-const KontribusiHistory = lazy(() => import('./pages/user/KontribusiHistory'));
-const UserKegiatan = lazy(() => import('./pages/user/UserKegiatan'));
-const Dashboard = lazy(() => import('./pages/admin/Dashboard'));
-const KegiatanPage = lazy(() => import('./pages/admin/Kegiatan'));
-const KasPage = lazy(() => import('./pages/admin/Kas.jsx'));
-const DonasiPage = lazy(() => import('./pages/admin/Donasi'));
-const UserAccessPage = lazy(() => import('./pages/admin/UserAccess'));
-const VerifikasiTransaksi = lazy(() => import('./pages/admin/VerifikasiTransaksi'));
-const TransparansiAdmin = lazy(() => import('./pages/admin/TransparansiAdmin'));
-const ZakatSettingsPage = lazy(() => import('./pages/admin/ZakatSettings'));
-const Maintenance = lazy(() => import('./pages/Maintenance'));
+const HomePage = lazy(() => import('@/pages/home/HomePage'));
+const About = lazy(() => import('@/pages/About'));
+const Contact = lazy(() => import('@/pages/Contact'));
+const TransparansiDana = lazy(() => import('@/pages/TransparansiDana'));
+const LoginPages = lazy(() => import('@/pages/auth/Login'));
+const RegisterPages = lazy(() => import('@/pages/auth/Signup'));
+const AdminSignup = lazy(() => import('@/pages/auth/AdminSignup'));
+const ZakatForm = lazy(() => import('@/pages/ZakatForm'));
+const Crowdfunding = lazy(() => import('@/pages/user/Crowdfunding'));
+const UserDashboard = lazy(() => import('@/pages/user/UserDashboard'));
+const KontribusiHistory = lazy(() => import('@/pages/user/KontribusiHistory'));
+const UserKegiatan = lazy(() => import('@/pages/user/UserKegiatan'));
+const Dashboard = lazy(() => import('@/pages/admin/Dashboard'));
+const KegiatanPage = lazy(() => import('@/pages/admin/Kegiatan'));
+const KasPage = lazy(() => import('@/pages/admin/Kas.jsx'));
+const DonasiPage = lazy(() => import('@/pages/admin/Donasi'));
+const UserAccessPage = lazy(() => import('@/pages/admin/UserAccess'));
+const VerifikasiTransaksi = lazy(() => import('@/pages/admin/VerifikasiTransaksi'));
+const TransparansiAdmin = lazy(() => import('@/pages/admin/TransparansiAdmin'));
+const ZakatSettingsPage = lazy(() => import('@/pages/admin/ZakatSettings'));
+const Maintenance = lazy(() => import('@/pages/Maintenance'));
+const ProfilePage = lazy(() => import('@/pages/Profile'));
 const MAINTENANCE = {
   zakat: import.meta.env.VITE_MAINTENANCE_ZAKAT === 'true',
 };
@@ -141,6 +142,10 @@ const router = createBrowserRouter([
           {
             path: "kontribusi-history",
             element: lazyPage(<KontribusiHistory />)
+          },
+          {
+            path: "profile",
+            element: lazyPage(<ProfilePage />)
           }
         ]
       },
@@ -187,6 +192,10 @@ const router = createBrowserRouter([
           {
             path: "zakat-settings",
             element: lazyPage(<ZakatSettingsPage />)
+          },
+          {
+            path: "profile",
+            element: lazyPage(<ProfilePage />)
           }
         ]
       }
