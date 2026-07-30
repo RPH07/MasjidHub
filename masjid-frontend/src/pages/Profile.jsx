@@ -31,6 +31,32 @@ const getInitials = (name = '') => {
   return words.slice(0, 2).map((word) => word[0]?.toUpperCase()).join('');
 };
 
+const PasswordInput = ({ label, name, autoComplete, show, value, onChange, onToggle }) => (
+  <FloatingInput
+    id={name}
+    label={label}
+    name={name}
+    type={show ? 'text' : 'password'}
+    value={value}
+    onChange={onChange}
+    autoComplete={autoComplete}
+    inputClassName="border-gray-300 focus:ring-green-500"
+    labelFocusClass="peer-focus:text-green-600"
+    required
+    rightElement={(
+      <Button
+        type="button"
+        onClick={onToggle}
+        className="flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100"
+        aria-label={show ? 'Sembunyikan password' : 'Tampilkan password'}
+      >
+        {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+      </Button>
+    )}
+    rightElementClassName="right-1"
+  />
+);
+
 const Profile = () => {
   const { user: authUser } = useAuth();
   const [user, setUser] = useState(authUser);
@@ -135,32 +161,6 @@ const Profile = () => {
     }
   };
 
-  const PasswordInput = ({ label, name, autoComplete }) => (
-    <FloatingInput
-      id={name}
-      label={label}
-      name={name}
-      type={showPassword[name] ? 'text' : 'password'}
-      value={formData[name]}
-      onChange={handleChange}
-      autoComplete={autoComplete}
-      inputClassName="border-gray-300 focus:ring-green-500"
-      labelFocusClass="peer-focus:text-green-600"
-      required
-      rightElement={(
-        <Button
-          type="button"
-          onClick={() => togglePassword(name)}
-          className="flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100"
-          aria-label={showPassword[name] ? 'Sembunyikan password' : 'Tampilkan password'}
-        >
-          {showPassword[name] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-        </Button>
-      )}
-      rightElementClassName="right-1"
-    />
-  );
-
   if (loading) {
     return (
       <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-6 text-sm text-gray-500">
@@ -237,9 +237,33 @@ const Profile = () => {
           </div>
 
           <div className="mt-5 space-y-4">
-            <PasswordInput label="Password Saat Ini" name="currentPassword" autoComplete="current-password" />
-            <PasswordInput label="Password Baru" name="password" autoComplete="new-password" />
-            <PasswordInput label="Konfirmasi Password Baru" name="confirmPassword" autoComplete="new-password" />
+            <PasswordInput
+              label="Password Saat Ini"
+              name="currentPassword"
+              autoComplete="current-password"
+              show={showPassword.currentPassword}
+              value={formData.currentPassword}
+              onChange={handleChange}
+              onToggle={() => togglePassword('currentPassword')}
+            />
+            <PasswordInput
+              label="Password Baru"
+              name="password"
+              autoComplete="new-password"
+              show={showPassword.password}
+              value={formData.password}
+              onChange={handleChange}
+              onToggle={() => togglePassword('password')}
+            />
+            <PasswordInput
+              label="Konfirmasi Password Baru"
+              name="confirmPassword"
+              autoComplete="new-password"
+              show={showPassword.confirmPassword}
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              onToggle={() => togglePassword('confirmPassword')}
+            />
           </div>
 
           <Button
