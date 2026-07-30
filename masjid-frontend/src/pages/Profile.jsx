@@ -33,30 +33,35 @@ const getInitials = (name = '') => {
   return words.slice(0, 2).map((word) => word[0]?.toUpperCase()).join('');
 };
 
-const PasswordInput = ({ label, name, autoComplete, show, value, onChange, onToggle }) => (
-  <FloatingInput
-    id={name}
-    label={label}
-    name={name}
-    type={show ? 'text' : 'password'}
-    value={value}
-    onChange={onChange}
-    autoComplete={autoComplete}
-    inputClassName="border-gray-300 focus:ring-green-500"
-    labelFocusClass="peer-focus:text-green-600"
-    required
-    rightElement={(
-      <Button
-        type="button"
-        onClick={onToggle}
-        className="flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100"
-        aria-label={show ? 'Sembunyikan password' : 'Tampilkan password'}
-      >
-        {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-      </Button>
-    )}
-    rightElementClassName="right-1"
-  />
+const PasswordInput = ({ label, name, autoComplete, show, value, onChange, onBlur, onToggle, error }) => (
+  <div className="space-y-1">
+    <FloatingInput
+      id={name}
+      label={label}
+      name={name}
+      type={show ? 'text' : 'password'}
+      value={value}
+      onChange={onChange}
+      onBlur={onBlur}
+      autoComplete={autoComplete}
+      inputClassName={error ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-green-500'}
+      labelFocusClass={error ? 'text-red-600 peer-focus:text-red-600' : 'peer-focus:text-green-600'}
+      required
+      aria-invalid={Boolean(error)}
+      rightElement={(
+        <Button
+          type="button"
+          onClick={onToggle}
+          className="flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100"
+          aria-label={show ? 'Sembunyikan password' : 'Tampilkan password'}
+        >
+          {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        </Button>
+      )}
+      rightElementClassName="right-1"
+    />
+    {error && <p className="text-xs font-medium text-red-600">{error}</p>}
+  </div>
 );
 
 const Profile = () => {
@@ -74,6 +79,8 @@ const Profile = () => {
     password: '',
     confirmPassword: ''
   });
+  const [touchedFields, setTouchedFields] = useState({});
+  const [serverErrors, setServerErrors] = useState({});
 
   useEffect(() => {
     let active = true;
@@ -133,6 +140,12 @@ const Profile = () => {
   const handleChange = (event) => {
     const { name, value } = event.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    setServerErrors((prev) => ({ ...prev, [name]: '' }));
+  };
+
+  const handleBlur = (event) => {
+    const { name } = event.target;
+    setTouchedFields((prev) => ({ ...prev, [name]: true }));
   };
 
   const togglePassword = (field) => {
@@ -141,6 +154,14 @@ const Profile = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    const nextTouchedFields = {
+      currentPassword: true,
+      password: true,
+      confirmPassword: true
+    };
+
+    setTouchedFields(nextTouchedFields);
+    setServerErrors({});
 
     if (formData.password !== formData.confirmPassword) {
       toast.error('Password baru dan konfirmasi password tidak cocok');
@@ -161,11 +182,29 @@ const Profile = () => {
         password: '',
         confirmPassword: ''
       });
+      setTouchedFields({});
+      setServerErrors({});
     } catch (error) {
-      toast.error(error.response?.data?.msg || error.response?.data?.message || 'Gagal memperbarui password');
+      const errorMessage = error.response?.data?.msg || error.response?.data?.message || 'Gagal memperbarui password';
+
+      if (errorMessage.toLowerCase().includes('password saat ini')) {
+        setServerErrors((prev) => ({ ...prev, currentPassword: errorMessage }));
+      }
+
+      toast.error(errorMessage);
     } finally {
       setSaving(false);
     }
+  };
+
+  const passwordErrors = {
+    currentPassword: serverErrors.currentPassword,
+    password: touchedFields.password && formData.password.length > 0 && formData.password.length < MIN_PASSWORD_LENGTH
+      ? `Password baru minimal ${MIN_PASSWORD_LENGTH} karakter`
+      : '',
+    confirmPassword: touchedFields.confirmPassword && formData.confirmPassword.length > 0 && formData.password !== formData.confirmPassword
+      ? 'Konfirmasi password tidak cocok'
+      : ''
   };
 
   if (loading) {
@@ -253,7 +292,9 @@ const Profile = () => {
               show={showPassword.currentPassword}
               value={formData.currentPassword}
               onChange={handleChange}
+              onBlur={handleBlur}
               onToggle={() => togglePassword('currentPassword')}
+              error={passwordErrors.currentPassword}
             />
             <PasswordInput
               label="Password Baru"
@@ -262,7 +303,9 @@ const Profile = () => {
               show={showPassword.password}
               value={formData.password}
               onChange={handleChange}
+              onBlur={handleBlur}
               onToggle={() => togglePassword('password')}
+              error={passwordErrors.password}
             />
             <p className="-mt-2 text-xs text-gray-500">
               Gunakan minimal {MIN_PASSWORD_LENGTH} karakter.
@@ -274,7 +317,9 @@ const Profile = () => {
               show={showPassword.confirmPassword}
               value={formData.confirmPassword}
               onChange={handleChange}
+              onBlur={handleBlur}
               onToggle={() => togglePassword('confirmPassword')}
+              error={passwordErrors.confirmPassword}
             />
           </div>
 
