@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
+import { Button } from "@/components/ui/button";
 import {
   CheckCircle2,
   Edit3,
@@ -11,9 +12,10 @@ import {
   Trash2,
   X
 } from 'lucide-react';
-import api from '../../config/api';
-import { useAuth } from '../../hooks/useAuth';
-import { FloatingInput } from '../../components/form';
+import api from '@/config/api';
+import { useAuth } from '@/hooks/useAuth';
+import { FloatingInput } from '@/components/form';
+import { formatCurrency } from '@/utils/formatters';
 
 const emptyForm = {
   tahun: new Date().getFullYear(),
@@ -31,17 +33,11 @@ const emptyForm = {
   is_active: false
 };
 
-const formatCurrency = (value) => {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0
-  }).format(Number(value || 0));
-};
-
 const formatPercent = (value) => `${(Number(value || 0) * 100).toLocaleString('id-ID')}%`;
 
 const parseNumberInput = (value) => Number(String(value || '').replace(/,/g, ''));
+
+const NOTE_PREVIEW_LENGTH = 96;
 
 const toFormValue = (setting) => ({
   tahun: setting.tahun || new Date().getFullYear(),
@@ -82,6 +78,7 @@ const ZakatSettings = () => {
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [expandedNotes, setExpandedNotes] = useState({});
 
   const canManage = useMemo(() => {
     if (user?.role === 'admin') return true;
@@ -117,6 +114,13 @@ const ZakatSettings = () => {
   const resetForm = () => {
     setEditingId(null);
     setForm(emptyForm);
+  };
+
+  const toggleNote = (settingId) => {
+    setExpandedNotes((prev) => ({
+      ...prev,
+      [settingId]: !prev[settingId]
+    }));
   };
 
   const handleEdit = (setting) => {
@@ -197,14 +201,14 @@ const ZakatSettings = () => {
             Kelola tarif fitrah, nisab, dan kadar zakat yang dipakai form jamaah.
           </p>
         </div>
-        <button
+        <Button
           type="button"
           onClick={fetchSettings}
           className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
         >
           <RefreshCcw className="h-4 w-4" />
           Refresh
-        </button>
+        </Button>
       </div>
 
       {activeSetting && (
@@ -232,14 +236,14 @@ const ZakatSettings = () => {
                 </h2>
               </div>
               {editingId && (
-                <button
+                <Button
                   type="button"
                   onClick={resetForm}
                   className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
                 >
                   <X className="h-4 w-4" />
                   Batal
-                </button>
+                </Button>
               )}
             </div>
 
@@ -288,14 +292,14 @@ const ZakatSettings = () => {
               Jadikan setting aktif setelah disimpan
             </label>
 
-            <button
+            <Button
               type="submit"
               disabled={saving}
               className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-300"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingId ? <Save className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
               {editingId ? 'Simpan Perubahan' : 'Tambah Setting'}
-            </button>
+            </Button>
           </form>
         )}
 
@@ -316,7 +320,7 @@ const ZakatSettings = () => {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 text-sm">
+              <table className="min-w-280 divide-y divide-gray-200 text-sm">
                 <thead className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                   <tr>
                     <th className="px-4 py-3">Setting</th>
@@ -328,26 +332,43 @@ const ZakatSettings = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {settings.map((setting) => (
-                    <tr key={setting.id} className="align-top">
-                      <td className="px-4 py-3">
-                        <div className="font-medium text-gray-900">{setting.label}</div>
-                        <div className="text-xs text-gray-500">{setting.tahun} · {setting.sumber}</div>
-                        {setting.source_url && (
+                    {settings.map((setting) => {
+                      const note = setting.notes || 'Tidak ada catatan.';
+                      const isExpanded = Boolean(expandedNotes[setting.id]);
+                      const isLongNote = note.length > NOTE_PREVIEW_LENGTH;
+                      const visibleNote = isLongNote && !isExpanded
+                        ? `${note.slice(0, NOTE_PREVIEW_LENGTH)}...`
+                        : note;
+
+                      return (
+                      <tr key={setting.id} className="align-top">
+                        <td className="min-w-90 px-4 py-3">
+                          <div className="font-medium text-gray-900">{setting.label}</div>
+                          <div className="text-xs text-gray-500">{setting.tahun} · {setting.sumber}</div>
+                          {setting.source_url && (
                           <a
                             href={setting.source_url}
                             target="_blank"
                             rel="noreferrer"
                             className="text-xs text-blue-600 hover:underline"
                           >
-                            Sumber
-                          </a>
-                        )}
-                        <div className="mt-2 max-w-xs rounded-md bg-gray-50 px-3 py-2 text-xs leading-5 text-gray-600">
-                          <span className="font-medium text-gray-600">Catatan:</span>{' '}
-                          {setting.notes || 'Tidak ada catatan.'}
-                        </div>
-                      </td>
+                              Sumber
+                            </a>
+                          )}
+                          <div className="mt-2 max-w-90 rounded-md bg-gray-50 px-3 py-2 text-xs leading-5 text-gray-600">
+                            <span className="font-medium text-gray-600">Catatan:</span>{' '}
+                            <span className="wrap-break-word">{visibleNote}</span>
+                            {isLongNote && (
+                              <Button
+                                type="button"
+                                onClick={() => toggleNote(setting.id)}
+                                className="ml-1 h-auto p-0 text-xs font-medium text-green-700 hover:text-green-800 hover:underline"
+                              >
+                                {isExpanded ? 'Show less' : 'Show more'}
+                              </Button>
+                            )}
+                          </div>
+                        </td>
                       <td className="px-4 py-3">
                         <div>{formatCurrency(setting.fitrah_uang)}</div>
                         <div className="text-xs text-gray-500">{setting.fitrah_beras_kg} kg / {setting.fitrah_beras_liter} L</div>
@@ -370,37 +391,38 @@ const ZakatSettings = () => {
                         <td className="px-4 py-3">
                           <div className="flex justify-end gap-2">
                             {!setting.is_active && (
-                              <button
+                              <Button
                                 type="button"
                                 onClick={() => handleActivate(setting)}
                                 className="rounded-md border border-green-200 px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-50"
                               >
                                 Aktifkan
-                              </button>
+                              </Button>
                             )}
-                            <button
+                            <Button
                               type="button"
                               onClick={() => handleEdit(setting)}
                               className="rounded-md border border-gray-200 p-1.5 text-gray-600 hover:bg-gray-50"
                               aria-label="Edit setting"
                             >
                               <Edit3 className="h-4 w-4" />
-                            </button>
+                            </Button>
                             {!setting.is_active && (
-                              <button
+                              <Button
                                 type="button"
                                 onClick={() => handleDelete(setting)}
                                 className="rounded-md border border-red-200 p-1.5 text-red-600 hover:bg-red-50"
                                 aria-label="Hapus setting"
                               >
                                 <Trash2 className="h-4 w-4" />
-                              </button>
+                              </Button>
                             )}
                           </div>
                         </td>
                       )}
-                    </tr>
-                  ))}
+                      </tr>
+                      );
+                    })}
                   {settings.length === 0 && (
                     <tr>
                       <td colSpan={canManage ? 6 : 5} className="px-4 py-8 text-center text-gray-500">
