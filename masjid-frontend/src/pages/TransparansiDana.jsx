@@ -1,9 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import Navbar from '../components/nav';
-import Footer from '../components/footer';
-import api from '../config/api';
-import transparansiService from '../services/transparansiService';
-import { formatCurrency } from '../components/kas-components/utils/formatters';
+import Navbar from '@/components/navigation/Navbar';
+import Footer from '@/components/navigation/Footer';
+import api from '@/config/api';
+import transparansiService from '@/services/transparansiService';
+import { formatCurrency } from '@/utils/formatters';
+import { Button } from "@/components/ui/button";
+
+const INK = '#1c2620';
+const INK_SOFT = '#5c6b5f';
+const PAPER = '#f3efe4';
+const GREEN = '#1f4d3a';
+const GREEN_SOFT = '#e8ede8';
 
 const formatDate = (value) => {
   if (!value) return '-';
@@ -14,18 +21,19 @@ const formatDate = (value) => {
   });
 };
 
-const StatCard = ({ label, value, tone = 'green' }) => {
-  const tones = {
-    green: 'bg-green-50 text-green-700 border-green-100',
-    blue: 'bg-blue-50 text-blue-700 border-blue-100',
-    red: 'bg-red-50 text-red-700 border-red-100',
-    amber: 'bg-amber-50 text-amber-700 border-amber-100'
-  };
+const StatCard = ({ label, value, tone = 'default' }) => {
+  const isAccent = tone === 'accent';
 
   return (
-    <div className={`rounded-lg border p-4 ${tones[tone] || tones.green}`}>
-      <p className="text-sm font-medium opacity-80">{label}</p>
-      <p className="mt-2 text-2xl font-bold">{formatCurrency(value || 0)}</p>
+    <div
+      style={{
+        borderColor: INK,
+        backgroundColor: isAccent ? GREEN : 'transparent'
+      }}
+      className="border p-4"
+    >
+      <p style={{ color: isAccent ? GREEN_SOFT : INK_SOFT }} className="text-sm font-medium">{label}</p>
+      <p style={{ color: isAccent ? PAPER : INK }} className="mt-2 text-2xl font-semibold">{formatCurrency(value || 0)}</p>
     </div>
   );
 };
@@ -112,77 +120,78 @@ const TransparansiDana = () => {
   const programRows = useMemo(() => programData?.realisasi || [], [programData]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div style={{ backgroundColor: PAPER }} className="min-h-screen">
       <Navbar />
       <main className="mx-auto max-w-7xl px-4 pb-16 pt-24 sm:px-6 lg:px-8">
         <div className="mb-8">
-          <p className="text-sm font-semibold uppercase tracking-wide text-green-700">Transparansi Dana</p>
-          <h1 className="mt-2 text-3xl font-bold text-gray-900 md:text-4xl">Laporan Amanah Umat</h1>
-          <p className="mt-3 max-w-3xl text-gray-600">
+          <p style={{ color: GREEN }} className="text-[11px] font-medium uppercase tracking-[0.14em]">Transparansi Dana</p>
+          <h1 style={{ color: INK }} className="mt-2 text-3xl font-semibold md:text-4xl">Laporan Amanah Umat</h1>
+          <p style={{ color: INK_SOFT }} className="mt-3 max-w-3xl text-sm">
             Pantau dana zakat dan program pengadaan: berapa yang terkumpul, berapa yang sudah disalurkan, dan bukti realisasi yang sudah disetujui pengurus.
           </p>
         </div>
 
         {error && (
-          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
+          <div style={{ borderColor: INK, backgroundColor: GREEN_SOFT, color: INK }} className="mb-6 border p-4 text-sm">
             {error}
           </div>
         )}
 
         {loading ? (
-          <div className="rounded-lg bg-white p-8 text-center text-gray-500 shadow-sm">Memuat laporan transparansi...</div>
+          <div style={{ borderColor: INK, color: INK_SOFT }} className="border p-8 text-center text-sm">Memuat laporan transparansi...</div>
         ) : (
           <div className="space-y-10">
-            <section className="rounded-lg bg-white p-6 shadow-sm">
+            <section style={{ borderColor: INK, backgroundColor: PAPER }} className="border p-6">
               <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900">Transparansi Zakat</h2>
-                  <p className="text-sm text-gray-500">Ringkasan zakat masuk dan penyaluran yang sudah disetujui.</p>
+                  <h2 style={{ color: INK }} className="text-xl font-semibold">Transparansi Zakat</h2>
+                  <p style={{ color: INK_SOFT }} className="text-sm">Ringkasan zakat masuk dan penyaluran yang sudah disetujui.</p>
                 </div>
-                <button
+                <Button
                   onClick={handleDownloadZakat}
-                  className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700"
+                  style={{ backgroundColor: GREEN, borderColor: INK, color: PAPER }}
+                  className="border px-4 py-2 text-sm font-medium rounded-none hover:opacity-90 transition-opacity"
                   disabled={downloadLoading.zakat}
                 >
                   {downloadLoading.zakat ? 'Mengunduh...' : 'Download PDF Zakat'}
-                </button>
+                </Button>
               </div>
 
               <div className="grid gap-4 md:grid-cols-3">
-                <StatCard label="Zakat Terkumpul" value={zakatData?.summary?.totalTerkumpul} />
-                <StatCard label="Tersalurkan" value={zakatData?.summary?.totalTersalurkan} tone="blue" />
-                <StatCard label="Sisa Amanah" value={zakatData?.summary?.sisaAmanah} tone="amber" />
+                <StatCard label="Zakat Terkumpul" value={zakatData?.summary?.totalTerkumpul} tone="accent" />
+                <StatCard label="Tersalurkan" value={zakatData?.summary?.totalTersalurkan} />
+                <StatCard label="Sisa Amanah" value={zakatData?.summary?.sisaAmanah} />
               </div>
 
-              <div className="mt-6 overflow-hidden rounded-lg border border-gray-200">
-                <table className="min-w-full divide-y divide-gray-200 text-sm">
-                  <thead className="bg-gray-50">
+              <div style={{ borderColor: INK }} className="mt-6 overflow-hidden border">
+                <table className="min-w-full text-sm">
+                  <thead style={{ backgroundColor: GREEN_SOFT, borderColor: INK }} className="border-b">
                     <tr>
-                      <th className="px-4 py-3 text-left font-semibold text-gray-700">Tanggal</th>
-                      <th className="px-4 py-3 text-left font-semibold text-gray-700">Penerima Publik</th>
-                      <th className="px-4 py-3 text-left font-semibold text-gray-700">Jenis</th>
-                      <th className="px-4 py-3 text-right font-semibold text-gray-700">Nominal</th>
-                      <th className="px-4 py-3 text-left font-semibold text-gray-700">Bukti</th>
+                      <th style={{ color: INK }} className="px-4 py-3 text-left font-medium">Tanggal</th>
+                      <th style={{ color: INK }} className="px-4 py-3 text-left font-medium">Penerima Publik</th>
+                      <th style={{ color: INK }} className="px-4 py-3 text-left font-medium">Jenis</th>
+                      <th style={{ color: INK }} className="px-4 py-3 text-right font-medium">Nominal</th>
+                      <th style={{ color: INK }} className="px-4 py-3 text-left font-medium">Bukti</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100 bg-white">
+                  <tbody>
                     {zakatRows.length === 0 ? (
                       <tr>
-                        <td colSpan="5" className="px-4 py-6 text-center text-gray-500">Belum ada penyaluran zakat approved.</td>
+                        <td colSpan="5" style={{ color: INK_SOFT }} className="px-4 py-6 text-center">Belum ada penyaluran zakat approved.</td>
                       </tr>
-                    ) : zakatRows.map((item) => (
-                      <tr key={item.id}>
-                        <td className="px-4 py-3 text-gray-600">{formatDate(item.tanggal_distribusi)}</td>
+                    ) : zakatRows.map((item, i) => (
+                      <tr key={item.id} style={{ borderColor: i > 0 ? INK : 'transparent', borderTopWidth: i > 0 ? '1px' : 0, borderStyle: 'dashed' }}>
+                        <td style={{ color: INK_SOFT }} className="px-4 py-3">{formatDate(item.tanggal_distribusi)}</td>
                         <td className="px-4 py-3">
-                          <p className="font-medium text-gray-900">{item.label_penerima_publik}</p>
-                          <p className="text-xs text-gray-500">{item.deskripsi}</p>
+                          <p style={{ color: INK }} className="font-medium">{item.label_penerima_publik}</p>
+                          <p style={{ color: INK_SOFT }} className="text-xs">{item.deskripsi}</p>
                         </td>
-                        <td className="px-4 py-3 capitalize text-gray-600">{item.jenis_zakat}</td>
-                        <td className="px-4 py-3 text-right font-semibold text-gray-900">{formatCurrency(item.nominal)}</td>
+                        <td style={{ color: INK_SOFT }} className="px-4 py-3 capitalize">{item.jenis_zakat}</td>
+                        <td style={{ color: INK }} className="px-4 py-3 text-right font-medium">{formatCurrency(item.nominal)}</td>
                         <td className="px-4 py-3">
                           {item.bukti_foto ? (
-                            <a className="text-green-700 hover:underline" href={item.bukti_foto} target="_blank" rel="noreferrer">Lihat bukti</a>
-                          ) : '-'}
+                            <a style={{ color: GREEN }} className="hover:underline" href={item.bukti_foto} target="_blank" rel="noreferrer">Lihat bukti</a>
+                          ) : <span style={{ color: INK_SOFT }}>-</span>}
                         </td>
                       </tr>
                     ))}
@@ -191,16 +200,17 @@ const TransparansiDana = () => {
               </div>
             </section>
 
-            <section className="rounded-lg bg-white p-6 shadow-sm">
+            <section style={{ borderColor: INK, backgroundColor: PAPER }} className="border p-6">
               <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900">Transparansi Program Pengadaan</h2>
-                  <p className="text-sm text-gray-500">Pilih program untuk melihat realisasi dana dan sisa dana program.</p>
+                  <h2 style={{ color: INK }} className="text-xl font-semibold">Transparansi Program Pengadaan</h2>
+                  <p style={{ color: INK_SOFT }} className="text-sm">Pilih program untuk melihat realisasi dana dan sisa dana program.</p>
                 </div>
                 <select
                   value={selectedProgramId}
                   onChange={(event) => setSelectedProgramId(event.target.value)}
-                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  style={{ borderColor: INK, color: INK, backgroundColor: 'transparent' }}
+                  className="border px-3 py-2 text-sm rounded-none focus:outline-none focus:ring-1"
                 >
                   {programs.map((program) => (
                     <option key={program.id} value={program.id}>{program.nama_barang}</option>
@@ -209,44 +219,45 @@ const TransparansiDana = () => {
               </div>
 
               {programLoading ? (
-                <div className="py-8 text-center text-gray-500">Memuat laporan program...</div>
+                <div style={{ color: INK_SOFT }} className="py-8 text-center text-sm">Memuat laporan program...</div>
               ) : programData ? (
                 <>
                   <div className="mb-4 flex items-center justify-between">
-                    <h3 className="font-semibold text-gray-900">{programData.program?.nama_barang}</h3>
-                    <button
+                    <h3 style={{ color: INK }} className="font-semibold">{programData.program?.nama_barang}</h3>
+                    <Button
                       onClick={handleDownloadProgramPdf}
-                      className="rounded-lg border border-green-600 px-4 py-2 text-sm font-semibold text-green-700 hover:bg-green-50"
+                      style={{ borderColor: INK, color: GREEN }}
+                      className="border bg-transparent px-4 py-2 text-sm font-medium rounded-none hover:bg-(--green-soft) transition-colors"
                       disabled={downloadLoading.program}
                     >
                       {downloadLoading.program ? 'Mengunduh...' : 'Download PDF Program'}
-                    </button>
+                    </Button>
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-4">
-                    <StatCard label="Dana Terkumpul" value={programData.summary?.danaTerkumpul} />
-                    <StatCard label="Dana Dipakai" value={programData.summary?.totalRealisasi} tone="blue" />
-                    <StatCard label="Sisa Dana" value={programData.summary?.sisaDana} tone="amber" />
-                    <StatCard label="Target" value={programData.summary?.targetDana} tone="green" />
+                    <StatCard label="Dana Terkumpul" value={programData.summary?.danaTerkumpul} tone="accent" />
+                    <StatCard label="Dana Dipakai" value={programData.summary?.totalRealisasi} />
+                    <StatCard label="Sisa Dana" value={programData.summary?.sisaDana} />
+                    <StatCard label="Target" value={programData.summary?.targetDana} />
                   </div>
 
                   <div className="mt-6 grid gap-4 md:grid-cols-2">
                     {programRows.length === 0 ? (
-                      <div className="rounded-lg border border-dashed border-gray-300 p-6 text-center text-gray-500 md:col-span-2">
+                      <div style={{ borderColor: INK, color: INK_SOFT }} className="border border-dashed p-6 text-center text-sm md:col-span-2">
                         Belum ada realisasi approved untuk program ini.
                       </div>
                     ) : programRows.map((item) => (
-                      <div key={item.id} className="rounded-lg border border-gray-200 p-4">
+                      <div key={item.id} style={{ borderColor: INK }} className="border p-4">
                         <div className="flex items-start justify-between gap-3">
                           <div>
-                            <p className="font-semibold text-gray-900">{item.penerima_vendor}</p>
-                            <p className="text-sm text-gray-500">{formatDate(item.tanggal_realisasi)}</p>
+                            <p style={{ color: INK }} className="font-semibold">{item.penerima_vendor}</p>
+                            <p style={{ color: INK_SOFT }} className="text-sm">{formatDate(item.tanggal_realisasi)}</p>
                           </div>
-                          <p className="font-bold text-green-700">{formatCurrency(item.nominal)}</p>
+                          <p style={{ color: GREEN }} className="font-semibold">{formatCurrency(item.nominal)}</p>
                         </div>
-                        <p className="mt-3 text-sm text-gray-600">{item.deskripsi}</p>
+                        <p style={{ color: INK_SOFT }} className="mt-3 text-sm">{item.deskripsi}</p>
                         {item.bukti_foto && (
-                          <a className="mt-3 inline-block text-sm font-medium text-green-700 hover:underline" href={item.bukti_foto} target="_blank" rel="noreferrer">
+                          <a style={{ color: GREEN }} className="mt-3 inline-block text-sm font-medium hover:underline" href={item.bukti_foto} target="_blank" rel="noreferrer">
                             Lihat bukti realisasi
                           </a>
                         )}
@@ -255,7 +266,7 @@ const TransparansiDana = () => {
                   </div>
                 </>
               ) : (
-                <div className="py-8 text-center text-gray-500">Pilih program untuk melihat laporan.</div>
+                <div style={{ color: INK_SOFT }} className="py-8 text-center text-sm">Pilih program untuk melihat laporan.</div>
               )}
             </section>
           </div>
