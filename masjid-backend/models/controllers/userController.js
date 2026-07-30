@@ -276,6 +276,53 @@ exports.resetUserPassword = async (req, res) => {
     }
 }
 
+exports.changeMyPassword = async (req, res) => {
+    try {
+        const user = await User.findByPk(req.userId);
+        if (!user) return res.status(404).json({ message: 'User tidak ditemukan' });
+
+        const { currentPassword, password, confirmPassword } = req.body;
+
+        if (!currentPassword) {
+            return res.status(400).json({ msg: 'Password saat ini wajib diisi' });
+        }
+
+        if (!password || password.length < 6) {
+            return res.status(400).json({ msg: 'Password baru minimal 6 karakter' });
+        }
+
+        if (password !== confirmPassword) {
+            return res.status(400).json({ msg: 'Password dan konfirmasi password tidak cocok' });
+        }
+
+        const match = await bcrypt.compare(currentPassword, user.password);
+        if (!match) {
+            return res.status(400).json({ msg: 'Password saat ini salah' });
+        }
+
+        const salt = await bcrypt.genSalt();
+        const hashPassword = await bcrypt.hash(password, salt);
+
+        await user.update({ password: hashPassword });
+
+        await userAuditLogService.createUserAuditLog({
+            actorUserId: req.userId,
+            targetUserId: user.id,
+            action: 'reset_password',
+            oldValue: null,
+            newValue: null,
+            description: 'User mengganti password sendiri'
+        });
+
+        res.json({
+            success: true,
+            msg: 'Password berhasil diperbarui'
+        });
+    } catch (error) {
+        res.status(500).json({ msg: error.message });
+    }
+}
+
 exports.deleteMe = async (req, res) => {
     try {
         const user = await User.findByPk(req.userId);
