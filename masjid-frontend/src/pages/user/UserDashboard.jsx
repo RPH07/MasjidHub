@@ -59,6 +59,17 @@ const getLastMonthRanges = (count = 6) => {
   });
 };
 
+const RejectionReason = ({ reason }) => {
+  if (!reason) return null;
+
+  return (
+    <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm">
+      <span className="font-medium text-red-800">Alasan ditolak:</span>
+      <p className="mt-1 whitespace-pre-line text-red-700">{reason}</p>
+    </div>
+  );
+};
+
 const UserDashboard = () => {
   const { user } = useAuth();
 
@@ -110,7 +121,7 @@ const UserDashboard = () => {
         });
       });
 
-      // Zakat ditampilkan sebagai informasi ringkas tanpa modal detail.
+      // Zakat bisa dibuka supaya user dapat melihat detail status dan alasan penolakan.
       const userZakat = kontribusiHistory
         .filter((item) => item.type === 'zakat')
         .slice(0, 1);
@@ -123,7 +134,7 @@ const UserDashboard = () => {
           status: zakat.status,
           timestamp: new Date(zakat.created_at),
           isPersonal: true,
-          clickable: false,
+          clickable: true,
           data: zakat
         });
       });
@@ -290,12 +301,90 @@ const UserDashboard = () => {
               </div>
             )}
 
+            {aktivitas.status === 'rejected' && (
+              <RejectionReason reason={aktivitas.data.reject_reason} />
+            )}
+
             {aktivitas.data.bukti_transfer && (
               <div>
                 <span className="font-medium text-gray-600">Bukti Transfer:</span>
                 <img 
                   src={aktivitas.data.bukti_transfer}
                   alt="Bukti Transfer"
+                  className="mt-2 max-w-full h-auto rounded border"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    } else if (aktivitas.type === 'personal_zakat') {
+      return (
+        <div>
+          <h2 className="text-xl font-bold text-gray-800 mb-4">
+            Detail Zakat Anda
+          </h2>
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <span className="font-medium text-gray-600">Jenis Zakat:</span>
+                <p className="text-gray-800">{aktivitas.data.detail_program}</p>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Nominal:</span>
+                <p className="text-gray-800 font-bold">{formatRupiah(aktivitas.data.jumlah)}</p>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Status:</span>
+                <StatusBadge status={aktivitas.status} verbose />
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Tanggal:</span>
+                <p className="text-gray-800">
+                  {new Date(aktivitas.data.created_at).toLocaleDateString('id-ID', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </p>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Metode Pembayaran:</span>
+                <p className="text-gray-800">{aktivitas.data.metode_pembayaran || '-'}</p>
+              </div>
+              {aktivitas.data.validated_at && (
+                <div>
+                  <span className="font-medium text-gray-600">Tanggal Validasi:</span>
+                  <p className="text-gray-800">
+                    {new Date(aktivitas.data.validated_at).toLocaleDateString('id-ID', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {aktivitas.data.kode_unik && (
+              <div className="bg-purple-50 p-3 rounded-lg">
+                <span className="font-medium text-purple-800">Kode Unik:</span>
+                <p className="text-purple-900 font-mono text-lg">{aktivitas.data.kode_unik}</p>
+              </div>
+            )}
+
+            {aktivitas.status === 'rejected' && (
+              <RejectionReason reason={aktivitas.data.reject_reason} />
+            )}
+
+            {aktivitas.data.bukti_transfer && (
+              <div>
+                <span className="font-medium text-gray-600">Bukti Transfer:</span>
+                <img
+                  src={aktivitas.data.bukti_transfer}
+                  alt="Bukti Transfer Zakat"
                   className="mt-2 max-w-full h-auto rounded border"
                 />
               </div>
@@ -683,6 +772,11 @@ const UserDashboard = () => {
                           )}
                         </span>
                       </div>
+                      {aktivitas.status === 'rejected' && aktivitas.data?.reject_reason && (
+                        <p className="mt-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                          <span className="font-medium">Alasan ditolak:</span> {aktivitas.data.reject_reason}
+                        </p>
+                      )}
                     </div>
                     
                     <div className="text-xs text-gray-500 ml-2 shrink-0">
@@ -709,7 +803,11 @@ const UserDashboard = () => {
               <div className="flex items-center gap-3">
                 <ActivityIcon type={selectedDetail.type} size="lg" />
                 <h3 className="text-lg font-bold text-gray-900">
-                  {selectedDetail.type === 'personal_donasi' ? 'Detail Donasi' : 'Detail Kegiatan'}
+                  {selectedDetail.type === 'personal_donasi'
+                    ? 'Detail Donasi'
+                    : selectedDetail.type === 'personal_zakat'
+                      ? 'Detail Zakat'
+                      : 'Detail Kegiatan'}
                 </h3>
               </div>
               <Button

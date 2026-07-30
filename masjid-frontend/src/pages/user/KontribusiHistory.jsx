@@ -349,6 +349,13 @@ const KontribusiHistory = () => {
                           <p><span className="font-medium">Catatan:</span> {item.catatan}</p>
                         )}
                       </div>
+
+                      {item.status === 'rejected' && item.reject_reason && (
+                        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm">
+                          <span className="font-medium text-red-800">Alasan ditolak:</span>
+                          <p className="mt-1 whitespace-pre-line text-red-700">{item.reject_reason}</p>
+                        </div>
+                      )}
                     </div>
 
                     <div className="mt-4 lg:mt-0 lg:text-right lg:ml-6 flex-shrink-0">
