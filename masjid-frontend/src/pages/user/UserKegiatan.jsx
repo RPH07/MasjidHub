@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '@/config/api';
+import { Button } from "@/components/ui/button";
+import { FloatingInput } from '@/components/form';
 
 const UserKegiatan = () => {
   const [kegiatan, setKegiatan] = useState([]);
@@ -14,37 +16,35 @@ const UserKegiatan = () => {
 
 const fetchKegiatan = async () => {
     try {
-      console.log('🔍 Fetching kegiatan data...');
-      const response = await axios.get('http://localhost:5000/api/kegiatan');
-      
-      console.log('📊 Response:', response.data);
-      
-      // ✅ FIX: Backend mengirim response.data.data, bukan langsung response.data
+      const response = await api.get('/kegiatan');
       const kegiatanData = response.data.data || response.data || [];
-      
-      console.log('📋 Kegiatan data:', kegiatanData);
-      
-      // Urutkan berdasarkan tanggal terbaru
+
       const sortedKegiatan = kegiatanData.sort((a, b) => {
         return new Date(b.tanggal) - new Date(a.tanggal);
       });
       
       setKegiatan(sortedKegiatan);
-      console.log('✅ Kegiatan loaded:', sortedKegiatan.length, 'items');
     } catch (error) {
       console.error('❌ Error fetching kegiatan:', error);
-      console.error('Response details:', error.response?.data);
     } finally {
       setLoading(false);
     }
   };
 
+  const getTitle = (item) => item.judul || item.nama_kegiatan || 'Kegiatan Masjid';
+  const getCategory = (item) => item.kategori?.nama_kategori || item.kategori_nama || 'Umum';
+  const getImage = (item) => item.image_url || item.foto || null;
+  const normalizeLabel = (value) => String(value || '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+  const includesSearch = (value) => String(value || '').toLowerCase().includes(searchTerm.toLowerCase());
+
   // Filter kegiatan berdasarkan search
   const filteredKegiatan = kegiatan.filter(item => 
-    item.nama_kegiatan.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.deskripsi.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.lokasi.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (item.kategori_nama && item.kategori_nama.toLowerCase().includes(searchTerm.toLowerCase()))
+    includesSearch(getTitle(item)) ||
+    includesSearch(item.deskripsi) ||
+    includesSearch(item.lokasi) ||
+    includesSearch(getCategory(item))
   );
 
   const openModal = (kegiatanItem) => {
@@ -66,8 +66,9 @@ const fetchKegiatan = async () => {
     });
   };
 
-  const formatTime = (dateString) => {
-    return new Date(dateString).toLocaleTimeString('id-ID', {
+  const formatTime = (item) => {
+    if (item?.jam) return item.jam;
+    return new Date(item?.tanggal).toLocaleTimeString('id-ID', {
       hour: '2-digit',
       minute: '2-digit'
     });
@@ -100,17 +101,13 @@ const fetchKegiatan = async () => {
         {/* Search Bar */}
         <div className="mb-8 max-w-md mx-auto">
           <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            <input
-              type="text"
-              placeholder="Cari kegiatan, lokasi, atau kategori..."
-              className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-green-500 focus:border-green-500"
+            <FloatingInput
+              label="Cari Kegiatan"
+              name="searchTerm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              inputClassName="border-gray-300 focus:ring-green-500"
+              labelFocusClass="peer-focus:text-green-600"
             />
           </div>
         </div>
@@ -132,10 +129,10 @@ const fetchKegiatan = async () => {
               <div key={item.id} className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 cursor-pointer">
                 {/* Image */}
                 <div className="relative h-48 overflow-hidden">
-                  {item.foto ? (
+                  {getImage(item) ? (
                     <img
-                      src={`http://localhost:5000/uploads/${item.foto}`}
-                      alt={item.nama_kegiatan}
+                      src={getImage(item)}
+                      alt={getTitle(item)}
                       className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
                     />
                   ) : (
@@ -144,19 +141,17 @@ const fetchKegiatan = async () => {
                     </div>
                   )}
                   {/* Kategori Badge */}
-                  {item.kategori_nama && (
-                    <div className="absolute top-3 left-3">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white/90 text-gray-800 backdrop-blur-sm">
-                        {item.kategori_nama}
-                      </span>
-                    </div>
-                  )}
+                  <div className="absolute top-3 left-3">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white/90 text-gray-800 backdrop-blur-sm">
+                      {normalizeLabel(getCategory(item))}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Content */}
                 <div className="p-6">
                   <h3 className="text-xl font-bold text-gray-900 mb-2 line-clamp-2">
-                    {item.nama_kegiatan}
+                    {getTitle(item)}
                   </h3>
                   
                   {/* Date & Time */}
@@ -184,12 +179,12 @@ const fetchKegiatan = async () => {
                   </p>
 
                   {/* Read More Button */}
-                  <button
+                  <Button
                     onClick={() => openModal(item)}
                     className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
                   >
                     Lihat Detail
-                  </button>
+                  </Button>
                 </div>
               </div>
             ))}
@@ -217,10 +212,10 @@ const fetchKegiatan = async () => {
           <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="relative">
-              {selectedKegiatan.foto ? (
+              {getImage(selectedKegiatan) ? (
                 <img
-                  src={`http://localhost:5000/uploads/${selectedKegiatan.foto}`}
-                  alt={selectedKegiatan.nama_kegiatan}
+                  src={getImage(selectedKegiatan)}
+                  alt={getTitle(selectedKegiatan)}
                   className="w-full h-64 object-cover"
                 />
               ) : (
@@ -230,29 +225,27 @@ const fetchKegiatan = async () => {
               )}
               
               {/* Close Button */}
-              <button
+              <Button
                 onClick={closeModal}
                 className="absolute top-4 right-4 bg-white/90 hover:bg-white text-gray-800 rounded-full p-2 transition-colors duration-200"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
-              </button>
+              </Button>
 
               {/* Kategori Badge */}
-              {selectedKegiatan.kategori_nama && (
-                <div className="absolute top-4 left-4">
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-white/90 text-gray-800 backdrop-blur-sm">
-                    {selectedKegiatan.kategori_nama}
-                  </span>
-                </div>
-              )}
+              <div className="absolute top-4 left-4">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-white/90 text-gray-800 backdrop-blur-sm">
+                  {normalizeLabel(getCategory(selectedKegiatan))}
+                </span>
+              </div>
             </div>
 
             {/* Modal Content */}
             <div className="p-6">
               <h2 className="text-3xl font-bold text-gray-900 mb-4">
-                {selectedKegiatan.nama_kegiatan}
+                {getTitle(selectedKegiatan)}
               </h2>
 
               {/* Date, Time & Location Info */}
@@ -266,7 +259,7 @@ const fetchKegiatan = async () => {
                   <div>
                     <p className="font-medium">Tanggal & Waktu</p>
                     <p className="text-sm text-gray-600">
-                      {formatDate(selectedKegiatan.tanggal)} • {formatTime(selectedKegiatan.tanggal)}
+                      {formatDate(selectedKegiatan.tanggal)} • {formatTime(selectedKegiatan)}
                     </p>
                   </div>
                 </div>
@@ -297,18 +290,18 @@ const fetchKegiatan = async () => {
 
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
-                <button
+                <Button
                   onClick={closeModal}
                   className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-3 px-4 rounded-lg transition-colors duration-200"
                 >
                   Tutup
-                </button>
-                <button className="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center">
+                </Button>
+                <Button className="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center">
                   <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
                   </svg>
                   Bagikan
-                </button>
+                </Button>
               </div>
             </div>
           </div>

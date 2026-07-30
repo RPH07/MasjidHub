@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import DaftarDonasi from '../../components/donasi-components/components/DaftarDonasi/DaftarDonasi';
-import TambahDonasi from '../../components/donasi-components/components/TambahDonasi/DonasiTambah';
-import DonasiAktif from '../../components/donasi-components/components/DonasiAktif/DonasiAktif';
-import HistoryDonasi from '../../components/donasi-components/components/DonasiHistory/DonasiHistory';
+import DaftarDonasi from '@/features/donasi/components/DaftarDonasi/DaftarDonasi';
+import TambahDonasi from '@/features/donasi/components/TambahDonasi/DonasiTambah';
+import DonasiAktif from '@/features/donasi/components/DonasiAktif/DonasiAktif';
+import HistoryDonasi from '@/features/donasi/components/DonasiHistory/DonasiHistory';
+import { Button } from "@/components/ui/button";
 
 const Donasi = () => {
     const [activeTab, setActiveTab] = useState('Daftar Program');
@@ -27,30 +28,30 @@ const Donasi = () => {
             <h1 className="text-3xl font-bold mb-6 text-gray-800">Manajemen Program Donasi</h1>
             <div className="bg-white rounded-lg shadow-md p-4">
                 <div className="flex border-b mb-4">
-                    <button
+                    <Button
                         onClick={() => setActiveTab('Daftar Program')}
                         className={`py-2 px-4 font-semibold ${activeTab === 'Daftar Program' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-500'}`}
                     >
                         Daftar Program
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                         onClick={() => setActiveTab('Tambah Program')}
                         className={`py-2 px-4 font-semibold ${activeTab === 'Tambah Program' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-500'}`}
                     >
                         Tambah Program
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                         onClick={() => setActiveTab('Program Aktif')}
                         className={`py-2 px-4 font-semibold ${activeTab === 'Program Aktif' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-500'}`}
                     >
                         Program Aktif
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                         onClick={() => setActiveTab('Riwayat Donasi')}
                         className={`py-2 px-4 font-semibold ${activeTab === 'Riwayat Donasi' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-500'}`}
                     >
                         Riwayat Donasi
-                    </button>
+                    </Button>
                 </div>
                 <div>
                     {renderContent()}

@@ -20,12 +20,22 @@ exports.login = async (req, res) => {
         const nama = user.nama;
         const email = user.email;
         const role = user.role;
+        const jabatan = user.jabatan;
 
-        const accessToken = jwt.sign({ userId, nama, email, role }, process.env.JWT_SECRET, {
+        const accessToken = jwt.sign({ userId, nama, email, role, jabatan }, process.env.JWT_SECRET, {
             expiresIn: '1d'
         });
 
-        res.json({ accessToken });
+        res.json({
+            accessToken,
+            user: {
+                id: userId,
+                nama,
+                email,
+                role,
+                jabatan
+            }
+        });
 
     } catch (error) {
         res.status(500).json({ msg: error.message });
@@ -53,7 +63,8 @@ exports.registerUser = async (req, res) => {
             nama: nama,
             email: email,
             password: hashPassword,
-            role: 'jamaah'
+            role: 'jamaah',
+            jabatan: null
         });
 
         res.json({ message: "Registrasi Akun Jamaah Berhasil" });
@@ -83,7 +94,8 @@ exports.registerDkm = async (req, res) => {
             nama: nama,
             email: email,
             password: hashPassword,
-            role: 'dkm'
+            role: 'dkm',
+            jabatan: 'anggota_dkm'
         });
 
         res.json({ message: "Registrasi Akun DKM Berhasil"});

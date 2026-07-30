@@ -40,6 +40,14 @@ const Zakat = sequelize.define('Zakat', {
         type: DataTypes.INTEGER,
         allowNull: false
     },
+    jenis_zakat: {
+        type: DataTypes.ENUM('maal', 'fitrah', 'profesi'),
+        allowNull: false
+    },
+    metode_pembayaran: {
+        type: DataTypes.STRING,
+        defaultValue: 'transfer_bank'
+    },
     kode_unik: {
         type: DataTypes.INTEGER,
         allowNull: true
@@ -57,9 +65,21 @@ const Zakat = sequelize.define('Zakat', {
         allowNull: true
     },
     status: {
-        type: DataTypes.ENUM('pending', 'approved', 'rejected'),
+        type: DataTypes.ENUM('pending', 'approved', 'rejected', 'voided'),
         defaultValue: 'pending'
     },
+    reject_reason: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    validated_at: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+    validated_by: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    }
 }, {
     freezeTableName: true,
     tableName: 'zakat',

@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
-import ErrorBoundary from '../../components/ErrorBoundary/ErrorBoundary';
+import ErrorBoundary from '@/components/feedback/ErrorBoundary';
+import { Button } from "@/components/ui/button";
 import { 
   KegiatanForm, 
   KegiatanList, 
   KategoriManager 
-} from '.././../components/kegiatan-components/components';
-import { useKegiatan, useKategori } from '.././../components/kegiatan-components/hooks';
-import { initialFormData } from '.././../components/kegiatan-components/utils';
+} from '@/features/kegiatan/components';
+import { useKegiatan, useKategori } from '@/features/kegiatan/hooks';
+import { initialFormData } from '@/features/kegiatan/utils';
 
 const KegiatanPage = () => {
   // States
@@ -32,10 +33,8 @@ const KegiatanPage = () => {
   const {
     kategoriList,
     showKategoriManager,
-    newKategori,
     isLoading: kategoriLoading,
     fetchKategori,
-    handleKategoriChange,
     createKategori,
     toggleKategoriManager,
     setShowKategoriManager
@@ -69,14 +68,20 @@ const KegiatanPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!formData.jam || !formData.kategori_id) {
+      toast.error('Jam dan kategori kegiatan wajib diisi');
+      return;
+    }
     
     const formDataToSend = new FormData();
-    formDataToSend.append('nama_kegiatan', formData.nama_kegiatan);
+    formDataToSend.append('judul', formData.nama_kegiatan);
     formDataToSend.append('tanggal', formData.tanggal);
     formDataToSend.append('lokasi', formData.lokasi);
     formDataToSend.append('deskripsi', formData.deskripsi);
-    formDataToSend.append('kategori', formData.kategori || 'pengajian');
-    if (foto) formDataToSend.append('foto', foto);
+    formDataToSend.append('jam', formData.jam);
+    formDataToSend.append('kategori_id', formData.kategori_id);
+    if (foto) formDataToSend.append('image', foto);
 
     let success = false;
     if (isEditing) {
@@ -102,11 +107,12 @@ const KegiatanPage = () => {
     setEditingId(item.id);
     setIsEditing(true);
     setFormData({
-      nama_kegiatan: item.nama_kegiatan,
-      tanggal: item.tanggal,
+      nama_kegiatan: item.judul,
+      tanggal: item.tanggal?.slice(0, 10) || '',
       lokasi: item.lokasi,
       deskripsi: item.deskripsi,
-      kategori: item.kategori || ''
+      jam: item.jam,
+      kategori_id: item.kategori_id || ''
     });
     setFoto(null);
     if (fileInputRef.current) {
@@ -136,8 +142,8 @@ const KegiatanPage = () => {
     });
   };
 
-  const handleKategoriSubmit = async () => {
-    const success = await createKategori();
+  const handleKategoriSubmit = async (kategoriPayload) => {
+    const success = await createKategori(kategoriPayload);
     return success;
   };
 
@@ -176,7 +182,7 @@ const KegiatanPage = () => {
         <h1 className="text-2xl font-bold">Kelola Kegiatan Masjid</h1>
         
         <div className="flex items-center gap-3">
-          <button
+          <Button
             onClick={toggleKategoriManager}
             disabled={kategoriLoading} 
             className={`px-4 py-2 text-white rounded flex items-center gap-2 transition-colors ${
@@ -193,7 +199,7 @@ const KegiatanPage = () => {
               </svg>
             )}
             {kategoriLoading ? 'Loading...' : 'Kelola Kategori'}
-          </button>
+          </Button>
           
           {isEditing && (
             <div className="flex items-center gap-2 bg-orange-100 text-orange-800 px-3 py-1 rounded-full">
@@ -210,9 +216,8 @@ const KegiatanPage = () => {
       <KategoriManager
         showModal={showKategoriManager}
         onClose={() => setShowKategoriManager(false)}
-        newKategori={newKategori}
-        onKategoriChange={handleKategoriChange}
         onSubmit={handleKategoriSubmit}
+        isSubmitting={kategoriLoading}
       />
 
       {/* Form Section */}
@@ -227,7 +232,7 @@ const KegiatanPage = () => {
           isEditing={isEditing}
           onCancelEdit={handleCancelEdit}
           fileInputRef={fileInputRef}
-          onCreateKategori={createKategori} // ✅ Pass function dari useKategori hook
+          onCreateKategori={createKategori}
         />
       </ErrorBoundary>
 

@@ -27,8 +27,12 @@ const User = sequelize.define('user', {
         type: DataTypes.ENUM('admin', 'jamaah', 'dkm'),
         defaultValue: 'jamaah'
     },
+    jabatan: {
+        type: DataTypes.ENUM('ketua_dkm', 'bendahara', 'sekretaris', 'anggota_dkm'),
+        allowNull: true
+    },
     status: {
-        type: DataTypes.ENUM('active', 'inactive'),
+        type: DataTypes.ENUM('active', 'deletion_requested', 'inactive'),
         defaultValue: 'active'
     }
 }, {

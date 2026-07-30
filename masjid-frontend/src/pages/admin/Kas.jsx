@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { useKasData } from '../../components/kas-components/hooks/useKasData';
-import { usePeriodFilter } from '../../components/kas-components/hooks/usePeriodFilter';
-import { useModal } from '../../components/kas-components/hooks/useModal';
-import { useTransactionOps } from '../../components/kas-components/hooks/useTransactionOps';
-import { usePendingData } from '../../components/kas-components/hooks/usePendingData';
-import { useValidationOps } from '../../components/kas-components/hooks/useValidationOps';
+import { useKasData } from '@/features/kas/hooks/useKasData';
+import { usePeriodFilter } from '@/features/kas/hooks/usePeriodFilter';
+import { useModal } from '@/features/kas/hooks/useModal';
+import { useTransactionOps } from '@/features/kas/hooks/useTransactionOps';
+import { useValidationOps } from '@/features/kas/hooks/useValidationOps';
+import { Button } from "@/components/ui/button";
+import { FloatingDate } from '@/components/form';
 import {
   KasOverview,
   KasPemasukan,
@@ -13,8 +14,8 @@ import {
   KasValidation,
   TransactionModal,
   BuktiModal
-} from '../../components/kas-components/components';
-import { TABS, kategoriPemasukan } from '../../components/kas-components/utils/constants';
+} from '@/features/kas/components';
+import { TABS, PERIOD_OPTIONS } from '@/features/kas/utils/constants';
 
 const Kas = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -28,11 +29,7 @@ const Kas = () => {
   const { selectedPeriod, setPeriod, getPeriodLabel } = usePeriodFilter('bulan-ini');
   const kasDataHook = useKasData(selectedPeriod);
   const { deleteTransaction } = useTransactionOps(kasDataHook.refreshData);
-  const pendingDataHook = usePendingData();
-  const validationOps = useValidationOps(() => {
-    pendingDataHook.refreshData();
-    kasDataHook.refreshData();
-  });
+  const validationOps = useValidationOps(kasDataHook.refreshData);
   
   const {
     showModal,
@@ -52,6 +49,7 @@ const Kas = () => {
       setShowCustomDate(true);
     } else {
       setShowCustomDate(false);
+      kasDataHook.clearCustomDateRange();
       setPeriod(value);
     }
   };
@@ -64,39 +62,14 @@ const Kas = () => {
     }
   };
 
-const handleOpenBukti = (buktiTransfer, transactionInfo = null) => {
-  if (!buktiTransfer) {
-    alert('Bukti transfer tidak tersedia');
-    return;
-  }
-
-  // console.log('Opening bukti with info:', transactionInfo);
-
-  let folderPath = '';
-  
-  if (buktiTransfer.startsWith('zakat-')) {
-    folderPath = 'bukti-zakat';
-  } else if (buktiTransfer.startsWith('infaq-')) {
-    folderPath = 'bukti-infaq';
-  } else if (buktiTransfer.startsWith('donasi-')) {
-    folderPath = 'bukti-donasi';
-  } else {
-    // Fallback berdasarkan transaction type
-    switch (transactionInfo?.type) {
-      case 'zakat': folderPath = 'bukti-zakat'; break;
-      case 'infaq': folderPath = 'bukti-infaq'; break;
-      case 'donasi': folderPath = 'bukti-donasi'; break;
-      default: folderPath = 'uploads'; 
+  const handleOpenBukti = (buktiTransfer, transactionInfo = null) => {
+    if (!buktiTransfer) {
+      alert('Bukti transfer tidak tersedia');
+      return;
     }
-  }
 
-  const imageUrl = `http://localhost:5000/uploads/${folderPath}/${buktiTransfer}`;
-  
-  console.log('Generated image URL:', imageUrl);
-  console.log('File prefix detection:', buktiTransfer.split('-')[0]);
-
-  openBuktiModal(imageUrl, transactionInfo);
-};
+    openBuktiModal(buktiTransfer, transactionInfo);
+  };
 
   // Loading state
   if (kasDataHook.loading) {
@@ -111,6 +84,16 @@ const handleOpenBukti = (buktiTransfer, transactionInfo = null) => {
   const handleDelete = async (id) => {
     if (window.confirm('Apakah Anda yakin ingin menghapus transaksi ini?')) {
       await deleteTransaction(id);
+    }
+  };
+
+  const handleRequestVoid = async (transaction) => {
+    const reason = window.prompt('Masukkan alasan void transaksi:');
+    if (!reason?.trim()) return;
+
+    const result = await validationOps.requestVoid(transaction.id, reason.trim());
+    if (!result.success) {
+      alert(result.message);
     }
   };
 
@@ -131,15 +114,11 @@ const handleOpenBukti = (buktiTransfer, transactionInfo = null) => {
             value={selectedPeriod}
             onChange={(e) => handlePeriodChange(e.target.value)}
           >
-            <option value="hari-ini">Hari Ini</option>
-            <option value="kemarin">Kemarin</option>
-            <option value="minggu-ini">Minggu Ini</option>
-            <option value="minggu-lalu">Minggu Lalu</option>
-            <option value="bulan-ini">Bulan Ini</option>
-            <option value="bulan-lalu">Bulan Lalu</option>
-            <option value="tahun-ini">Tahun Ini</option>
-            <option value="tahun-lalu">Tahun Lalu</option>
-            <option value="custom">Periode Kustom</option>
+            {PERIOD_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
           </select>
         </div>
       </div>
@@ -149,36 +128,30 @@ const handleOpenBukti = (buktiTransfer, transactionInfo = null) => {
         <div className="bg-white p-4 rounded-lg border shadow-sm">
           <h3 className="text-sm font-medium mb-3">Pilih Periode Kustom</h3>
           <div className="flex gap-3 items-end">
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">Tanggal Mulai</label>
-              <input
-                type="date"
-                value={customStartDate}
-                onChange={(e) => setCustomStartDate(e.target.value)}
-                className="border rounded-md px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">Tanggal Selesai</label>
-              <input
-                type="date"
-                value={customEndDate}
-                onChange={(e) => setCustomEndDate(e.target.value)}
-                className="border rounded-md px-3 py-2 text-sm"
-              />
-            </div>
-            <button
+            <FloatingDate
+              label="Tanggal Mulai"
+              name="customStartDate"
+              value={customStartDate}
+              onChange={(e) => setCustomStartDate(e.target.value)}
+            />
+            <FloatingDate
+              label="Tanggal Selesai"
+              name="customEndDate"
+              value={customEndDate}
+              onChange={(e) => setCustomEndDate(e.target.value)}
+            />
+            <Button
               onClick={applyCustomDate}
               className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700"
             >
               Terapkan
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => setShowCustomDate(false)}
               className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm hover:bg-gray-400"
             >
               Batal
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -187,7 +160,7 @@ const handleOpenBukti = (buktiTransfer, transactionInfo = null) => {
       <div className="border-b border-gray-200 overflow-x-auto no-scrollbar">
         <nav className="-mb-px flex space-x-8 whitespace-nowrap">
           {Object.entries(TABS).map(([key, tab]) => (
-            <button
+            <Button
               key={key}
               className={`py-2 px-1 border-b-2 font-medium text-sm ${
                 activeTab === key
@@ -197,7 +170,7 @@ const handleOpenBukti = (buktiTransfer, transactionInfo = null) => {
               onClick={() => setActiveTab(key)}
             >
               {tab.label}
-            </button>
+            </Button>
           ))}
         </nav>
       </div>     
@@ -207,55 +180,45 @@ const handleOpenBukti = (buktiTransfer, transactionInfo = null) => {
           <KasOverview
             summary={kasDataHook.summary}
             periodLabel={getPeriodLabel()}
-            kategoriPemasukan={kategoriPemasukan}
             selectedPeriod={selectedPeriod}
           />
         )}
 
         {activeTab === 'validasi' && (
           <KasValidation
-            pendingData={pendingDataHook.pendingData}
-            loading={pendingDataHook.loading || validationOps.loading}
-            onApprove={validationOps.approveTransaction}
-            onReject={validationOps.rejectTransaction}
-            onOpenBukti={handleOpenBukti}
+            pendingData={kasDataHook.voidPendingData}
+            loading={kasDataHook.loading || validationOps.loading}
+            onApprove={validationOps.approveVoid}
+            onReject={validationOps.rejectVoid}
           />
         )}
 
         {activeTab === 'pemasukan' && (
           <KasPemasukan
-            kasData={kasDataHook.kasData}
-            zakatData={kasDataHook.zakatData}
-            infaqData={kasDataHook.infaqData}
-            donasiData={kasDataHook.donasiData}
+            transactions={kasDataHook.pemasukanData}
             onEdit={handleEdit}
             onDelete={handleDelete}
             onOpenBukti={handleOpenBukti}
             onOpenModal={openTransactionModal}
-            onAddTransaction={() => openTransactionModal('add-pemasukan')}
+            onRequestVoid={handleRequestVoid}
           />
         )}
 
         {activeTab === 'pengeluaran' && (
           <KasPengeluaran
-            kasData={kasDataHook.kasData}
+            transactions={kasDataHook.pengeluaranData}
             onEdit={handleEdit}
             onDelete={handleDelete}
-            onOpenBukti={handleOpenBukti}
             onOpenModal={openTransactionModal}
-            onAddTransaction={() => openTransactionModal('add-pengeluaran')}
+            onRequestVoid={handleRequestVoid}
           />
         )}
 
         {activeTab === 'riwayat' && (
           <KasRiwayat
-            kasData={kasDataHook.kasData}
-            zakatData={kasDataHook.zakatData}
-            infaqData={kasDataHook.infaqData}
-            donasiData={kasDataHook.donasiData}
+            history={kasDataHook.history}
+            filters={kasDataHook.history.filters || kasDataHook.filters}
             onOpenBukti={handleOpenBukti}
-            kategoriPemasukan={kategoriPemasukan}
-            currentPeriod={selectedPeriod}
           />
         )}
       </div>

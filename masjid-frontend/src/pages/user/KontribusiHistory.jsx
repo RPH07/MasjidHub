@@ -1,6 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../hooks/useAuth';
-import axios from 'axios';
+import { useAuth } from '@/hooks/useAuth';
+import api from '@/config/api';
+import { Button } from "@/components/ui/button";
+import { FloatingInput } from '@/components/form';
+import { formatCurrency } from '@/utils/formatters';
+import {
+  BriefcaseBusiness,
+  CheckCircle2,
+  ClipboardList,
+  Clock3,
+  Coins,
+  FileText,
+  HeartHandshake,
+  Landmark,
+  Moon,
+  Search,
+  Target,
+  XCircle
+} from 'lucide-react';
 
 const KontribusiHistory = () => {
   const { user } = useAuth();
@@ -10,15 +27,7 @@ const KontribusiHistory = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    if (!axios.defaults.baseURL) {
-      axios.defaults.baseURL = 'http://localhost:5000';
-    }
-  }, []);
-
-  useEffect(() => {
-    console.log('🔍 Debug - User data:', user);
     if (user?.id) {
-      console.log('📞 Calling fetchHistory for user ID:', user.id);
       fetchHistory();
       fetchSummary();
     }
@@ -27,20 +36,12 @@ const KontribusiHistory = () => {
   const fetchHistory = async () => {
     try {
       setLoading(true);
-      const url = `http://localhost:5000/api/kontribusi/history/${user.id}`;
-      console.log('🌐 Fetching URL:', url);
+      const response = await api.get('/kontribusi/history');
 
-      const response = await axios.get(url, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      console.log('📊 API Response:', response.data);
       setHistory(response.data.data || []);
     } catch (error) {
-      console.error('❌ Error fetching history:', error);
-      console.error('❌ Error details:', error.response?.data);
+      console.error('Error fetching history:', error);
+      console.error('Error details:', error.response?.data);
       setHistory([]);
     } finally {
       setLoading(false);
@@ -49,25 +50,17 @@ const KontribusiHistory = () => {
 
   const fetchSummary = async () => {
     try {
-      const url = `http://localhost:5000/api/kontribusi/summary/${user.id}`;
-      console.log('📈 Fetching Summary URL:', url);
+      const response = await api.get('/kontribusi/summary');
 
-      const response = await axios.get(url, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      console.log('📈 Summary Response:', response.data);
       const summaryData = response.data.data || response.data;
       setSummary(summaryData);
     } catch (error) {
-      console.error('❌ Error fetching summary:', error);
-      console.error('❌ Summary error details:', error.response?.data);
+      console.error('Error fetching summary:', error);
+      console.error('Summary error details:', error.response?.data);
     }
   };
 
-  // ✅ FILTER: Search berdasarkan nama, detail program, metode pembayaran, status
+  // FILTER: Search berdasarkan nama, detail program, metode pembayaran, status
   const filteredHistory = history.filter(item => {
     if (!searchTerm) return true;
     
@@ -85,9 +78,9 @@ const KontribusiHistory = () => {
   const safeNumber = (value) => {
     if (value === null || value === undefined || value === '') return 0;
     
-    // ✅ FIX: Handle concatenated strings like "1000000.00140000.00"
+    // FIX: Handle concatenated strings like "1000000.00140000.00"
     if (typeof value === 'string' && value.includes('.00') && value.length > 10) {
-      console.log('🔧 Detected concatenated string:', value);
+      console.log('Detected concatenated string:', value);
       const parts = value.split('.00');
       let total = 0;
       parts.forEach(part => {
@@ -95,7 +88,7 @@ const KontribusiHistory = () => {
           total += parseFloat(part);
         }
       });
-      console.log('🔧 Fixed concatenated value:', total);
+      console.log('Fixed concatenated value:', total);
       return total;
     }
     
@@ -120,14 +113,6 @@ const KontribusiHistory = () => {
     return badges[type] || 'bg-gray-100 text-gray-800 border border-gray-200';
   };
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0
-    }).format(amount);
-  };
-
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('id-ID', {
       year: 'numeric',
@@ -148,27 +133,39 @@ const KontribusiHistory = () => {
     );
   }
 
-  const getBuktiTransferUrl = (buktiTransfer, type) => {
+  const getBuktiTransferUrl = (buktiTransfer) => {
     if (!buktiTransfer) return null;
-    
-    const baseUrl = axios.defaults.baseURL || 'http://localhost:5173';
-    let folderPath = '';
-    
-    if (type === 'zakat') {
-      folderPath = 'uploads/bukti-zakat';
-    } else if (type === 'donasi') {
-      folderPath = 'uploads/bukti-donasi';
-    } else {
-      if (buktiTransfer.startsWith('zakat-')) {
-        folderPath = 'uploads/bukti-zakat';
-      } else if (buktiTransfer.startsWith('bukti-')) {
-        folderPath = 'uploads/bukti-donasi';
-      } else {
-        folderPath = 'uploads';
-      }
-    }
-    
-    return `${baseUrl}/${folderPath}/${buktiTransfer}`;
+    if (String(buktiTransfer).startsWith('http')) return buktiTransfer;
+    return buktiTransfer;
+  };
+
+  const getStatusContent = (status) => {
+    const content = {
+      pending: { icon: Clock3, label: 'Pending' },
+      approved: { icon: CheckCircle2, label: 'Disetujui' },
+      rejected: { icon: XCircle, label: 'Ditolak' }
+    };
+
+    return content[status] || { icon: Clock3, label: status || 'Status' };
+  };
+
+  const getTypeContent = (type) => {
+    const content = {
+      donasi: { icon: HeartHandshake, label: 'Donasi' },
+      zakat: { icon: Landmark, label: 'Zakat' }
+    };
+
+    return content[type] || { icon: ClipboardList, label: type || 'Kontribusi' };
+  };
+
+  const getZakatTypeContent = (type) => {
+    const content = {
+      fitrah: { icon: Moon, label: 'Fitrah' },
+      maal: { icon: Coins, label: 'Maal' },
+      profesi: { icon: BriefcaseBusiness, label: 'Profesi' }
+    };
+
+    return content[type] || { icon: ClipboardList, label: type };
   };
 
   return (
@@ -201,7 +198,7 @@ const KontribusiHistory = () => {
                     </p>
                   </div>
                   <div className="p-3 bg-blue-100 rounded-full">
-                    <span className="text-blue-600 text-xl">💝</span>
+                    <HeartHandshake className="h-6 w-6 text-blue-600" aria-hidden="true" />
                   </div>
                 </div>
               </div>
@@ -218,7 +215,7 @@ const KontribusiHistory = () => {
                     </p>
                   </div>
                   <div className="p-3 bg-blue-100 rounded-full">
-                    <span className="text-blue-600 text-xl">🎯</span>
+                    <Target className="h-6 w-6 text-blue-600" aria-hidden="true" />
                   </div>
                 </div>
               </div>
@@ -235,7 +232,7 @@ const KontribusiHistory = () => {
                     </p>
                   </div>
                   <div className="p-3 bg-purple-100 rounded-full">
-                    <span className="text-purple-600 text-xl">🕌</span>
+                    <Landmark className="h-6 w-6 text-purple-600" aria-hidden="true" />
                   </div>
                 </div>
               </div>
@@ -249,17 +246,13 @@ const KontribusiHistory = () => {
         <div className="p-6">
           <div className="max-w-md mx-auto">
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-              <input
-                type="text"
-                placeholder="Cari berdasarkan nama, program, atau status..."
-                className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              <FloatingInput
+                label="Cari Riwayat"
+                name="searchTerm"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                icon={<Search className="h-5 w-5" />}
+                inputClassName="border-gray-300 focus:ring-blue-500"
               />
             </div>
           </div>
@@ -292,9 +285,11 @@ const KontribusiHistory = () => {
             </div>
           ) : filteredHistory.length === 0 ? (
             <div className="text-center py-12">
-              <div className="text-gray-400 text-6xl mb-4">
-                {searchTerm ? '🔍' : '📋'}
-              </div>
+              {searchTerm ? (
+                <Search className="mx-auto mb-4 h-14 w-14 text-gray-400" aria-hidden="true" />
+              ) : (
+                <ClipboardList className="mx-auto mb-4 h-14 w-14 text-gray-400" aria-hidden="true" />
+              )}
               <p className="text-gray-500 text-lg">
                 {searchTerm ? 'Kontribusi tidak ditemukan' : 'Belum ada riwayat kontribusi'}
               </p>
@@ -307,27 +302,34 @@ const KontribusiHistory = () => {
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredHistory.map((item, index) => (
-                <div
-                  key={`${item.type}-${item.id}-${index}`}
-                  className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-all duration-200 hover:border-gray-300"
-                >
+              {filteredHistory.map((item, index) => {
+                const typeContent = getTypeContent(item.type);
+                const TypeIcon = typeContent.icon;
+                const statusContent = getStatusContent(item.status);
+                const StatusIcon = statusContent.icon;
+                const zakatTypeContent = item.jenis_kontribusi ? getZakatTypeContent(item.jenis_kontribusi) : null;
+                const ZakatTypeIcon = zakatTypeContent?.icon;
+
+                return (
+                  <div
+                    key={`${item.type}-${item.id}-${index}`}
+                    className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-all duration-200 hover:border-gray-300"
+                  >
                   <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-3">
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${getTypeBadge(item.type)}`}>
-                          {item.type === 'donasi' ? '💝 Donasi' : '🕌 Zakat'}
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium ${getTypeBadge(item.type)}`}>
+                          <TypeIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                          {typeContent.label}
                         </span>
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadge(item.status)}`}>
-                          {item.status === 'pending' && '⏳ Pending'}
-                          {item.status === 'approved' && '✅ Disetujui'}
-                          {item.status === 'rejected' && '❌ Ditolak'}
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium ${getStatusBadge(item.status)}`}>
+                          <StatusIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                          {statusContent.label}
                         </span>
-                        {item.jenis_kontribusi && (
-                          <span className="px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800 border border-indigo-200">
-                            {item.jenis_kontribusi === 'fitrah' && '🌙 Fitrah'}
-                            {item.jenis_kontribusi === 'maal' && '💰 Maal'}
-                            {item.jenis_kontribusi === 'profesi' && '💼 Profesi'}
+                        {zakatTypeContent && (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800 border border-indigo-200">
+                            <ZakatTypeIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                            {zakatTypeContent.label}
                           </span>
                         )}
                       </div>
@@ -367,18 +369,19 @@ const KontribusiHistory = () => {
                       )}
                       
                       {item.bukti_transfer && (
-                        <button
-                          onClick={() => window.open(getBuktiTransferUrl(item.bukti_transfer, item.type), '_blank')}
+                        <Button
+                          onClick={() => window.open(getBuktiTransferUrl(item.bukti_transfer), '_blank')}
                           className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 hover:border-blue-300 transition-colors duration-200"
                         >
-                          <span className="mr-1">📄</span>
+                          <FileText className="mr-1 h-4 w-4" aria-hidden="true" />
                           Lihat Bukti Transfer
-                        </button>
+                        </Button>
                       )}
                     </div>
                   </div>
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

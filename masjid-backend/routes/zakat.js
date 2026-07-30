@@ -1,16 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const zakatController = require('../models/controllers/zakatController');
-const {verifyToken} = require('../models/middleware/auth');
+const { verifyToken, optionalToken, dkmOrAdmin } = require('../models/middleware/auth');
+const { upload } = require('../config/cloudinary');
 
-router.get('/', zakatController.getZakat);
+router.get('/', verifyToken, dkmOrAdmin, zakatController.getZakat);
 
-// POST
-// router.post('/generate-kode', zakatController.generateKodeUnik);
-router.post('/', zakatController.createZakat); 
-// router.post('/', verifyToken, zakatController.createZakat);
+router.post('/', optionalToken, zakatController.createZakat); 
 
-// PUT
-router.put('/:id/validate', zakatController.verifyZakat);
+router.patch('/:id/upload', upload('zakat_bukti').single('bukti'), zakatController.uploadBuktiZakat);
+
+router.put('/:id/validate', verifyToken, dkmOrAdmin, zakatController.verifyZakat);
 
 module.exports = router;

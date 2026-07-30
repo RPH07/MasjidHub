@@ -1,17 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-
-// Helper function untuk format currency, bisa juga diimpor dari utils jika sudah ada
-const formatCurrency = (amount) => {
-  if (typeof amount !== 'number') {
-    return 'Rp 0';
-  }
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-  }).format(amount);
-};
+import api from '@/config/api';
+import { formatCurrency } from '@/utils/formatters';
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -28,16 +17,12 @@ const Dashboard = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const token = localStorage.getItem('token');
-        const config = {
-          headers: { Authorization: `Bearer ${token}` },
-        };
 
         // Mengambil semua data yang dibutuhkan secara paralel
         const [summaryRes, kegiatanRes, userRes] = await Promise.all([
-          axios.get('http://localhost:5000/api/kas/summary', config),
-          axios.get('http://localhost:5000/api/kegiatan', config),
-          axios.get('http://localhost:5000/api/user', config) 
+          api.get('/kas/summary'),
+          api.get('/kegiatan'),
+          api.get('/user') 
         ]);
 
         const summaryData = summaryRes.data.data;
