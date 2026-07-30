@@ -31,8 +31,8 @@ const DonasiAktif = () => {
             case 'highest_collected':
                 return (b.dana_terkumpul || 0) - (a.dana_terkumpul || 0)
             case 'highest_progress':
-                { const progressA = ((a.dana_terkumpul || 0) / a.target_dana) * 100
-                const progressB = ((b.dana_terkumpul || 0) / b.target_dana) * 100
+                { const progressA = (toNumber(a.dana_terkumpul || 0) / toNumber(a.target_dana)) * 100
+                const progressB = (toNumber(b.dana_terkumpul || 0) / toNumber(b.target_dana)) * 100
                 return progressB - progressA }
             default:
                 return 0
@@ -67,8 +67,13 @@ const DonasiAktif = () => {
     }
 
     // Calculate statistics
-    const totalTarget = programAktif.reduce((sum, program) => sum + program.target_dana, 0)
-    const totalCollected = programAktif.reduce((sum, program) => sum + (program.dana_terkumpul || 0), 0)
+    const toNumber = (value) => Number(value || 0);
+    const totalTarget = programAktif.reduce((sum, program) => {
+        return sum + toNumber(program.target_dana)
+    }, 0)
+    const totalCollected = programAktif.reduce((sum, program) => {
+        return sum + toNumber(program.dana_terkumpul)
+    }, 0)
     const totalPrograms = programAktif.length
     const avgProgress = totalPrograms > 0 ? (totalCollected / totalTarget) * 100 : 0
 
