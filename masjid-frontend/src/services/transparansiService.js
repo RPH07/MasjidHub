@@ -1,4 +1,4 @@
-import api from '../config/api';
+import api from '@/config/api';
 
 const getData = (response) => response.data?.data || response.data;
 
