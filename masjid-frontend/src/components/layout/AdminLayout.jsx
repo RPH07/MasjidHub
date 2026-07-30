@@ -1,0 +1,74 @@
+import React, { useEffect, useState } from 'react';
+import { Outlet } from 'react-router-dom';
+import Sidebar from '@/components/navigation/Sidebar';
+import { ChevronRight, Menu } from 'lucide-react';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
+import { preloadAdminDashboardPages } from '@/utils/routePreloaders';
+import { Button } from "@/components/ui/button";
+
+const AdminLayout = () => {
+  const { user } = useAuth();
+  const isMobile = useMediaQuery('(max-width: 768px)');
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  const toggleSidebar = () => {
+    setIsCollapsed(!isCollapsed);
+  };
+
+  useEffect(() => {
+    preloadAdminDashboardPages();
+  }, []);
+
+  return (
+    <div className="flex h-screen w-full bg-gray-50">
+      {/* Sidebar untuk desktop */}
+      {!isMobile && (
+        <div className={cn(
+          "hidden md:block transition-all duration-300 ease-in-out", 
+          isCollapsed ? "w-16" : "w-64"
+        )}>
+          <Sidebar
+            isCollapsed={isCollapsed}
+            role={user?.role || 'jamaah'}
+            jabatan={user?.jabatan || null}
+          />
+        </div>
+      )}
+
+      {/* Main content */}
+      <div className="flex-1 overflow-auto">
+        {/* Header dengan toggle sidebar */}
+        <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-white px-4 md:px-6">
+          {isMobile ? (
+            <Sidebar
+              isMobile={true}
+              role={user?.role || 'jamaah'}
+              jabatan={user?.jabatan || null}
+            />
+          ) : (
+            <Button 
+              onClick={toggleSidebar} 
+              className="flex items-center justify-center h-8 w-8 rounded-md hover:bg-gray-100"
+            >
+              {isCollapsed ? (
+                <ChevronRight className="h-5 w-5" />
+              ) : (
+                <Menu className="h-5 w-5" />
+              )}
+            </Button>
+          )}
+          <h1 className="text-xl font-bold">Dashboard Pengurus</h1>
+        </header>
+
+        {/* Page content */}
+        <main className="flex-1 p-4 md:p-6">
+          <Outlet />
+        </main>
+      </div>
+    </div>
+  );
+};
+
+export default AdminLayout;
