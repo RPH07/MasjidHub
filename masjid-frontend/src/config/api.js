@@ -2,6 +2,7 @@ import axios from "axios";
 
 export const AUTH_SESSION_MESSAGE_KEY = 'authSessionMessage';
 export const AUTH_SESSION_EXPIRED_MESSAGE = 'Sesi Anda telah berakhir demi keamanan akun. Silakan login kembali.';
+export const AUTH_CHANGED_EVENT = 'authChanged';
 
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api",
@@ -25,6 +26,7 @@ api.interceptors.response.use(
         if (error.response?.status === 401) {
             localStorage.removeItem('accessToken');
             localStorage.removeItem('user');
+            window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
             sessionStorage.setItem(AUTH_SESSION_MESSAGE_KEY, AUTH_SESSION_EXPIRED_MESSAGE);
             window.location.href = '/login';
         }
