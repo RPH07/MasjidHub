@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "@/config/api";
 import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
+import { FloatingInput } from "@/components/form";
 
 const roles = ['admin', 'dkm', 'jamaah'];
 const jabatanOptions = ['ketua_dkm', 'bendahara', 'sekretaris', 'anggota_dkm'];
@@ -226,22 +228,22 @@ const UserAccessPage = () => {
             )}
 
             <div className="flex gap-2">
-                <button
+                <Button
                     type="button"
                     onClick={() => setActiveTab('users')}
                     className={`rounded-md px-4 py-2 text-sm font-medium ${activeTab === 'users' ? 'bg-green-600 text-white' : 'border bg-white text-gray-700'}`}
                 >
                     Daftar User
-                </button>
+                </Button>
 
                 {isAdmin && (
-                    <button
+                    <Button
                         type="button"
                         onClick={() => setActiveTab('logs')}
                         className={`rounded-md px-4 py-2 text-sm font-medium ${activeTab === 'logs' ? 'bg-green-600 text-white' : 'border bg-white text-gray-700'}`}
                     >
                         Log Aktivitas
-                    </button>
+                    </Button>
                 )}
             </div>
 
@@ -312,68 +314,68 @@ const UserAccessPage = () => {
                                     <td className="p-3">
                                         <div className="flex justify-end gap-2">
                                             {isKetuaDkm && hasDraft && (
-                                                <button
+                                                <Button
                                                     type="button"
                                                     disabled={isSaving}
                                                     onClick={() => saveDraft(item)}
                                                     className="rounded-md bg-green-600 px-3 py-1 text-xs font-medium text-white disabled:opacity-50"
                                                 >
                                                     Simpan
-                                                </button>
+                                                </Button>
                                             )}
 
                                             {item.status === 'deletion_requested' && isAdmin && (
                                                 <>
-                                                    <button
+                                                    <Button
                                                         type="button"
                                                         disabled={isSaving}
                                                         onClick={() => updateStatus(item.id, 'inactive')}
                                                         className="rounded-md bg-red-600 px-3 py-1 text-xs font-medium text-white disabled:opacity-50"
                                                     >
                                                         Nonaktifkan
-                                                    </button>
-                                                    <button
+                                                    </Button>
+                                                    <Button
                                                         type="button"
                                                         disabled={isSaving}
                                                         onClick={() => updateStatus(item.id, 'active')}
                                                         className="rounded-md border px-3 py-1 text-xs font-medium disabled:opacity-50"
                                                     >
                                                         Tolak
-                                                    </button>
+                                                    </Button>
                                                 </>
                                             )}
 
                                             {isAdmin && item.status === 'inactive' && (
-                                                <button
+                                                <Button
                                                     type="button"
                                                     disabled={isSaving}
                                                     onClick={() => updateStatus(item.id, 'active')}
                                                     className="rounded-md border px-3 py-1 text-xs font-medium disabled:opacity-50"
                                                 >
                                                     Aktifkan
-                                                </button>
+                                                </Button>
                                             )}
 
                                             {isAdmin && currentUser?.id !== item.id && (
-                                                <button
+                                                <Button
                                                     type="button"
                                                     disabled={isSaving}
                                                     onClick={() => deleteUser(item)}
                                                     className="rounded-md border border-red-200 px-3 py-1 text-xs font-medium text-red-600 disabled:opacity-50"
                                                 >
                                                     Hapus
-                                                </button>
+                                                </Button>
                                             )}
 
                                             {isAdmin && (
-                                                <button
+                                                <Button
                                                     type="button"
                                                     disabled={isSaving}
                                                     onClick={() => openPasswordModal(item)}
                                                     className="rounded-md border px-3 py-1 text-xs font-medium disabled:opacity-50"
                                                 >
                                                     Reset Password
-                                                </button>
+                                                </Button>
                                             )}
 
                                             <span className="min-w-20 text-right text-xs text-gray-500">
@@ -459,46 +461,46 @@ const UserAccessPage = () => {
                         </p>
 
                         <div className="mt-5 space-y-4">
-                            <div>
-                                <label className="text-sm font-medium">Password Baru</label>
-                                <input
-                                    type="password"
-                                    minLength={6}
-                                    required
-                                    value={passwordForm.password}
-                                    onChange={(e) => setPasswordForm((prev) => ({ ...prev, password: e.target.value }))}
-                                    className="mt-1 w-full rounded-md border px-3 py-2"
-                                />
-                            </div>
+                            <FloatingInput
+                                label="Password Baru"
+                                type="password"
+                                name="password"
+                                minLength={6}
+                                required
+                                value={passwordForm.password}
+                                onChange={(e) => setPasswordForm((prev) => ({ ...prev, password: e.target.value }))}
+                                inputClassName="border-gray-300 focus:ring-green-500"
+                                labelFocusClass="peer-focus:text-green-600"
+                            />
 
-                            <div>
-                                <label className="text-sm font-medium">Konfirmasi Password</label>
-                                <input
-                                    type="password"
-                                    minLength={6}
-                                    required
-                                    value={passwordForm.confirmPassword}
-                                    onChange={(e) => setPasswordForm((prev) => ({ ...prev, confirmPassword: e.target.value }))}
-                                    className="mt-1 w-full rounded-md border px-3 py-2"
-                                />
-                            </div>
+                            <FloatingInput
+                                label="Konfirmasi Password"
+                                type="password"
+                                name="confirmPassword"
+                                minLength={6}
+                                required
+                                value={passwordForm.confirmPassword}
+                                onChange={(e) => setPasswordForm((prev) => ({ ...prev, confirmPassword: e.target.value }))}
+                                inputClassName="border-gray-300 focus:ring-green-500"
+                                labelFocusClass="peer-focus:text-green-600"
+                            />
                         </div>
 
                         <div className="mt-6 flex justify-end gap-2">
-                            <button
+                            <Button
                                 type="button"
                                 onClick={() => setPasswordTarget(null)}
                                 className="rounded-md border px-4 py-2 text-sm"
                             >
                                 Batal
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                                 type="submit"
                                 disabled={savingId === passwordTarget.id}
                                 className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
                             >
                                 {savingId === passwordTarget.id ? 'Menyimpan...' : 'Simpan Password'}
-                            </button>
+                            </Button>
                         </div>
                     </form>
                 </div>
