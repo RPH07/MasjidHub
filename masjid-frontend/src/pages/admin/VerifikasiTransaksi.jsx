@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import Swal from 'sweetalert2';
-import { useVerifikasiTransaksi } from '@/components/verifikasi-components/hooks/useVerifikasiTransaksi';
-import Verifikasi from '@/components/verifikasi-components/components/Verifikasi';
-import RejectReasonModal from '@/components/verifikasi-components/components/RejectReasonModal';
+import { useVerifikasiTransaksi } from '@/features/verifikasi/hooks/useVerifikasiTransaksi';
+import Verifikasi from '@/features/verifikasi/components/Verifikasi';
+import RejectReasonModal from '@/features/verifikasi/components/RejectReasonModal';
 
 
 const VerifikasiTransaksi = () => {
