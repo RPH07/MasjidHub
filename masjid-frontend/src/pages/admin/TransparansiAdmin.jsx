@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Swal from 'sweetalert2';
-import api from '../../config/api';
-import transparansiService from '../../services/transparansiService';
-import { formatCurrency } from '../../components/kas-components/utils/formatters';
+import api from '@/config/api';
+import transparansiService from '@/services/transparansiService';
+import { formatCurrency } from '@/utils/formatters';
+import { Button } from "@/components/ui/button";
+import { FloatingDate, FloatingInput } from '@/components/form';
 
 const emptyZakatForm = {
   jenis_zakat: 'fitrah',
@@ -233,13 +235,13 @@ const TransparansiAdmin = () => {
           ['program', 'Realisasi Program'],
           ['approval', 'Approval Transparansi']
         ].map(([key, label]) => (
-          <button
+          <Button
             key={key}
             onClick={() => setActiveTab(key)}
             className={`rounded-md px-4 py-2 text-sm font-semibold ${activeTab === key ? 'bg-green-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
           >
             {label}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -252,16 +254,16 @@ const TransparansiAdmin = () => {
               <option value="maal">Zakat Maal</option>
               <option value="profesi">Zakat Profesi</option>
             </select>
-            <input className="rounded-lg border px-3 py-2" placeholder="Kategori mustahik" value={zakatForm.kategori_mustahik} onChange={(e) => setZakatForm({ ...zakatForm, kategori_mustahik: e.target.value })} required />
-            <input className="rounded-lg border px-3 py-2" placeholder="Nama penerima internal (opsional)" value={zakatForm.nama_penerima} onChange={(e) => setZakatForm({ ...zakatForm, nama_penerima: e.target.value })} />
-            <input className="rounded-lg border px-3 py-2" placeholder="Label publik, contoh: Mustahik 1" value={zakatForm.label_penerima_publik} onChange={(e) => setZakatForm({ ...zakatForm, label_penerima_publik: e.target.value })} required />
-            <input className="rounded-lg border px-3 py-2" type="number" min="1" placeholder="Nominal" value={zakatForm.nominal} onChange={(e) => setZakatForm({ ...zakatForm, nominal: e.target.value })} required />
-            <input className="rounded-lg border px-3 py-2" type="date" value={zakatForm.tanggal_distribusi} onChange={(e) => setZakatForm({ ...zakatForm, tanggal_distribusi: e.target.value })} required />
+            <FloatingInput label="Kategori Mustahik" name="kategori_mustahik" value={zakatForm.kategori_mustahik} onChange={(e) => setZakatForm({ ...zakatForm, kategori_mustahik: e.target.value })} required inputClassName="border-gray-300 focus:ring-green-500" labelFocusClass="peer-focus:text-green-600" />
+            <FloatingInput label="Nama Penerima Internal (Opsional)" name="nama_penerima" value={zakatForm.nama_penerima} onChange={(e) => setZakatForm({ ...zakatForm, nama_penerima: e.target.value })} inputClassName="border-gray-300 focus:ring-green-500" labelFocusClass="peer-focus:text-green-600" />
+            <FloatingInput label="Label Publik" name="label_penerima_publik" value={zakatForm.label_penerima_publik} onChange={(e) => setZakatForm({ ...zakatForm, label_penerima_publik: e.target.value })} required inputClassName="border-gray-300 focus:ring-green-500" labelFocusClass="peer-focus:text-green-600" />
+            <FloatingInput label="Nominal" type="number" name="nominal" min="1" value={zakatForm.nominal} onChange={(e) => setZakatForm({ ...zakatForm, nominal: e.target.value })} required inputClassName="border-gray-300 focus:ring-green-500" labelFocusClass="peer-focus:text-green-600" />
+            <FloatingDate label="Tanggal Distribusi" name="tanggal_distribusi" value={zakatForm.tanggal_distribusi} onChange={(e) => setZakatForm({ ...zakatForm, tanggal_distribusi: e.target.value })} required />
             <textarea className="rounded-lg border px-3 py-2 md:col-span-2" rows="3" placeholder="Deskripsi penyaluran" value={zakatForm.deskripsi} onChange={(e) => setZakatForm({ ...zakatForm, deskripsi: e.target.value })} required />
             <input className="rounded-lg border px-3 py-2 md:col-span-2" type="file" accept="image/*" onChange={(e) => setZakatForm({ ...zakatForm, bukti_foto: e.target.files?.[0] || null })} />
-            <button className="rounded-lg bg-green-600 px-4 py-2 font-semibold text-white hover:bg-green-700 md:col-span-2" disabled={submitLoading.zakat}>
+            <Button type="submit" className="rounded-lg bg-green-600 px-4 py-2 font-semibold text-white hover:bg-green-700 md:col-span-2" disabled={submitLoading.zakat}>
               {submitLoading.zakat ? 'Menyimpan...' : 'Simpan Draft Penyaluran'}
-            </button>
+            </Button>
           </form>
         </section>
       )}
@@ -275,14 +277,14 @@ const TransparansiAdmin = () => {
                 <option key={program.id} value={program.id}>{program.nama_barang}</option>
               ))}
             </select>
-            <input className="rounded-lg border px-3 py-2" placeholder="Vendor / penerima" value={realisasiForm.penerima_vendor} onChange={(e) => setRealisasiForm({ ...realisasiForm, penerima_vendor: e.target.value })} required />
-            <input className="rounded-lg border px-3 py-2" type="number" min="1" placeholder="Nominal" value={realisasiForm.nominal} onChange={(e) => setRealisasiForm({ ...realisasiForm, nominal: e.target.value })} required />
-            <input className="rounded-lg border px-3 py-2" type="date" value={realisasiForm.tanggal_realisasi} onChange={(e) => setRealisasiForm({ ...realisasiForm, tanggal_realisasi: e.target.value })} required />
+            <FloatingInput label="Vendor / Penerima" name="penerima_vendor" value={realisasiForm.penerima_vendor} onChange={(e) => setRealisasiForm({ ...realisasiForm, penerima_vendor: e.target.value })} required inputClassName="border-gray-300 focus:ring-green-500" labelFocusClass="peer-focus:text-green-600" />
+            <FloatingInput label="Nominal" type="number" name="nominal" min="1" value={realisasiForm.nominal} onChange={(e) => setRealisasiForm({ ...realisasiForm, nominal: e.target.value })} required inputClassName="border-gray-300 focus:ring-green-500" labelFocusClass="peer-focus:text-green-600" />
+            <FloatingDate label="Tanggal Realisasi" name="tanggal_realisasi" value={realisasiForm.tanggal_realisasi} onChange={(e) => setRealisasiForm({ ...realisasiForm, tanggal_realisasi: e.target.value })} required />
             <input className="rounded-lg border px-3 py-2" type="file" accept="image/*" onChange={(e) => setRealisasiForm({ ...realisasiForm, bukti_foto: e.target.files?.[0] || null })} />
             <textarea className="rounded-lg border px-3 py-2 md:col-span-2" rows="3" placeholder="Deskripsi realisasi" value={realisasiForm.deskripsi} onChange={(e) => setRealisasiForm({ ...realisasiForm, deskripsi: e.target.value })} required />
-            <button className="rounded-lg bg-green-600 px-4 py-2 font-semibold text-white hover:bg-green-700 md:col-span-2" disabled={submitLoading.program}>
+            <Button type="submit" className="rounded-lg bg-green-600 px-4 py-2 font-semibold text-white hover:bg-green-700 md:col-span-2" disabled={submitLoading.program}>
               {submitLoading.program ? 'Menyimpan...' : 'Simpan Draft Realisasi'}
-            </button>
+            </Button>
           </form>
 
           {programReport?.summary && (
@@ -329,20 +331,20 @@ const TransparansiAdmin = () => {
                       <td className="px-4 py-3 text-right">
                         {item.status === 'draft' ? (
                           <div className="flex justify-end gap-2">
-                            <button 
+                            <Button 
                               onClick={() => approveItem('zakat', item)} 
                               className="rounded border border-green-600 px-3 py-1 text-green-700"
                               disabled={isActionLoading('zakat', item, 'approve')}
                             >
                               {isActionLoading('zakat', item, 'approve') ? 'Menyetujui...' : 'Approve'}
-                            </button>
-                            <button 
+                            </Button>
+                            <Button 
                               onClick={() => rejectItem('zakat', item)} 
                               className="rounded border border-red-600 px-3 py-1 text-red-700"
                               disabled={isActionLoading('zakat', item, 'reject')}
                             >
                               {isActionLoading('zakat', item, 'reject') ? 'Menolak...' : 'Reject'}
-                            </button>
+                            </Button>
                           </div>
                         ) : '-'}
                       </td>
@@ -383,20 +385,20 @@ const TransparansiAdmin = () => {
                       <td className="px-4 py-3 text-right">
                         {item.status === 'draft' ? (
                           <div className="flex justify-end gap-2">
-                            <button 
+                            <Button 
                               onClick={() => approveItem('program', item)} 
                               className="rounded border border-green-600 px-3 py-1 text-green-700"
                               disabled={isActionLoading('program', item, 'approve')}
                             >
                               {isActionLoading('program', item, 'approve') ? 'Menyetujui...' : 'Approve'}
-                            </button>
-                            <button 
+                            </Button>
+                            <Button 
                               onClick={() => rejectItem('program', item)} 
                               className="rounded border border-red-600 px-3 py-1 text-red-700"
                               disabled={isActionLoading('program', item, 'reject')}
                             >
                               {isActionLoading('program', item, 'reject') ? 'Menolak...' : 'Reject'}
-                            </button>
+                            </Button>
                           </div>
                         ) : '-'}
                       </td>
