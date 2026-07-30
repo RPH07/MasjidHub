@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
-import ErrorBoundary from '../../components/ErrorBoundary/ErrorBoundary';
+import ErrorBoundary from '@/components/feedback/ErrorBoundary';
+import { Button } from "@/components/ui/button";
 import { 
   KegiatanForm, 
   KegiatanList, 
   KategoriManager 
-} from '.././../components/kegiatan-components/components';
-import { useKegiatan, useKategori } from '.././../components/kegiatan-components/hooks';
-import { initialFormData } from '.././../components/kegiatan-components/utils';
+} from '@/features/kegiatan/components';
+import { useKegiatan, useKategori } from '@/features/kegiatan/hooks';
+import { initialFormData } from '@/features/kegiatan/utils';
 
 const KegiatanPage = () => {
   // States
@@ -181,7 +182,7 @@ const KegiatanPage = () => {
         <h1 className="text-2xl font-bold">Kelola Kegiatan Masjid</h1>
         
         <div className="flex items-center gap-3">
-          <button
+          <Button
             onClick={toggleKategoriManager}
             disabled={kategoriLoading} 
             className={`px-4 py-2 text-white rounded flex items-center gap-2 transition-colors ${
@@ -198,7 +199,7 @@ const KegiatanPage = () => {
               </svg>
             )}
             {kategoriLoading ? 'Loading...' : 'Kelola Kategori'}
-          </button>
+          </Button>
           
           {isEditing && (
             <div className="flex items-center gap-2 bg-orange-100 text-orange-800 px-3 py-1 rounded-full">
