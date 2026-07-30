@@ -2,7 +2,7 @@ const {Op} = require("sequelize");
 const User = require("../UserModels");
 const Kegiatan = require("../KegiatanModels");
 const KasBukuBesar = require("../KasBukuBesarModels");
-const BarangPengadaan = require("../BarangPengadaanModels");
+const DonasiPengadaan = require("../DonasiPengadaanModels");
 
 const getPublicData = async(req, res) => {
     try {
@@ -25,11 +25,10 @@ const getPublicData = async(req, res) => {
             },
         });
 
-        const totalDonasi = await BarangPengadaan.sum("dana_terkumpul", {
+        const totalDonasi = await DonasiPengadaan.sum("nominal", {
             where: {
-                status: {
-                    [Op.in]: ["aktif", "selesai"],
-                },
+                status: "approved",
+                deleted_at: null,
             },
         });
 
