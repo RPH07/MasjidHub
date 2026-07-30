@@ -1,17 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '@/config/api';
-
-// Helper function untuk format currency, bisa juga diimpor dari utils jika sudah ada
-const formatCurrency = (amount) => {
-  if (typeof amount !== 'number') {
-    return 'Rp 0';
-  }
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-  }).format(amount);
-};
+import { formatCurrency } from '@/utils/formatters';
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
