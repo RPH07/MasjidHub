@@ -6,6 +6,7 @@ import ProtectedRoute from '@/components/routeGuard/ProtectedRoute';
 import UserLayout from '@/components/layout/UserLayout'; 
 import ErrorBoundary from '@/components/feedback/ErrorBoundary';
 import RouteError from '@/components/feedback/RouteError';
+import { usePageTitle } from '@/hooks/usePageTitle';
 import { Toaster } from 'react-hot-toast';
 
 const HomePage = lazy(() => import('@/pages/home/HomePage'));
@@ -41,11 +42,18 @@ const PageLoader = () => (
   </div>
 );
 
+const PageTitle = ({ title, children }) => {
+  usePageTitle(title);
 
-const lazyPage = (element) => (
-  <Suspense fallback={<PageLoader />}>
-    {element}
-  </Suspense>
+  return children;
+};
+
+const lazyPage = (element, title) => (
+  <PageTitle title={title}>
+    <Suspense fallback={<PageLoader />}>
+      {element}
+    </Suspense>
+  </PageTitle>
 );
 
 const MaintenanceGuard = ({enabled, children}) => {
@@ -64,9 +72,9 @@ const MaintenanceGuard = ({enabled, children}) => {
   return children;
 };
 
-const maintenancePage = (key, element) => (
+const maintenancePage = (key, element, title) => (
   <MaintenanceGuard enabled={MAINTENANCE[key]}>
-    {lazyPage(element)}
+    {lazyPage(element, title)}
   </MaintenanceGuard>
 );
 
@@ -76,43 +84,43 @@ const router = createBrowserRouter([
     children: [
       {
         path: "/",
-        element: lazyPage(<HomePage />)
+        element: lazyPage(<HomePage />, "Beranda")
       },
       {
         path: "/maintenance",
-        element: lazyPage(<Maintenance />)
+        element: lazyPage(<Maintenance />, "Maintenance")
       },
       {
         path: "/about",
-        element: lazyPage(<About />)
+        element: lazyPage(<About />, "Tentang")
       },
       {
         path: "/contact",
-        element: lazyPage(<Contact />)
+        element: lazyPage(<Contact />, "Kontak")
       },
       {
         path: "/transparansi",
-        element: lazyPage(<TransparansiDana />)
+        element: lazyPage(<TransparansiDana />, "Transparansi Dana")
       },
       {
         path: "/login",
-        element: lazyPage(<LoginPages />)
+        element: lazyPage(<LoginPages />, "Masuk")
       },
       {
         path: "/signup",
-        element: lazyPage(<RegisterPages />)
+        element: lazyPage(<RegisterPages />, "Daftar")
       },
       {
         path: "/admin/signup",
-        element: lazyPage(<AdminSignup />)
+        element: lazyPage(<AdminSignup />, "Daftar Admin")
       },
       {
         path: "/zakat",
-        element: maintenancePage('zakat', <ZakatForm />)
+        element: maintenancePage('zakat', <ZakatForm />, "Zakat")
       },
       {
         path: "/crowdfunding",
-        element: lazyPage(<Crowdfunding />)
+        element: lazyPage(<Crowdfunding />, "Crowdfunding")
       },
       {
         path: "/dashboard",
@@ -125,27 +133,27 @@ const router = createBrowserRouter([
         children: [
           {
             index: true,
-            element: lazyPage(<UserDashboard />)
+            element: lazyPage(<UserDashboard />, "Dashboard")
           },
           {
             path: "zakat",
-            element: maintenancePage('zakat', <ZakatForm />)
+            element: maintenancePage('zakat', <ZakatForm />, "Zakat")
           },
           {
             path: "crowdfunding",
-            element: lazyPage(<Crowdfunding />)
+            element: lazyPage(<Crowdfunding />, "Crowdfunding")
           },
           {
             path: "kegiatan",
-            element: lazyPage(<UserKegiatan />)
+            element: lazyPage(<UserKegiatan />, "Kegiatan")
           },
           {
             path: "kontribusi-history",
-            element: lazyPage(<KontribusiHistory />)
+            element: lazyPage(<KontribusiHistory />, "Riwayat Kontribusi")
           },
           {
             path: "profile",
-            element: lazyPage(<ProfilePage />)
+            element: lazyPage(<ProfilePage />, "Profil")
           }
         ]
       },
@@ -163,39 +171,39 @@ const router = createBrowserRouter([
         children: [
           {
             index: true,
-            element: lazyPage(<Dashboard />)
+            element: lazyPage(<Dashboard />, "Dashboard Admin")
           },
           {
             path: "kegiatan",
-            element: lazyPage(<KegiatanPage />)
+            element: lazyPage(<KegiatanPage />, "Kelola Kegiatan")
           },
           {
             path: "kas",
-            element: lazyPage(<KasPage />)
+            element: lazyPage(<KasPage />, "Kelola Kas")
           },
           {
             path: "verifikasi-transaksi",
-            element: lazyPage(<VerifikasiTransaksi />)
+            element: lazyPage(<VerifikasiTransaksi />, "Verifikasi Transaksi")
           },
           {
             path: "transparansi",
-            element: lazyPage(<TransparansiAdmin />)
+            element: lazyPage(<TransparansiAdmin />, "Kelola Transparansi")
           },
           {
             path: "donasi",
-            element: lazyPage(<DonasiPage />)
+            element: lazyPage(<DonasiPage />, "Kelola Donasi")
           },
           {
             path: "users",
-            element: lazyPage(<UserAccessPage />)
+            element: lazyPage(<UserAccessPage />, "Akses Pengguna")
           },
           {
             path: "zakat-settings",
-            element: lazyPage(<ZakatSettingsPage />)
+            element: lazyPage(<ZakatSettingsPage />, "Pengaturan Zakat")
           },
           {
             path: "profile",
-            element: lazyPage(<ProfilePage />)
+            element: lazyPage(<ProfilePage />, "Profil")
           }
         ]
       }
