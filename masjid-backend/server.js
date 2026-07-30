@@ -19,16 +19,33 @@ dotenv.config();
 const app = express();
 app.use(express.static('public'));
 
-app.use(cors({
-  origin: [
-    'masjidnurulilmi.my.id',
-    'http://localhost:5173',
-    'http://localhost:5174',
-    'http://localhost:3000',  
-    'http://localhost:3001'  
-  ], 
-  credentials: true                 
-}));
+const allowedOrigins = [
+  'https://masjidnurulilmi.my.id',
+  'https://www.masjidnurulilmi.my.id',
+  'http://masjidnurulilmi.my.id',
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:3000',
+  'http://localhost:3001',
+  ...(process.env.CORS_ORIGINS || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+];
+
+const corsOptions = {
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error(`Origin ${origin} not allowed by CORS`));
+  },
+  credentials: true
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 app.use(express.json());  
 // app.use('/images', express.static(path.join(__dirname, 'public/images')));
@@ -52,6 +69,18 @@ app.use('/api/pengadaan', pengadaanRoutes);
 app.use('/api/kontribusi', kontribusiRoutes);
 app.use('/api/transparansi', transparansiRoutes);
 app.use('/api/zakat-settings', zakatSettingRoutes);
+
+// Backward-compatible routes for clients configured without the /api prefix.
+app.use('/auth', authRoutes);
+app.use('/user', userRoutes);
+app.use('/kegiatan', kegiatanRoutes);
+app.use('/kas', kasRoutes);
+app.use('/zakat', zakatRoutes);
+app.use('/kategori-kegiatan', kategoriKegiatanRoutes);
+app.use('/pengadaan', pengadaanRoutes);
+app.use('/kontribusi', kontribusiRoutes);
+app.use('/transparansi', transparansiRoutes);
+app.use('/zakat-settings', zakatSettingRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
