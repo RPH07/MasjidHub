@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import api from '../../config/api';
+import api from '@/config/api';
+import { Button } from "@/components/ui/button";
+import { FloatingInput } from '@/components/form';
 
 const UserKegiatan = () => {
   const [kegiatan, setKegiatan] = useState([]);
@@ -99,17 +101,13 @@ const fetchKegiatan = async () => {
         {/* Search Bar */}
         <div className="mb-8 max-w-md mx-auto">
           <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            <input
-              type="text"
-              placeholder="Cari kegiatan, lokasi, atau kategori..."
-              className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-green-500 focus:border-green-500"
+            <FloatingInput
+              label="Cari Kegiatan"
+              name="searchTerm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              inputClassName="border-gray-300 focus:ring-green-500"
+              labelFocusClass="peer-focus:text-green-600"
             />
           </div>
         </div>
@@ -181,12 +179,12 @@ const fetchKegiatan = async () => {
                   </p>
 
                   {/* Read More Button */}
-                  <button
+                  <Button
                     onClick={() => openModal(item)}
                     className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
                   >
                     Lihat Detail
-                  </button>
+                  </Button>
                 </div>
               </div>
             ))}
@@ -227,14 +225,14 @@ const fetchKegiatan = async () => {
               )}
               
               {/* Close Button */}
-              <button
+              <Button
                 onClick={closeModal}
                 className="absolute top-4 right-4 bg-white/90 hover:bg-white text-gray-800 rounded-full p-2 transition-colors duration-200"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
-              </button>
+              </Button>
 
               {/* Kategori Badge */}
               <div className="absolute top-4 left-4">
@@ -292,18 +290,18 @@ const fetchKegiatan = async () => {
 
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
-                <button
+                <Button
                   onClick={closeModal}
                   className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-3 px-4 rounded-lg transition-colors duration-200"
                 >
                   Tutup
-                </button>
-                <button className="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center">
+                </Button>
+                <Button className="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center">
                   <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
                   </svg>
                   Bagikan
-                </button>
+                </Button>
               </div>
             </div>
           </div>
