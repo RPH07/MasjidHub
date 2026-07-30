@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { useKasData } from '../../components/kas-components/hooks/useKasData';
-import { usePeriodFilter } from '../../components/kas-components/hooks/usePeriodFilter';
-import { useModal } from '../../components/kas-components/hooks/useModal';
-import { useTransactionOps } from '../../components/kas-components/hooks/useTransactionOps';
-import { useValidationOps } from '../../components/kas-components/hooks/useValidationOps';
+import { useKasData } from '@/features/kas/hooks/useKasData';
+import { usePeriodFilter } from '@/features/kas/hooks/usePeriodFilter';
+import { useModal } from '@/features/kas/hooks/useModal';
+import { useTransactionOps } from '@/features/kas/hooks/useTransactionOps';
+import { useValidationOps } from '@/features/kas/hooks/useValidationOps';
+import { Button } from "@/components/ui/button";
+import { FloatingDate } from '@/components/form';
 import {
   KasOverview,
   KasPemasukan,
@@ -12,8 +14,8 @@ import {
   KasValidation,
   TransactionModal,
   BuktiModal
-} from '../../components/kas-components/components';
-import { TABS, PERIOD_OPTIONS } from '../../components/kas-components/utils/constants';
+} from '@/features/kas/components';
+import { TABS, PERIOD_OPTIONS } from '@/features/kas/utils/constants';
 
 const Kas = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -126,36 +128,30 @@ const Kas = () => {
         <div className="bg-white p-4 rounded-lg border shadow-sm">
           <h3 className="text-sm font-medium mb-3">Pilih Periode Kustom</h3>
           <div className="flex gap-3 items-end">
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">Tanggal Mulai</label>
-              <input
-                type="date"
-                value={customStartDate}
-                onChange={(e) => setCustomStartDate(e.target.value)}
-                className="border rounded-md px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">Tanggal Selesai</label>
-              <input
-                type="date"
-                value={customEndDate}
-                onChange={(e) => setCustomEndDate(e.target.value)}
-                className="border rounded-md px-3 py-2 text-sm"
-              />
-            </div>
-            <button
+            <FloatingDate
+              label="Tanggal Mulai"
+              name="customStartDate"
+              value={customStartDate}
+              onChange={(e) => setCustomStartDate(e.target.value)}
+            />
+            <FloatingDate
+              label="Tanggal Selesai"
+              name="customEndDate"
+              value={customEndDate}
+              onChange={(e) => setCustomEndDate(e.target.value)}
+            />
+            <Button
               onClick={applyCustomDate}
               className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700"
             >
               Terapkan
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => setShowCustomDate(false)}
               className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm hover:bg-gray-400"
             >
               Batal
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -164,7 +160,7 @@ const Kas = () => {
       <div className="border-b border-gray-200 overflow-x-auto no-scrollbar">
         <nav className="-mb-px flex space-x-8 whitespace-nowrap">
           {Object.entries(TABS).map(([key, tab]) => (
-            <button
+            <Button
               key={key}
               className={`py-2 px-1 border-b-2 font-medium text-sm ${
                 activeTab === key
@@ -174,7 +170,7 @@ const Kas = () => {
               onClick={() => setActiveTab(key)}
             >
               {tab.label}
-            </button>
+            </Button>
           ))}
         </nav>
       </div>     
