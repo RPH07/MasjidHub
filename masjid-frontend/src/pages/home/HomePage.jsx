@@ -59,50 +59,47 @@ const HomePage = () => {
   };
 
 useEffect(() => {
-  const fetchKegiatan = async () => {
+  const fetchHomeData = async () => {
     try {
-      const res = await api.get('/kegiatan');
-      console.log('Response data:', res.data);
+      const [kegiatanRes, statsRes] = await Promise.all([
+        api.get('/kegiatan'),
+        api.get('/public/stats')
+      ]);
       
-      // Validasi apakah res.data adalah array
-      if (Array.isArray(res.data)) {
-        const sortedKegiatan = res.data.sort((a, b) => {
-          return new Date(b.tanggal) - new Date(a.tanggal);
-        });
-        setKegiatan(sortedKegiatan);
-      } else if (res.data && Array.isArray(res.data.data)) {
-        // Jika data ada di dalam property 'data'
-        const sortedKegiatan = res.data.data.sort((a, b) => {
-          return new Date(b.tanggal) - new Date(a.tanggal);
-        });
-        setKegiatan(sortedKegiatan);
-      } else {
-        console.warn('Data kegiatan tidak dalam format array:', res.data);
-        setKegiatan([]); // Set empty array jika bukan array
-      }
-    } catch (err) {
-      console.error('Gagal mengambil data kegiatan:', err);
-      setKegiatan([]); // Set empty array saat error
-    }
-  };
+      const kegiatanData = kegiatanRes.data;
+      let sortedKegiatan = [];
 
-  const fetchStats = async () => {
-    try {
-      // Fetch basic stats - sesuaikan dengan API yang ada
+      // Validasi apakah res.data adalah array
+      if (Array.isArray(kegiatanData)) {
+        sortedKegiatan = kegiatanData.sort((a, b) => {
+          return new Date(b.tanggal) - new Date(a.tanggal);
+        });
+      } else if (kegiatanData && Array.isArray(kegiatanData.data)) {
+        // Jika data ada di dalam property 'data'
+        sortedKegiatan = kegiatanData.data.sort((a, b) => {
+          return new Date(b.tanggal) - new Date(a.tanggal);
+        });
+      } else {
+        console.warn('Data kegiatan tidak dalam format array:', kegiatanData);
+      }
+
+      const publicStats = statsRes.data?.data || {};
+
+      setKegiatan(sortedKegiatan);
       setStats({
-        totalDonasi: 25000000,
-        totalZakat: 15000000,
-        totalKegiatan: kegiatan.length,
-        totalJamaah: 350
+        totalDonasi: publicStats.totalDonasi || 0,
+        totalZakat: publicStats.totalZakat || 0,
+        totalKegiatan: publicStats.totalKegiatan || sortedKegiatan.length,
+        totalJamaah: publicStats.totalJamaah || 0
       });
     } catch (err) {
-      console.error('Gagal mengambil statistik:', err);
+      console.error('Gagal mengambil data homepage:', err);
+      setKegiatan([]);
     }
   };
 
-  fetchKegiatan();
-  fetchStats();
-}, [kegiatan.length]);
+  fetchHomeData();
+}, []);
 
   const scrollToSection = (sectionId) => {
     document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' });
