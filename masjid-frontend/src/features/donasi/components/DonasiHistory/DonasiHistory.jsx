@@ -3,7 +3,7 @@ import Swal from 'sweetalert2'
 import { ProgramCard } from '../shared'
 import { useDonasiHistory } from '../../hooks/useDonasiHistory'
 import { formatDate } from '../../utils/formatters'
-import { formatRupiah } from '@/utils/formatters'
+import { formatRupiah, toNumber } from '@/utils/formatters'
 import { Button } from "@/components/ui/button";
 import { FloatingDate, FloatingInput } from '@/components/form';
 
@@ -59,7 +59,7 @@ const DonasiHistory = () => {
                 case 'tanggal_selesai':
                     return new Date(b.tanggal_selesai || b.created_at) - new Date(a.tanggal_selesai || a.created_at)
                 case 'dana_terkumpul':
-                    return (b.dana_terkumpul || 0) - (a.dana_terkumpul || 0)
+                    return toNumber(b.dana_terkumpul || 0) - toNumber(a.dana_terkumpul || 0)
                 case 'nama_barang':
                     return (a.nama_barang || '').localeCompare(b.nama_barang || '')
                 default:
@@ -88,7 +88,9 @@ const DonasiHistory = () => {
 
     // Calculate statistics
     const totalPrograms = safeHistory.length
-    const totalDanaSelesai = safeHistory.reduce((sum, program) => sum + (program.dana_terkumpul || 0), 0)
+    const totalDanaSelesai = safeHistory.reduce((sum, program) => {
+        return sum + toNumber(program.dana_terkumpul)
+    }, 0)
     const avgDanaPerProgram = totalPrograms > 0 ? totalDanaSelesai / totalPrograms : 0
 
     if (loading) {
