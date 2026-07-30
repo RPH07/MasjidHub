@@ -1,14 +1,30 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import Navbar from '@/components/nav';
+import { useLocation } from 'react-router-dom';
+import Navbar from '@/components/navigation/Navbar';
 import toast, { Toaster } from 'react-hot-toast';
-import { CheckCircle2, Download, Loader2 } from 'lucide-react';
-import DetailDonasiModal from '../../components/donasi-components/components/shared/DetailDonasiModal';
-import { useAuth } from '../../hooks/useAuth'
-import { donasiService } from '../../components/donasi-components/services/DonasiService';
-import transparansiService from '../../services/transparansiService';
+import { CheckCircle2, Download, Loader2, ImageOff } from 'lucide-react';
+import DetailDonasiModal from '@/features/donasi/components/shared/DetailDonasiModal';
+import { useAuth } from '@/hooks/useAuth'
+import { donasiService } from '@/features/donasi/services/DonasiService';
+import transparansiService from '@/services/transparansiService';
+import { Button } from "@/components/ui/button";
+import { formatRupiah } from '@/utils/formatters';
+
+const INK = '#1c2620';
+const INK_SOFT = '#5c6b5f';
+const PAPER = '#f3efe4';
+const GREEN = '#1f4d3a';
+const GREEN_SOFT = '#e8ede8';
+
+const FILTERS = [
+    { key: 'all', label: 'Semua Program' },
+    { key: 'aktif', label: 'Sedang Berjalan' },
+    { key: 'selesai', label: 'Telah Selesai' }
+];
 
 const Crowdfunding = () => {
     const { user } = useAuth();
+    const location = useLocation();
     const [programs, setPrograms] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedProgram, setSelectedProgram] = useState(null);
@@ -17,6 +33,7 @@ const Crowdfunding = () => {
     const [downloadingPdf, setDownloadingPdf] = useState(null);
 
     const isLoggedIn = Boolean(user);
+    const showPublicNavbar = location.pathname === '/crowdfunding';
 
     const fetchPrograms = useCallback (async () => {
         try {
@@ -155,26 +172,18 @@ const Crowdfunding = () => {
         return true;
     });
 
-    const formatRupiah = (angka) => {
-        return new Intl.NumberFormat('id-ID', {
-            style: 'currency',
-            currency: 'IDR',
-            minimumFractionDigits: 0,
-        }).format(angka);
-    };
-
     if (loading) {
         return (
-            <div className="flex justify-center items-center h-64">
-                <Loader2 className="h-8 w-8 animate-spin text-green-500" />
-                <p className="ml-4 text-gray-600">Memuat program donasi...</p>
+            <div style={{ backgroundColor: PAPER }} className="flex justify-center items-center h-64">
+                <Loader2 style={{ color: GREEN }} className="h-6 w-6 animate-spin" />
+                <p style={{ color: INK_SOFT }} className="ml-4">Memuat program donasi...</p>
             </div>
         );
     }
 
     return (
-        <div className={`${isLoggedIn ? '' : 'bg-gray-50 min-h-screen'}`}>
-            {!isLoggedIn && <Navbar />}
+        <div style={{ backgroundColor: PAPER }} className="min-h-screen">
+            {showPublicNavbar && <Navbar />}
 
             <Toaster
                 position="top-right"
@@ -183,31 +192,36 @@ const Crowdfunding = () => {
                 toastOptions={{
                     duration: 4000,
                     style: {
-                        background: '#363636',
-                        color: '#fff',
+                        background: INK,
+                        color: PAPER,
                         padding: '16px',
-                        borderRadius: '8px',
+                        borderRadius: '2px',
                         fontSize: '14px',
                         maxWidth: '400px',
                     },
                     success: {
-                        style: { background: '#10b981', color: '#fff' },
-                        iconTheme: { primary: '#fff', secondary: '#10b981' },
+                        style: { background: GREEN, color: PAPER },
+                        iconTheme: { primary: PAPER, secondary: GREEN },
                     },
                     error: {
-                        style: { background: '#ef4444', color: '#fff' },
-                        iconTheme: { primary: '#fff', secondary: '#ef4444' },
+                        style: { background: '#7a2e2e', color: PAPER },
+                        iconTheme: { primary: PAPER, secondary: '#7a2e2e' },
                     },
                     loading: {
-                        style: { background: '#3b82f6', color: '#fff' },
+                        style: { background: INK, color: PAPER },
                     },
                 }}
             />
 
-            <div className={`container mx-auto px-4 ${isLoggedIn ? 'py-4' : 'py-8'}`}>
-                <div className="text-center mb-12">
-                    <h1 className="text-4xl font-bold text-gray-800">Program Donasi Masjid</h1>
-                    <p className="text-lg text-gray-600 mt-2">
+            <div className={`container mx-auto px-4 ${showPublicNavbar ? 'pt-24 pb-12' : 'py-8'}`}>
+                <div className="text-center mb-10">
+                    <p style={{ color: GREEN }} className="text-[11px] tracking-[0.14em] font-medium mb-2">
+                        PROGRAM DONASI
+                    </p>
+                    <h1 style={{ color: INK }} className="text-3xl font-semibold mb-2">
+                        Program donasi masjid
+                    </h1>
+                    <p style={{ color: INK_SOFT }} className="text-sm">
                         {isLoggedIn
                             ? 'Mari lanjutkan kontribusi Anda untuk masjid'
                             : 'Mari bantu penuhi kebutuhan masjid melalui program pengadaan barang.'
@@ -215,51 +229,34 @@ const Crowdfunding = () => {
                     </p>
                 </div>
 
-                <div className="flex justify-center mb-8">
-                    <div className="bg-white rounded-lg p-1 shadow-sm border">
-                        <button
-                            onClick={() => setFilterStatus('all')}
-                            className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
-                                filterStatus === 'all'
-                                    ? 'bg-blue-500 text-white'
-                                    : 'text-gray-600 hover:text-blue-500'
-                            }`}
-                        >
-                            Semua Program ({programs.length})
-                        </button>
-                        <button
-                            onClick={() => setFilterStatus('aktif')}
-                            className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
-                                filterStatus === 'aktif'
-                                    ? 'bg-green-500 text-white'
-                                    : 'text-gray-600 hover:text-green-500'
-                            }`}
-                        >
-                            Sedang Berjalan
-                        </button>
-                        <button
-                            onClick={() => setFilterStatus('selesai')}
-                            className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
-                                filterStatus === 'selesai'
-                                    ? 'bg-purple-500 text-white'
-                                    : 'text-gray-600 hover:text-purple-500'
-                            }`}
-                        >
-                            Telah Selesai
-                        </button>
+                <div className="flex justify-center mb-10">
+                    <div style={{ borderColor: INK }} className="flex border-b">
+                        {FILTERS.map((f) => (
+                            <Button
+                                key={f.key}
+                                onClick={() => setFilterStatus(f.key)}
+                                style={{
+                                    color: filterStatus === f.key ? GREEN : INK_SOFT,
+                                    borderColor: filterStatus === f.key ? GREEN : 'transparent'
+                                }}
+                                className="px-5 py-2.5 text-sm font-medium border-b-2 bg-transparent hover:bg-transparent rounded-none -mb-px"
+                            >
+                                {f.label}{f.key === 'all' ? ` (${programs.length})` : ''}
+                            </Button>
+                        ))}
                     </div>
                 </div>
 
                 {filteredPrograms.length === 0 ? (
-                    <div className="text-center py-12">
-                        <div className="text-gray-500 text-lg mb-4">
+                    <div style={{ borderColor: INK }} className="text-center py-12 border border-dashed">
+                        <div style={{ color: INK_SOFT }} className="text-base">
                             {filterStatus === 'aktif' && 'Belum ada program donasi aktif saat ini'}
                             {filterStatus === 'selesai' && 'Belum ada program donasi yang selesai'}
                             {filterStatus === 'all' && 'Belum ada program donasi saat ini'}
                         </div>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {filteredPrograms.map((program) => {
                             const progress = (program.dana_terkumpul / program.target_dana) * 100;
                             const programStatus = program.status;
@@ -267,78 +264,94 @@ const Crowdfunding = () => {
                             const isDownloading = downloadingPdf === program.id;
 
                             return (
-                                <div key={program.id} className="bg-white rounded-lg shadow-lg overflow-hidden transform hover:-translate-y-2 transition-transform duration-300">
-                                    <div className="relative">
+                                <div
+                                    key={program.id}
+                                    style={{ borderColor: INK, backgroundColor: PAPER }}
+                                    className="border overflow-hidden hover:border-2 transition-[border-width] duration-150"
+                                >
+                                    <div style={{ borderColor: INK }} className="relative border-b">
                                         {program.foto_barang ? (
                                             <img
                                                 src={program.foto_barang}
                                                 alt={program.nama_barang}
                                                 className="w-full h-56 object-cover"
                                                 onError={(e) => {
-                                                    e.target.src = 'https://via.placeholder.com/400x300?text=No+Image';
+                                                    e.target.style.display = 'none';
+                                                    e.target.nextSibling?.classList.remove('hidden');
                                                 }}
                                             />
-                                        ) : (
-                                            <div className="w-full h-56 bg-gray-200 flex items-center justify-center">
-                                                <span className="text-gray-400">No Image</span>
-                                            </div>
-                                        )}
+                                        ) : null}
+                                        <div
+                                            style={{ backgroundColor: GREEN_SOFT, color: INK_SOFT }}
+                                            className={`w-full h-56 flex flex-col items-center justify-center gap-2 ${program.foto_barang ? 'hidden' : ''}`}
+                                        >
+                                            <ImageOff className="w-6 h-6" />
+                                            <span className="text-xs tracking-wide">NO IMAGE</span>
+                                        </div>
 
                                         {programStatus === 'selesai' && (
-                                            <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-green-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
-                                                <CheckCircle2 size={14} />
+                                            <div
+                                                style={{ backgroundColor: GREEN, color: PAPER, borderColor: INK }}
+                                                className="absolute top-3 right-3 flex items-center gap-1.5 border px-3 py-1 text-xs font-medium"
+                                            >
+                                                <CheckCircle2 size={13} />
                                                 Selesai
                                             </div>
                                         )}
                                         {programStatus === 'aktif' && (
-                                            <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
-                                                <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                                            <div
+                                                style={{ backgroundColor: PAPER, color: GREEN, borderColor: INK }}
+                                                className="absolute top-3 right-3 flex items-center gap-1.5 border px-3 py-1 text-xs font-medium"
+                                            >
+                                                <span style={{ backgroundColor: GREEN }} className="h-1.5 w-1.5 rounded-full" />
                                                 Aktif
                                             </div>
                                         )}
                                     </div>
 
                                     <div className="p-6">
-                                        <h2 className="text-2xl font-bold text-gray-800 mb-2">{program.nama_barang}</h2>
-                                        <p className="text-gray-600 text-sm mb-4 line-clamp-3">{program.deskripsi}</p>
+                                        <h2 style={{ color: INK }} className="text-xl font-semibold mb-2">{program.nama_barang}</h2>
+                                        <p style={{ color: INK_SOFT }} className="text-sm mb-4 line-clamp-3">{program.deskripsi}</p>
 
-                                        <div className="w-full bg-gray-200 rounded-full h-2.5 mb-2">
+                                        <div style={{ borderColor: INK }} className="w-full h-2 border mb-2">
                                             <div
-                                                className={`h-2.5 rounded-full transition-all duration-300 ${
-                                                    isCompleted ? 'bg-green-500' : 'bg-blue-500'
-                                                }`}
-                                                style={{ width: `${Math.min(progress, 100)}%` }}
-                                            ></div>
+                                                style={{ width: `${Math.min(progress, 100)}%`, backgroundColor: GREEN }}
+                                                className="h-full transition-all duration-300"
+                                            />
                                         </div>
 
                                         <div className="flex justify-between items-center text-sm mb-4">
-                                            <span className="font-semibold text-green-700">
+                                            <span style={{ color: GREEN }} className="font-medium">
                                                 Terkumpul: {formatRupiah(program.dana_terkumpul || 0)}
                                             </span>
-                                            <span className="text-gray-500">
+                                            <span style={{ color: INK_SOFT }}>
                                                 Target: {formatRupiah(program.target_dana)}
                                             </span>
                                         </div>
 
-                                        <div className="text-center text-sm text-gray-600 mb-4">
-                                            {program.total_donatur || 0} donatur • {progress.toFixed(1)}% tercapai
+                                        <div style={{ color: INK_SOFT }} className="text-center text-sm mb-4">
+                                            {program.total_donatur || 0} donatur &middot; {progress.toFixed(1)}% tercapai
                                         </div>
 
                                         {programStatus === 'selesai' ? (
                                             <div className="space-y-2">
-                                                <div className="flex items-center justify-center gap-1.5 w-full bg-green-100 text-green-800 font-bold py-2 px-4 rounded-lg">
+                                                <div
+                                                    style={{ borderColor: INK, color: GREEN }}
+                                                    className="flex items-center justify-center gap-1.5 w-full border font-medium py-2 px-4"
+                                                >
                                                     <CheckCircle2 size={16} />
                                                     Program Telah Selesai
                                                 </div>
 
-                                                <button
+                                                <Button
                                                     onClick={() => handleDownloadPdf(program.id, program.nama_barang)}
                                                     disabled={isDownloading}
-                                                    className={`w-full flex items-center justify-center gap-2 font-bold py-2 px-4 rounded-lg transition-colors duration-300 ${
-                                                        isDownloading
-                                                            ? 'bg-gray-400 text-white cursor-not-allowed'
-                                                            : 'bg-purple-600 text-white hover:bg-purple-700'
-                                                    }`}
+                                                    style={{
+                                                        backgroundColor: isDownloading ? GREEN_SOFT : GREEN,
+                                                        color: isDownloading ? INK_SOFT : PAPER,
+                                                        borderColor: INK
+                                                    }}
+                                                    className="w-full flex items-center justify-center gap-2 font-medium py-2 px-4 border rounded-none transition-colors duration-200 disabled:cursor-not-allowed"
                                                 >
                                                     {isDownloading ? (
                                                         <>
@@ -351,16 +364,17 @@ const Crowdfunding = () => {
                                                             Download Laporan PDF
                                                         </>
                                                     )}
-                                                </button>
+                                                </Button>
                                             </div>
                                         ) : (
-                                            <button
+                                            <Button
                                                 onClick={() => handleDonateClick(program)}
-                                                className={`w-full flex items-center justify-center gap-2 font-bold py-2 px-4 rounded-lg transition-colors duration-300 ${
-                                                    isCompleted || programStatus !== 'aktif'
-                                                        ? 'bg-gray-400 text-white cursor-not-allowed'
-                                                        : 'bg-blue-600 text-white hover:bg-blue-700'
-                                                }`}
+                                                style={{
+                                                    backgroundColor: (isCompleted || programStatus !== 'aktif') ? GREEN_SOFT : GREEN,
+                                                    color: (isCompleted || programStatus !== 'aktif') ? INK_SOFT : PAPER,
+                                                    borderColor: INK
+                                                }}
+                                                className="w-full flex items-center justify-center gap-2 font-medium py-2 px-4 border rounded-none transition-colors duration-200 disabled:cursor-not-allowed"
                                                 disabled={isCompleted || programStatus !== 'aktif'}
                                             >
                                                 {isCompleted ? (
@@ -371,11 +385,11 @@ const Crowdfunding = () => {
                                                 ) : (
                                                     'Donasi Sekarang'
                                                 )}
-                                            </button>
+                                            </Button>
                                         )}
 
                                         {programStatus === 'selesai' && program.tanggal_selesai && (
-                                            <div className="mt-2 text-center text-xs text-gray-500">
+                                            <div style={{ color: INK_SOFT }} className="mt-2 text-center text-xs">
                                                 Diselesaikan pada: {new Date(program.tanggal_selesai).toLocaleDateString('id-ID')}
                                             </div>
                                         )}
