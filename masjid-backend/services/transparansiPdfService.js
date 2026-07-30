@@ -1,7 +1,6 @@
 const { jsPDF } = require('jspdf');
 const transparansiService = require('./transparansiService');
-
-const formatRupiah = (value) => `Rp ${Number(value || 0).toLocaleString('id-ID')}`;
+const { formatRupiah } = require('../utils/currencyFormatter');
 
 const formatDate = (value) => {
     if (!value) return '-';
