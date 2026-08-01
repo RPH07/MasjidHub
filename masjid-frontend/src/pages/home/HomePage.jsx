@@ -163,11 +163,11 @@ useEffect(() => {
                 <div className="text-xs tracking-wide" style={{ color: 'rgba(255,255,255,0.5)' }}>Program Rutin</div>
               </div>
               <div className="px-6 py-5 border-r border-white/10">
-                <div className="text-2xl font-semibold text-amber-400 mb-1">{formatRupiahCompactMillions(stats.totalZakat)}M+</div>
+                <div className="text-2xl font-semibold text-amber-400 mb-1">{formatRupiahCompactMillions(stats.totalZakat)}Jt+</div>
                 <div className="text-xs tracking-wide" style={{ color: 'rgba(255,255,255,0.5)' }}>Zakat Terkumpul</div>
               </div>
               <div className="px-6 py-5">
-                <div className="text-2xl font-semibold text-amber-400 mb-1">{formatRupiahCompactMillions(stats.totalDonasi)}M+</div>
+                <div className="text-2xl font-semibold text-amber-400 mb-1">{formatRupiahCompactMillions(stats.totalDonasi)}jt+</div>
                 <div className="text-xs tracking-wide" style={{ color: 'rgba(255,255,255,0.5)' }}>Donasi Masuk</div>
               </div>
             </div>
