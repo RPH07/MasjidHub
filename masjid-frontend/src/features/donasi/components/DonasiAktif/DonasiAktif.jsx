@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { ProgramCard } from '../shared'
+import { ViewDonations } from '../index'
 import { useDonasi } from '../../hooks/useDonasi'
 import { Button } from "@/components/ui/button";
-import { formatRupiah } from '@/utils/formatters'
+import { formatRupiah, toNumber } from '@/utils/formatters'
 
 const DonasiAktif = () => {
     const {
@@ -13,8 +14,8 @@ const DonasiAktif = () => {
         deactivateProgram,
         completeProgram
     } = useDonasi()
-
     const [sortBy, setSortBy] = useState('newest')
+    const [viewingDonations, setViewingDonations] = useState(null)
 
     useEffect(() => {
         fetchProgramAktif()
@@ -23,16 +24,18 @@ const DonasiAktif = () => {
     const sortedPrograms = [...programAktif].sort((a, b) => {
         switch (sortBy) {
             case 'newest':
-                return new Date(b.tanggal_dibuat) - new Date(a.tanggal_dibuat)
+                return new Date(b.created_at) - new Date(a.created_at)
             case 'oldest':
-                return new Date(a.tanggal_dibuat) - new Date(b.tanggal_dibuat)
+                return new Date(a.created_at) - new Date(b.created_at)
             case 'highest_target':
-                return b.target_dana - a.target_dana
+                return toNumber(b.target_dana) - toNumber(a.target_dana)
             case 'highest_collected':
-                return (b.dana_terkumpul || 0) - (a.dana_terkumpul || 0)
+                return toNumber(b.dana_terkumpul) - toNumber(a.dana_terkumpul)
             case 'highest_progress':
-                { const progressA = (toNumber(a.dana_terkumpul || 0) / toNumber(a.target_dana)) * 100
-                const progressB = (toNumber(b.dana_terkumpul || 0) / toNumber(b.target_dana)) * 100
+                { const targetA = toNumber(a.target_dana)
+                const targetB = toNumber(b.target_dana)
+                const progressA = targetA > 0 ? (toNumber(a.dana_terkumpul) / targetA) * 100 : 0
+                const progressB = targetB > 0 ? (toNumber(b.dana_terkumpul) / targetB) * 100 : 0
                 return progressB - progressA }
             default:
                 return 0
@@ -62,12 +65,14 @@ const DonasiAktif = () => {
     }
 
     const handleViewDonations = (program) => {
-        // TODO: Navigate to donations detail
-        console.log('View donations for:', program)
+        setViewingDonations(program)
+    }
+
+    const handleCloseViewDonations = () => {
+        setViewingDonations(null)
     }
 
     // Calculate statistics
-    const toNumber = (value) => Number(value || 0);
     const totalTarget = programAktif.reduce((sum, program) => {
         return sum + toNumber(program.target_dana)
     }, 0)
@@ -75,7 +80,7 @@ const DonasiAktif = () => {
         return sum + toNumber(program.dana_terkumpul)
     }, 0)
     const totalPrograms = programAktif.length
-    const avgProgress = totalPrograms > 0 ? (totalCollected / totalTarget) * 100 : 0
+    const avgProgress = totalTarget > 0 ? (totalCollected / totalTarget) * 100 : 0
 
     if (loading) {
         return (
@@ -173,6 +178,13 @@ const DonasiAktif = () => {
                         />
                     ))}
                 </div>
+            )}
+
+            {viewingDonations && (
+                <ViewDonations
+                    program={viewingDonations}
+                    onClose={handleCloseViewDonations}
+                />
             )}
         </div>
     )
