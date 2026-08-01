@@ -1,7 +1,7 @@
 import React from 'react'
 import { formatDate, getStatusBadge } from '../../utils'
 import { Button } from "@/components/ui/button";
-import { formatRupiah } from '@/utils/formatters'
+import { formatRupiah, toNumber } from '@/utils/formatters'
 
 const ProgramCard = ({
     program,
@@ -26,7 +26,9 @@ const ProgramCard = ({
         deadline
     } = program
 
-    const progressPercentage = dana_terkumpul && target_dana ? (dana_terkumpul / target_dana) * 100 : 0
+    const targetDana = toNumber(target_dana)
+    const danaTerkumpul = toNumber(dana_terkumpul)
+    const progressPercentage = targetDana > 0 ? (danaTerkumpul / targetDana) * 100 : 0
     const isCompleted = progressPercentage >= 100
 
     const getImageUrl = (filename) =>{
@@ -48,12 +50,8 @@ const ProgramCard = ({
                                 src={imgUrl}
                                 alt={nama_barang}
                                 className="h-20 w-20 rounded-lg object-cover"
-                                onLoad={() => console.log('Image loaded successfully:', imgUrl)}
                                 onError={(e) => {
-                                    console.error('Image failed to load:', imgUrl);
-                                    console.error('Error event:', e);
-                                    // Fallback ke placeholder
-                                    e.target.src = 'https://via.placeholder.com/80x80?text=No+Image';
+                                    e.currentTarget.src = 'https://via.placeholder.com/80x80?text=No+Image';
                                 }}
                                 style={{ backgroundColor: '#f3f4f6' }} // Gray background while loading
                             />
@@ -118,14 +116,14 @@ const ProgramCard = ({
                         <div>
                             <span className="text-sm text-gray-500">Dana Terkumpul</span>
                             <div className="text-lg font-medium text-green-600">
-                                {formatRupiah(dana_terkumpul || 0)}
+                                {formatRupiah(danaTerkumpul)}
                             </div>
                         </div>
 
                         <div>
                             <span className="text-sm text-gray-500">Target Dana</span>
                             <div className="text-lg font-medium text-gray-900">
-                                {formatRupiah(target_dana)}
+                                {formatRupiah(targetDana)}
                             </div>
                         </div>
                     </div>
