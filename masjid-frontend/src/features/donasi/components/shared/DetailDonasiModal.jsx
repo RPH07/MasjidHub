@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import Swal from 'sweetalert2'
-import { formatRupiah } from '@/utils/formatters'
+import { formatRupiah, toNumber } from '@/utils/formatters'
 import { useAuth } from '@/hooks/useAuth'
 import { Button } from "@/components/ui/button";
 import { FloatingInput } from '@/components/form';
@@ -14,6 +14,9 @@ const GREEN_SOFT = '#e8ede8';
 
 const DetailDonasiModal = ({ program, onSubmit, onUploadProof, onClose, loading = false }) => {
     const { user } = useAuth();
+    const targetDana = toNumber(program?.target_dana);
+    const danaTerkumpul = toNumber(program?.dana_terkumpul);
+    const progressPercentage = targetDana > 0 ? (danaTerkumpul / targetDana) * 100 : 0;
     const initialIdentity = useMemo(() => {
         const userName = user?.nama || '';
         const userContact = user?.no_telepon || user?.no_hp || user?.phone || '';
@@ -533,11 +536,11 @@ const DetailDonasiModal = ({ program, onSubmit, onUploadProof, onClose, loading 
                         <div className="mb-4">
                             <div className="flex justify-between text-sm mb-1">
                                 <span style={{ color: INK_SOFT }}>Progress</span>
-                                <span style={{ color: INK }} className="font-medium">{((program.dana_terkumpul / program.target_dana) * 100).toFixed(1)}%</span>
+                                <span style={{ color: INK }} className="font-medium">{progressPercentage.toFixed(1)}%</span>
                             </div>
                             <div style={{ borderColor: INK }} className="w-full h-2 border">
                                 <div
-                                    style={{ width: `${Math.min((program.dana_terkumpul / program.target_dana) * 100, 100)}%`, backgroundColor: GREEN }}
+                                    style={{ width: `${Math.min(progressPercentage, 100)}%`, backgroundColor: GREEN }}
                                     className="h-full"
                                 />
                             </div>
@@ -546,11 +549,11 @@ const DetailDonasiModal = ({ program, onSubmit, onUploadProof, onClose, loading 
                         <div className="space-y-2 text-sm">
                             <div className="flex justify-between">
                                 <span style={{ color: INK_SOFT }}>Terkumpul:</span>
-                                <span style={{ color: GREEN }} className="font-medium">{formatRupiah(program.dana_terkumpul)}</span>
+                                <span style={{ color: GREEN }} className="font-medium">{formatRupiah(danaTerkumpul)}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span style={{ color: INK_SOFT }}>Target:</span>
-                                <span style={{ color: INK }} className="font-medium">{formatRupiah(program.target_dana)}</span>
+                                <span style={{ color: INK }} className="font-medium">{formatRupiah(targetDana)}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span style={{ color: INK_SOFT }}>Donatur:</span>
