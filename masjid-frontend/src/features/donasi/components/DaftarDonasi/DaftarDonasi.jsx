@@ -76,7 +76,6 @@ const DaftarDonasi = () => {
             const result = await deleteProgramDonasi(programId);
             if (result.success) {
                 Swal.fire('Berhasil', result.message || 'Program donasi berhasil dihapus', 'success');
-                await fetchProgramDonasi();
             } else {
                 Swal.fire('Belum tersedia', result.message || 'Fitur hapus program belum tersedia', 'info');
             }
