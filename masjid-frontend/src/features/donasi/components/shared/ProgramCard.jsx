@@ -10,7 +10,8 @@ const ProgramCard = ({
     onEdit,
     onDelete,
     onViewDonations,
-    showActions = true
+    showActions = true,
+    showCompletedDate = false
 }) => {
     const {
         id,
@@ -22,12 +23,15 @@ const ProgramCard = ({
         kategori_barang,
         status,
         created_at,
+        tanggal_selesai,
+        tanggal_Selesai,
         total_donatur,
         deadline
     } = program
 
     const progressPercentage = dana_terkumpul && target_dana ? (dana_terkumpul / target_dana) * 100 : 0
     const isCompleted = progressPercentage >= 100
+    const completedDate = tanggal_selesai || tanggal_Selesai
 
     const getImageUrl = (filename) =>{
         if(!filename) return null;
@@ -48,14 +52,10 @@ const ProgramCard = ({
                                 src={imgUrl}
                                 alt={nama_barang}
                                 className="h-20 w-20 rounded-lg object-cover"
-                                onLoad={() => console.log('Image loaded successfully:', imgUrl)}
                                 onError={(e) => {
-                                    console.error('Image failed to load:', imgUrl);
-                                    console.error('Error event:', e);
-                                    // Fallback ke placeholder
-                                    e.target.src = 'https://via.placeholder.com/80x80?text=No+Image';
+                                    e.currentTarget.src = 'https://via.placeholder.com/80x80?text=No+Image';
                                 }}
-                                style={{ backgroundColor: '#f3f4f6' }} // Gray background while loading
+                                style={{ backgroundColor: '#f3f4f6' }}
                             />
                         </div>
                     )}
@@ -92,6 +92,13 @@ const ProgramCard = ({
                             <div className="mt-2 text-sm">
                                 <span className="text-gray-500">Deadline:</span>
                                 <span className="ml-1 text-red-600">{formatDate(deadline)}</span>
+                            </div>
+                        )}
+
+                        {showCompletedDate && completedDate && (
+                            <div className="mt-2 text-sm">
+                                <span className="text-gray-500">Tanggal Selesai:</span>
+                                <span className="ml-1 text-green-600">{formatDate(completedDate)}</span>
                             </div>
                         )}
                     </div>
