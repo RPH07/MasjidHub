@@ -45,11 +45,11 @@ const HomePage = () => {
   //  HANDLE DONASI ROUTING
   const handleDonasiClick = () => {
     if (isLoggedIn()) {
-      // Jika sudah login, ke dashboard crowdfunding
-      navigate('/dashboard/crowdfunding');
+      // Jika sudah login, ke dashboard donasi
+      navigate('/dashboard/donation-programs');
     } else {
-      // Jika belum login, ke public crowdfunding
-      navigate('/crowdfunding');
+      // Jika belum login, ke donasi publik
+      navigate('/donation-programs');
     }
   };
 

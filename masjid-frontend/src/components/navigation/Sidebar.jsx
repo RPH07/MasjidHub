@@ -65,32 +65,32 @@ const Sidebar = ({ className, isMobile = false, isCollapsed = false, role = 'adm
     {
       title: "Kegiatan",
       icon: <Calendar className="h-5 w-5" />,
-      to: "/admin/kegiatan",
-      active: location.pathname === "/admin/kegiatan"
+      to: "/admin/activities",
+      active: location.pathname === "/admin/activities"
     },
     {
       title: "Kas",
       icon: <DollarSign className="h-5 w-5" />,
-      to: "/admin/kas",
-      active: location.pathname === "/admin/kas"
+      to: "/admin/cash",
+      active: location.pathname === "/admin/cash"
     },
     {
       title: "Verifikasi Transaksi",
       icon: <ClipboardCheck className="h-5 w-5" />,
-      to: "/admin/verifikasi-transaksi",
-      active: location.pathname === "/admin/verifikasi-transaksi"
+      to: "/admin/transaction-verification",
+      active: location.pathname === "/admin/transaction-verification"
     },
     {
       title: "Transparansi Dana",
       icon: <ShieldCheck className="h-5 w-5" />,
-      to: "/admin/transparansi",
-      active: location.pathname === "/admin/transparansi"
+      to: "/admin/transparency",
+      active: location.pathname === "/admin/transparency"
     },
     {
       title: "Donasi",
       icon: <FileDown className="h-5 w-5" />,
-      to: "/admin/donasi",
-      active: location.pathname === "/admin/donasi"
+      to: "/admin/donations",
+      active: location.pathname === "/admin/donations"
     },
     {
       title: "Manajemen User",
@@ -119,22 +119,22 @@ const Sidebar = ({ className, isMobile = false, isCollapsed = false, role = 'adm
       active: location.pathname === "/dashboard/zakat"
     },
     {
-      title: "Crowdfunding",
+      title: "Donasi",
       icon: <Heart className="h-5 w-5" />,
-      to: "/dashboard/crowdfunding",
-      active: location.pathname === "/dashboard/crowdfunding"
+      to: "/dashboard/donation-programs",
+      active: location.pathname === "/dashboard/donation-programs"
     },
     {
       title: "Kegiatan",
       icon: <Calendar className="h-5 w-5" />,
-      to: "/dashboard/kegiatan",
-      active: location.pathname === "/dashboard/kegiatan"
+      to: "/dashboard/activities",
+      active: location.pathname === "/dashboard/activities"
     },
     {
       title: "History Donasi",
       icon: <History className="h-5 w-5" />,
-      to: "/dashboard/kontribusi-history",
-      active: location.pathname === "/dashboard/kontribusi-history"
+      to: "/dashboard/contribution-history",
+      active: location.pathname === "/dashboard/contribution-history"
     }
   ];
 

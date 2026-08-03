@@ -36,7 +36,7 @@ const Footer = () => {
     { to: '/about', label: 'Tentang Kami', icon: Info },
     { to: '/contact', label: 'Kontak', icon: PhoneCall },
     { to: '/zakat', label: 'Zakat', icon: Coins },
-    { to: '/crowdfunding', label: 'Donasi', icon: Gift },
+    { to: '/donation-programs', label: 'Donasi', icon: Gift },
   ];
 
   const services = [
