@@ -3,6 +3,7 @@ import { ProgramCard } from '../shared'
 import { useDonasi } from '../../hooks/useDonasi'
 import { Button } from "@/components/ui/button";
 import { formatRupiah } from '@/utils/formatters'
+import {ViewDonations} from '../index'
 
 const DonasiAktif = () => {
     const {
@@ -15,6 +16,7 @@ const DonasiAktif = () => {
     } = useDonasi()
 
     const [sortBy, setSortBy] = useState('newest')
+    const [viewingDonations, setViewingDonations] = useState(null)
 
     useEffect(() => {
         fetchProgramAktif()
@@ -62,8 +64,11 @@ const DonasiAktif = () => {
     }
 
     const handleViewDonations = (program) => {
-        // TODO: Navigate to donations detail
-        console.log('View donations for:', program)
+        setViewingDonations(program);
+    }
+
+    const handleCloseViewDonations = () => {
+        setViewingDonations(null);
     }
 
     // Calculate statistics
@@ -145,7 +150,6 @@ const DonasiAktif = () => {
                 </div>
             </div>
 
-            {/* Program List */}
             {sortedPrograms.length === 0 ? (
                 <div className="text-center py-12">
                     <div className="text-gray-500 text-lg mb-2">
@@ -168,6 +172,13 @@ const DonasiAktif = () => {
                         />
                     ))}
                 </div>
+            )}
+
+            {viewingDonations && (
+                <ViewDonations 
+                    program={viewingDonations}
+                    onClose={handleCloseViewDonations}
+                />
             )}
         </div>
     )
