@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import Swal from 'sweetalert2'
 import { ProgramCard } from '../shared'
 import { useDonasi } from '../../hooks/'
@@ -36,12 +36,17 @@ const DaftarDonasi = () => {
         }
     }, [error]);
 
-    const filteredPrograms = programDonasi.filter(program => {
-        const matchesFilter = filter === 'all' || program.status === filter
-        const matchesSearch = program.nama_barang.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            program.deskripsi?.toLowerCase().includes(searchTerm.toLowerCase())
-        return matchesFilter && matchesSearch
-    })
+    const filteredPrograms = useMemo(() => {
+        const search = searchTerm.toLowerCase()
+
+        return programDonasi.filter(program => {
+            const matchesFilter = filter === 'all' || 
+            program.status === filter
+            const matchesSearch = program.nama_barang?.toLowerCase().includes(search) || program.deskripsi?.toLowerCase().includes(search)
+
+            return matchesFilter && matchesSearch
+        })
+    }, [programDonasi, filter, searchTerm])
 
     // Handler untuk edit
     const handleEdit = (program) => {
@@ -88,6 +93,7 @@ const DaftarDonasi = () => {
     const handleActivate = async (programId) => {
         const result = await activateProgram(programId)
         if (result.success) {
+            await fetchProgramDonasi();
             Swal.fire('Berhasil', result.message || 'Program donasi berhasil diaktifkan', 'success')
         } else {
             Swal.fire('Gagal', result.message, 'error')
@@ -97,6 +103,7 @@ const DaftarDonasi = () => {
     const handleDeactivate = async (programId) => {
         const result = await deactivateProgram(programId)
         if (result.success) {
+            await fetchProgramDonasi();
             Swal.fire('Berhasil', result.message || 'Program donasi berhasil dinonaktifkan', 'success')
         } else {
             Swal.fire('Belum tersedia', result.message, 'info')
@@ -120,6 +127,7 @@ const DaftarDonasi = () => {
 
         const result = await completeProgram(programId)
         if (result.success) {
+            await fetchProgramDonasi();
             Swal.fire('Berhasil', result.message || 'Program donasi berhasil diselesaikan', 'success')
         } else {
             Swal.fire('Gagal', result.message, 'error')
@@ -134,7 +142,9 @@ const DaftarDonasi = () => {
         setViewingDonations(null);
     }
 
-    if (loading) {
+    const isInitialLoading = loading && programDonasi.length === 0
+
+    if (isInitialLoading) {
         return (
             <div className="flex justify-center items-center h-64">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
@@ -160,9 +170,16 @@ const DaftarDonasi = () => {
         <div className="space-y-6">
             {/* Header */}
             <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-gray-900">
-                    Daftar Program Donasi
-                </h2>
+                <div className='flex items-center gap-3'>
+                    <h2 className="text-2xl font-bold text-gray-900">
+                        Daftar Program Donasi
+                    </h2>
+                    {loading && programDonasi.length > 0 && (
+                        <span className='text-xs text-gray-400'>
+                            Memperbarui...
+                        </span>
+                    )}
+                </div>
                 <div className="text-sm text-gray-600">
                     Total: {filteredPrograms.length} program
                 </div>
