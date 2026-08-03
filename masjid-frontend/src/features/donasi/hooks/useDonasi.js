@@ -156,8 +156,6 @@ export const useDonasi = () => {
     const activateProgram = useCallback(async (id) => {
         try {
             const response = await donasiService.activateProgram(id);
-            await fetchProgramDonasi();
-            await fetchProgramAktif();
             return { 
                 success: true, 
                 message: getResponseMessage(response, 'Program berhasil diaktifkan')
@@ -168,13 +166,11 @@ export const useDonasi = () => {
                 message: getErrorMessage(error, 'Gagal mengaktifkan program')
             };
         }
-    }, [fetchProgramDonasi, fetchProgramAktif]);
+    }, []);
 
     const deactivateProgram = useCallback(async (id) => {
         try {
             const response = await donasiService.deactivateProgram(id);
-            await fetchProgramDonasi();
-            await fetchProgramAktif();
             return { 
                 success: true, 
                 message: getResponseMessage(response, 'Program berhasil dinonaktifkan')
@@ -185,13 +181,11 @@ export const useDonasi = () => {
                 message: getErrorMessage(error, 'Gagal menonaktifkan program')
             };
         }
-    }, [fetchProgramDonasi, fetchProgramAktif]);
+    }, []);
 
     const completeProgram = useCallback(async (id) => {
         try {
             const response = await donasiService.completeProgram(id);
-            await fetchProgramDonasi();
-            await fetchProgramAktif();
             return { 
                 success: true, 
                 message: getResponseMessage(response, 'Program berhasil diselesaikan')
@@ -202,7 +196,7 @@ export const useDonasi = () => {
                 message: getErrorMessage(error, 'Gagal menyelesaikan program')
             };
         }
-    }, [fetchProgramDonasi, fetchProgramAktif]);
+    }, []);
 
     return {
         ...state,
