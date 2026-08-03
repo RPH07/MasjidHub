@@ -1,11 +1,15 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import Swal from 'sweetalert2'
 import { ProgramCard } from '../shared'
 import { useDonasiHistory } from '../../hooks/useDonasiHistory'
 import { formatDate } from '../../utils/formatters'
-import { formatRupiah } from '@/utils/formatters'
+import { formatRupiah, toNumber } from '@/utils/formatters'
 import { Button } from "@/components/ui/button";
 import { FloatingDate, FloatingInput } from '@/components/form';
+
+const getCompletedDate = (program) => (
+    program?.tanggal_selesai || program?.tanggal_Selesai || program?.created_at
+)
 
 const DonasiHistory = () => {
     const {
@@ -32,18 +36,21 @@ const DonasiHistory = () => {
         fetchHistoryDonasi()
     }, [fetchHistoryDonasi])
 
-    // Pastikan historyDonasi adalah array
-    const safeHistory = Array.isArray(historyDonasi) ? historyDonasi : []
+    const safeHistory = useMemo(() => (
+        Array.isArray(historyDonasi) ? historyDonasi : []
+    ), [historyDonasi])
 
-    // Filter dan sort history
-    const filteredHistory = safeHistory
-        .filter(program => {
-            const matchesSearch = program.nama_barang?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                program.deskripsi?.toLowerCase().includes(searchTerm.toLowerCase())
+    const filteredHistory = useMemo(() => {
+        const search = searchTerm.toLowerCase()
+
+        return safeHistory
+        .filter((program) => {
+            const matchesSearch = program.nama_barang?.toLowerCase().includes(search) ||
+                                program.deskripsi?.toLowerCase().includes(search)
             
             let matchesDate = true
             if (dateFilter.from || dateFilter.to) {
-                const programDate = new Date(program.tanggal_selesai || program.created_at)
+                const programDate = new Date(getCompletedDate(program))
                 if (dateFilter.from) {
                     matchesDate = matchesDate && programDate >= new Date(dateFilter.from)
                 }
@@ -57,15 +64,16 @@ const DonasiHistory = () => {
         .sort((a, b) => {
             switch (sortBy) {
                 case 'tanggal_selesai':
-                    return new Date(b.tanggal_selesai || b.created_at) - new Date(a.tanggal_selesai || a.created_at)
+                    return new Date(getCompletedDate(b)) - new Date(getCompletedDate(a))
                 case 'dana_terkumpul':
-                    return (b.dana_terkumpul || 0) - (a.dana_terkumpul || 0)
+                    return toNumber(b.dana_terkumpul) - toNumber(a.dana_terkumpul)
                 case 'nama_barang':
                     return (a.nama_barang || '').localeCompare(b.nama_barang || '')
                 default:
                     return 0
             }
         })
+    }, [safeHistory, searchTerm, dateFilter.from, dateFilter.to, sortBy])
 
     const handleViewDetail = async (program) => {
         await fetchDetailProgram(program.id)
@@ -86,10 +94,18 @@ const DonasiHistory = () => {
         }
     }
 
-    // Calculate statistics
-    const totalPrograms = safeHistory.length
-    const totalDanaSelesai = safeHistory.reduce((sum, program) => sum + (program.dana_terkumpul || 0), 0)
-    const avgDanaPerProgram = totalPrograms > 0 ? totalDanaSelesai / totalPrograms : 0
+    const stats = useMemo(() => {
+        const totalPrograms = safeHistory.length
+        const totalDanaSelesai = safeHistory.reduce((sum, program) => {
+            return sum + toNumber(program.dana_terkumpul)
+        }, 0)
+
+        return {
+            totalPrograms,
+            totalDanaSelesai,
+            avgDanaPerProgram: totalPrograms > 0 ? totalDanaSelesai / totalPrograms : 0
+        }
+    }, [safeHistory])
 
     if (loading) {
         return (
@@ -125,15 +141,15 @@ const DonasiHistory = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                     <div className="bg-blue-50 p-4 rounded-lg">
                         <h3 className="text-sm font-medium text-blue-700">Total Program Selesai</h3>
-                        <p className="text-2xl font-bold text-blue-900">{totalPrograms}</p>
+                        <p className="text-2xl font-bold text-blue-900">{stats.totalPrograms}</p>
                     </div>
                     <div className="bg-green-50 p-4 rounded-lg">
                         <h3 className="text-sm font-medium text-green-700">Total Dana Terkumpul</h3>
-                        <p className="text-2xl font-bold text-green-900">{formatRupiah(totalDanaSelesai)}</p>
+                        <p className="text-2xl font-bold text-green-900">{formatRupiah(stats.totalDanaSelesai)}</p>
                     </div>
                     <div className="bg-purple-50 p-4 rounded-lg">
                         <h3 className="text-sm font-medium text-purple-700">Rata-rata per Program</h3>
-                        <p className="text-2xl font-bold text-purple-900">{formatRupiah(avgDanaPerProgram)}</p>
+                        <p className="text-2xl font-bold text-purple-900">{formatRupiah(stats.avgDanaPerProgram)}</p>
                     </div>
                 </div>
             </div>
@@ -182,7 +198,7 @@ const DonasiHistory = () => {
                     </select>
 
                     <div className="text-sm text-gray-600">
-                        Menampilkan {filteredHistory.length} dari {totalPrograms} program
+                        Menampilkan {filteredHistory.length} dari {stats.totalPrograms} program
                     </div>
                 </div>
             </div>
@@ -191,13 +207,13 @@ const DonasiHistory = () => {
             {filteredHistory.length === 0 ? (
                 <div className="text-center py-12">
                     <div className="text-gray-500 text-lg mb-2">
-                        {totalPrograms === 0 
+                        {stats.totalPrograms === 0 
                             ? 'Belum ada program donasi yang selesai'
                             : 'Tidak ada program yang sesuai dengan filter'
                         }
                     </div>
                     <div className="text-gray-400">
-                        {totalPrograms === 0
+                        {stats.totalPrograms === 0
                             ? 'Program yang sudah selesai akan muncul di sini'
                             : 'Coba ubah kata kunci pencarian atau filter tanggal'
                         }
@@ -211,6 +227,7 @@ const DonasiHistory = () => {
                                 program={program}
                                 onViewDonations={handleViewDetail}
                                 showActions={false}
+                                showCompletedDate={true}
                             />
                             {/* Additional History Info */}
                             <div className="absolute top-4 right-4">
@@ -258,11 +275,11 @@ const DonasiHistory = () => {
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                     <div>
                                         <span className="text-sm text-gray-600">Target Dana</span>
-                                        <div className="font-semibold">{formatRupiah(detailProgram.target_dana)}</div>
+                                        <div className="font-semibold">{formatRupiah(toNumber(detailProgram.target_dana))}</div>
                                     </div>
                                     <div>
                                         <span className="text-sm text-gray-600">Dana Terkumpul</span>
-                                        <div className="font-semibold text-green-600">{formatRupiah(detailProgram.dana_terkumpul)}</div>
+                                        <div className="font-semibold text-green-600">{formatRupiah(toNumber(detailProgram.dana_terkumpul))}</div>
                                     </div>
                                     <div>
                                         <span className="text-sm text-gray-600">Total Donatur</span>
@@ -270,7 +287,7 @@ const DonasiHistory = () => {
                                     </div>
                                     <div>
                                         <span className="text-sm text-gray-600">Tanggal Selesai</span>
-                                        <div className="font-semibold">{formatDate(detailProgram.tanggal_selesai)}</div>
+                                        <div className="font-semibold">{formatDate(getCompletedDate(detailProgram))}</div>
                                     </div>
                                 </div>
                             </div>
