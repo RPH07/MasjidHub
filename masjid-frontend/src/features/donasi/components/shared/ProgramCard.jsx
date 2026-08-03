@@ -217,9 +217,5 @@ const ProgramCard = ({
     )
 }
 
-// Export sebagai ProgramCard dan tetap backward compatibility
 export default ProgramCard
 export { ProgramCard }
-
-// Backward compatibility untuk import lama
-export const LelangCard = ProgramCard

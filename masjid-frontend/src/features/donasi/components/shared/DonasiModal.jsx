@@ -34,6 +34,3 @@ const ModalDonasi = ({ isOpen, onClose, title, children, size = 'md' }) => {
 };
 
 export default ModalDonasi;
-
-// Backward compatibility
-export const ModalLelang = ModalDonasi;
