@@ -11,22 +11,22 @@ import { Toaster } from 'react-hot-toast';
 const HomePage = lazy(() => import('@/pages/home/HomePage'));
 const About = lazy(() => import('@/pages/About'));
 const Contact = lazy(() => import('@/pages/Contact'));
-const TransparansiDana = lazy(() => import('@/pages/TransparansiDana'));
+const Transparency = lazy(() => import('@/pages/Transparency'));
 const LoginPages = lazy(() => import('@/pages/auth/Login'));
 const RegisterPages = lazy(() => import('@/pages/auth/Signup'));
 const AdminSignup = lazy(() => import('@/pages/auth/AdminSignup'));
 const ZakatForm = lazy(() => import('@/pages/ZakatForm'));
-const Crowdfunding = lazy(() => import('@/pages/user/Crowdfunding'));
+const DonationPrograms = lazy(() => import('@/pages/user/DonationPrograms'));
 const UserDashboard = lazy(() => import('@/pages/user/UserDashboard'));
-const KontribusiHistory = lazy(() => import('@/pages/user/KontribusiHistory'));
-const UserKegiatan = lazy(() => import('@/pages/user/UserKegiatan'));
+const ContributionHistory = lazy(() => import('@/pages/user/ContributionHistory'));
+const UserActivities = lazy(() => import('@/pages/user/UserActivities'));
 const Dashboard = lazy(() => import('@/pages/admin/Dashboard'));
-const KegiatanPage = lazy(() => import('@/pages/admin/Kegiatan'));
-const KasPage = lazy(() => import('@/pages/admin/Kas.jsx'));
-const DonasiPage = lazy(() => import('@/pages/admin/Donasi'));
+const ActivitiesPage = lazy(() => import('@/pages/admin/Activities'));
+const CashPage = lazy(() => import('@/pages/admin/Cash.jsx'));
+const DonationsPage = lazy(() => import('@/pages/admin/Donations'));
 const UserAccessPage = lazy(() => import('@/pages/admin/UserAccess'));
-const VerifikasiTransaksi = lazy(() => import('@/pages/admin/VerifikasiTransaksi'));
-const TransparansiAdmin = lazy(() => import('@/pages/admin/TransparansiAdmin'));
+const TransactionVerification = lazy(() => import('@/pages/admin/TransactionVerification'));
+const AdminTransparency = lazy(() => import('@/pages/admin/AdminTransparency'));
 const ZakatSettingsPage = lazy(() => import('@/pages/admin/ZakatSettings'));
 const Maintenance = lazy(() => import('@/pages/Maintenance'));
 const ProfilePage = lazy(() => import('@/pages/Profile'));
@@ -91,8 +91,8 @@ const router = createBrowserRouter([
         element: lazyPage(<Contact />)
       },
       {
-        path: "/transparansi",
-        element: lazyPage(<TransparansiDana />)
+        path: "/transparency",
+        element: lazyPage(<Transparency />)
       },
       {
         path: "/login",
@@ -111,8 +111,8 @@ const router = createBrowserRouter([
         element: maintenancePage('zakat', <ZakatForm />)
       },
       {
-        path: "/crowdfunding",
-        element: lazyPage(<Crowdfunding />)
+        path: "/donation-programs",
+        element: lazyPage(<DonationPrograms />)
       },
       {
         path: "/dashboard",
@@ -132,16 +132,16 @@ const router = createBrowserRouter([
             element: maintenancePage('zakat', <ZakatForm />)
           },
           {
-            path: "crowdfunding",
-            element: lazyPage(<Crowdfunding />)
+            path: "donation-programs",
+            element: lazyPage(<DonationPrograms />)
           },
           {
-            path: "kegiatan",
-            element: lazyPage(<UserKegiatan />)
+            path: "activities",
+            element: lazyPage(<UserActivities />)
           },
           {
-            path: "kontribusi-history",
-            element: lazyPage(<KontribusiHistory />)
+            path: "contribution-history",
+            element: lazyPage(<ContributionHistory />)
           },
           {
             path: "profile",
@@ -166,24 +166,24 @@ const router = createBrowserRouter([
             element: lazyPage(<Dashboard />)
           },
           {
-            path: "kegiatan",
-            element: lazyPage(<KegiatanPage />)
+            path: "activities",
+            element: lazyPage(<ActivitiesPage />)
           },
           {
-            path: "kas",
-            element: lazyPage(<KasPage />)
+            path: "cash",
+            element: lazyPage(<CashPage />)
           },
           {
-            path: "verifikasi-transaksi",
-            element: lazyPage(<VerifikasiTransaksi />)
+            path: "transaction-verification",
+            element: lazyPage(<TransactionVerification />)
           },
           {
-            path: "transparansi",
-            element: lazyPage(<TransparansiAdmin />)
+            path: "transparency",
+            element: lazyPage(<AdminTransparency />)
           },
           {
-            path: "donasi",
-            element: lazyPage(<DonasiPage />)
+            path: "donations",
+            element: lazyPage(<DonationsPage />)
           },
           {
             path: "users",
