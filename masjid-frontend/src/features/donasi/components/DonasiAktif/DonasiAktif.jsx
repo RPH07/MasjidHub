@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { ProgramCard } from '../shared'
 import { useDonasi } from '../../hooks/useDonasi'
 import { Button } from "@/components/ui/button";
-import { formatRupiah } from '@/utils/formatters'
+import { formatRupiah, toNumber } from '@/utils/formatters'
 import {ViewDonations} from '../index'
 
 const DonasiAktif = () => {
@@ -18,28 +18,35 @@ const DonasiAktif = () => {
     const [sortBy, setSortBy] = useState('newest')
     const [viewingDonations, setViewingDonations] = useState(null)
 
+    const getProgress= (program) => {
+        const target = toNumber(program.target_dana)
+        if (target <= 0) return 0
+
+        return (toNumber(program.dana_terkumpul) / target) * 100
+    }
+
     useEffect(() => {
         fetchProgramAktif()
     }, [fetchProgramAktif])
 
-    const sortedPrograms = [...programAktif].sort((a, b) => {
-        switch (sortBy) {
+    const sortedPrograms = useMemo (() => {
+        return [...programAktif].sort((a, b) => {
+            switch (sortBy) {
             case 'newest':
                 return new Date(b.tanggal_dibuat) - new Date(a.tanggal_dibuat)
             case 'oldest':
                 return new Date(a.tanggal_dibuat) - new Date(b.tanggal_dibuat)
             case 'highest_target':
-                return b.target_dana - a.target_dana
+                return toNumber(b.target_dana) - toNumber(a.target_dana)
             case 'highest_collected':
-                return (b.dana_terkumpul || 0) - (a.dana_terkumpul || 0)
+                return toNumber(b.dana_terkumpul || 0) - toNumber(a.dana_terkumpul || 0)
             case 'highest_progress':
-                { const progressA = ((a.dana_terkumpul || 0) / a.target_dana) * 100
-                const progressB = ((b.dana_terkumpul || 0) / b.target_dana) * 100
-                return progressB - progressA }
+                return getProgress(b) - getProgress(a)
             default:
                 return 0
-        }
-    })
+            }
+        })
+    }, [programAktif, sortBy])
 
     const handleDeactivate = async (programId) => {
         if (window.confirm('Apakah Anda yakin ingin menonaktifkan program ini?')) {
@@ -71,13 +78,26 @@ const DonasiAktif = () => {
         setViewingDonations(null);
     }
 
-    // Calculate statistics
-    const totalTarget = programAktif.reduce((sum, program) => sum + program.target_dana, 0)
-    const totalCollected = programAktif.reduce((sum, program) => sum + (program.dana_terkumpul || 0), 0)
-    const totalPrograms = programAktif.length
-    const avgProgress = totalPrograms > 0 ? (totalCollected / totalTarget) * 100 : 0
+    const stats = useMemo(() => {
+        const totalTarget = programAktif.reduce((sum, program) => {
+            return sum + toNumber(program.target_dana)
+        }, 0)
 
-    if (loading) {
+        const totalCollected = programAktif.reduce((sum, program) => {
+            return sum + toNumber(program.dana_terkumpul)
+        }, 0)
+
+        return {
+            totalTarget,
+            totalCollected,
+            totalPrograms: programAktif.length,
+            avgProgress: programAktif.length > 0 ? (totalCollected / totalTarget) * 100 : 0
+        }
+    }, [programAktif])
+
+    const isInitialLoading = loading && programAktif.length === 0
+
+    if (isInitialLoading) {
         return (
             <div className="flex justify-center items-center h-64">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
@@ -103,26 +123,33 @@ const DonasiAktif = () => {
         <div className="space-y-6">
             {/* Header & Statistics */}
             <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                    Program Donasi Aktif
-                </h2>
+                <div className='flex items-center gap-3 mb-4'>
+                    <h2 className="text-2xl font-bold text-gray-900">
+                        Program Donasi Aktif
+                    </h2>
+                    {loading && programAktif.length > 0 && (
+                        <span className='text-xs text-gray-400'>
+                            Memperbarui...
+                        </span>
+                    )}
+                </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                     <div className="bg-blue-50 p-4 rounded-lg">
                         <div className="text-blue-600 text-sm font-medium">Total Program</div>
-                        <div className="text-2xl font-bold text-blue-900">{totalPrograms}</div>
+                        <div className="text-2xl font-bold text-blue-900">{stats.totalPrograms}</div>
                     </div>
                     <div className="bg-green-50 p-4 rounded-lg">
                         <div className="text-green-600 text-sm font-medium">Target Total</div>
-                        <div className="text-2xl font-bold text-green-900">{formatRupiah(totalTarget)}</div>
+                        <div className="text-2xl font-bold text-green-900">{formatRupiah(stats.totalTarget)}</div>
                     </div>
                     <div className="bg-yellow-50 p-4 rounded-lg">
                         <div className="text-yellow-600 text-sm font-medium">Dana Terkumpul</div>
-                        <div className="text-2xl font-bold text-yellow-900">{formatRupiah(totalCollected)}</div>
+                        <div className="text-2xl font-bold text-yellow-900">{formatRupiah(stats.totalCollected)}</div>
                     </div>
                     <div className="bg-purple-50 p-4 rounded-lg">
                         <div className="text-purple-600 text-sm font-medium">Progress Rata-rata</div>
-                        <div className="text-2xl font-bold text-purple-900">{avgProgress.toFixed(1)}%</div>
+                        <div className="text-2xl font-bold text-purple-900">{stats.avgProgress.toFixed(1)}%</div>
                     </div>
                 </div>
             </div>
