@@ -73,6 +73,7 @@ app.use('/api/zakat-settings', zakatSettingRoutes);
 app.use('/api/public', publicRoutes)
 
 // Backward-compatible routes for clients configured without the /api prefix.
+app.use('/public', publicRoutes)
 app.use('/auth', authRoutes);
 app.use('/user', userRoutes);
 app.use('/kegiatan', kegiatanRoutes);
