@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import api from '@/config/api';
 import { Button } from "@/components/ui/button";
 import { FloatingInput } from '@/components/form';
+import { useNavigate } from 'react-router-dom';
+import Footer from '@/components/navigation/Footer';
 
 const UserActivities = () => {
   const [kegiatan, setKegiatan] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedKegiatan, setSelectedKegiatan] = useState(null);
-  const [showModal, setShowModal] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchKegiatan();
@@ -47,30 +48,12 @@ const fetchKegiatan = async () => {
     includesSearch(getCategory(item))
   );
 
-  const openModal = (kegiatanItem) => {
-    setSelectedKegiatan(kegiatanItem);
-    setShowModal(true);
-  };
-
-  const closeModal = () => {
-    setSelectedKegiatan(null);
-    setShowModal(false);
-  };
-
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('id-ID', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
       day: 'numeric'
-    });
-  };
-
-  const formatTime = (item) => {
-    if (item?.jam) return item.jam;
-    return new Date(item?.tanggal).toLocaleTimeString('id-ID', {
-      hour: '2-digit',
-      minute: '2-digit'
     });
   };
 
@@ -136,7 +119,7 @@ const fetchKegiatan = async () => {
                       className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
                     />
                   ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center">
+                    <div className="w-full h-full bg-linear-to-br from-green-400 to-blue-500 flex items-center justify-center">
                       <span className="text-white text-4xl">🕌</span>
                     </div>
                   )}
@@ -180,7 +163,7 @@ const fetchKegiatan = async () => {
 
                   {/* Read More Button */}
                   <Button
-                    onClick={() => openModal(item)}
+                    onClick={() => navigate(`/activities/${item.id}`)}
                     className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
                   >
                     Lihat Detail
@@ -206,107 +189,7 @@ const fetchKegiatan = async () => {
         )}
       </div>
 
-      {/* Modal Detail */}
-      {showModal && selectedKegiatan && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
-            <div className="relative">
-              {getImage(selectedKegiatan) ? (
-                <img
-                  src={getImage(selectedKegiatan)}
-                  alt={getTitle(selectedKegiatan)}
-                  className="w-full h-64 object-cover"
-                />
-              ) : (
-                <div className="w-full h-64 bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center">
-                  <span className="text-white text-6xl">🕌</span>
-                </div>
-              )}
-              
-              {/* Close Button */}
-              <Button
-                onClick={closeModal}
-                className="absolute top-4 right-4 bg-white/90 hover:bg-white text-gray-800 rounded-full p-2 transition-colors duration-200"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </Button>
-
-              {/* Kategori Badge */}
-              <div className="absolute top-4 left-4">
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-white/90 text-gray-800 backdrop-blur-sm">
-                  {normalizeLabel(getCategory(selectedKegiatan))}
-                </span>
-              </div>
-            </div>
-
-            {/* Modal Content */}
-            <div className="p-6">
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">
-                {getTitle(selectedKegiatan)}
-              </h2>
-
-              {/* Date, Time & Location Info */}
-              <div className="grid md:grid-cols-2 gap-4 mb-6">
-                <div className="flex items-center text-gray-700">
-                  <div className="flex items-center justify-center w-10 h-10 bg-green-100 rounded-full mr-3">
-                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 002 2z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="font-medium">Tanggal & Waktu</p>
-                    <p className="text-sm text-gray-600">
-                      {formatDate(selectedKegiatan.tanggal)} • {formatTime(selectedKegiatan)}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center text-gray-700">
-                  <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-full mr-3">
-                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="font-medium">Lokasi</p>
-                    <p className="text-sm text-gray-600">{selectedKegiatan.lokasi}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Deskripsi */}
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Deskripsi Kegiatan</h3>
-                <div className="prose prose-gray max-w-none">
-                  <p className="text-gray-700 leading-relaxed whitespace-pre-line">
-                    {selectedKegiatan.deskripsi}
-                  </p>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
-                <Button
-                  onClick={closeModal}
-                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-3 px-4 rounded-lg transition-colors duration-200"
-                >
-                  Tutup
-                </Button>
-                <Button className="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center">
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
-                  </svg>
-                  Bagikan
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <Footer />
     </div>
   );
 };
