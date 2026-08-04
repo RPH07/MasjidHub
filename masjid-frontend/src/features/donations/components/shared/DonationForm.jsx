@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { METODE_PEMBAYARAN } from '../../utils/constants'
 import { Button } from "@/components/ui/button";
 import { FloatingInput } from '@/components/form';
-import { formatRupiah } from '@/utils/formatters'
+import { formatRupiah, toNumber } from '@/utils/formatters'
 
 const DonationForm = ({
     program,
@@ -90,7 +90,9 @@ const DonationForm = ({
         }
     }
 
-    const progressPercentage = (program.dana_terkumpul / program.target_dana) * 100
+    const targetDana = toNumber(program.target_dana)
+    const danaTerkumpul = toNumber(program.dana_terkumpul)
+    const progressPercentage = targetDana > 0 ? (danaTerkumpul / targetDana) * 100 : 0
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -100,8 +102,8 @@ const DonationForm = ({
                     <div className="font-medium">{program.nama_barang}</div>
                     <div className="mt-2">
                         <div className="flex justify-between text-xs mb-1">
-                            <span>Dana Terkumpul: {formatRupiah(program.dana_terkumpul)}</span>
-                            <span>Target: {formatRupiah(program.target_dana)}</span>
+                            <span>Dana Terkumpul: {formatRupiah(danaTerkumpul)}</span>
+                            <span>Target: {formatRupiah(targetDana)}</span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2">
                             <div 

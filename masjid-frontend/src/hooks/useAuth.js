@@ -1,4 +1,6 @@
+import { AUTH_CHANGED_EVENT } from '@/config/api';
 import { useState, useEffect } from 'react';
+
 
 export const useAuth = () => {
     const [user, setUser] = useState(null);
@@ -28,14 +30,16 @@ export const useAuth = () => {
         loadUser();
 
         // Listen for localStorage changes (jika login dari tab lain)
-        const handleStorageChange = () => {
+        const handleAuthChange = () => {
             loadUser();
         };
 
-        window.addEventListener('storage', handleStorageChange);
+        window.addEventListener('storage', handleAuthChange);
+        window.addEventListener(AUTH_CHANGED_EVENT, handleAuthChange);
 
         return () => {
-            window.removeEventListener('storage', handleStorageChange);
+            window.removeEventListener('storage', handleAuthChange);
+            window.removeEventListener(AUTH_CHANGED_EVENT, handleAuthChange);
         };
     }, []);
 
@@ -43,6 +47,7 @@ export const useAuth = () => {
     const logout = () => {
         localStorage.removeItem('accessToken');
         localStorage.removeItem('user');
+        window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
         setUser(null);
     };
 

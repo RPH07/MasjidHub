@@ -8,7 +8,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { donationService } from '@/features/donations/services/donationService';
 import transparencyService from '@/services/transparencyService';
 import { Button } from "@/components/ui/button";
-import { formatRupiah } from '@/utils/formatters';
+import { formatRupiah, toNumber } from '@/utils/formatters';
 
 const INK = '#1c2620';
 const INK_SOFT = '#5c6b5f';
@@ -258,7 +258,9 @@ const DonationPrograms = () => {
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {filteredPrograms.map((program) => {
-                            const progress = (program.dana_terkumpul / program.target_dana) * 100;
+                            const targetDana = toNumber(program.target_dana);
+                            const danaTerkumpul = toNumber(program.dana_terkumpul);
+                            const progress = targetDana > 0 ? (danaTerkumpul / targetDana) * 100 : 0;
                             const programStatus = program.status;
                             const isCompleted = progress >= 100 || programStatus === 'selesai';
                             const isDownloading = downloadingPdf === program.id;
@@ -322,10 +324,10 @@ const DonationPrograms = () => {
 
                                         <div className="flex justify-between items-center text-sm mb-4">
                                             <span style={{ color: GREEN }} className="font-medium">
-                                                Terkumpul: {formatRupiah(program.dana_terkumpul || 0)}
+                                                Terkumpul: {formatRupiah(danaTerkumpul)}
                                             </span>
                                             <span style={{ color: INK_SOFT }}>
-                                                Target: {formatRupiah(program.target_dana)}
+                                                Target: {formatRupiah(targetDana)}
                                             </span>
                                         </div>
 

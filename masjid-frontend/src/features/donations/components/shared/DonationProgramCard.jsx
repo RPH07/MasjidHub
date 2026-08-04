@@ -1,7 +1,7 @@
 import React from 'react'
 import { formatDate, getStatusBadge } from '../../utils'
 import { Button } from "@/components/ui/button";
-import { formatRupiah } from '@/utils/formatters'
+import { formatRupiah, toNumber } from '@/utils/formatters'
 
 const DonationProgramCard = ({
     program,
@@ -29,7 +29,9 @@ const DonationProgramCard = ({
         deadline
     } = program
 
-    const progressPercentage = dana_terkumpul && target_dana ? (dana_terkumpul / target_dana) * 100 : 0
+    const targetDana = toNumber(target_dana)
+    const danaTerkumpul = toNumber(dana_terkumpul)
+    const progressPercentage = targetDana > 0 ? (danaTerkumpul / targetDana) * 100 : 0
     const isCompleted = progressPercentage >= 100
     const completedDate = tanggal_selesai || tanggal_Selesai
 
@@ -125,14 +127,14 @@ const DonationProgramCard = ({
                         <div>
                             <span className="text-sm text-gray-500">Dana Terkumpul</span>
                             <div className="text-lg font-medium text-green-600">
-                                {formatRupiah(dana_terkumpul || 0)}
+                                {formatRupiah(danaTerkumpul)}
                             </div>
                         </div>
 
                         <div>
                             <span className="text-sm text-gray-500">Target Dana</span>
                             <div className="text-lg font-medium text-gray-900">
-                                {formatRupiah(target_dana)}
+                                {formatRupiah(targetDana)}
                             </div>
                         </div>
                     </div>

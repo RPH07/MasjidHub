@@ -13,6 +13,7 @@ const kategoriKegiatanRoutes = require('./routes/kategori-kegiatan');
 const kontribusiRoutes = require('./routes/kontribusi');
 const transparansiRoutes = require('./routes/transparansi');
 const zakatSettingRoutes = require('./routes/zakat-settings');
+const publicRoutes = require('./routes/publicRoutes');
 
 dotenv.config();
 
@@ -69,6 +70,7 @@ app.use('/api/pengadaan', pengadaanRoutes);
 app.use('/api/kontribusi', kontribusiRoutes);
 app.use('/api/transparansi', transparansiRoutes);
 app.use('/api/zakat-settings', zakatSettingRoutes);
+app.use('/api/public', publicRoutes)
 
 // Backward-compatible routes for clients configured without the /api prefix.
 app.use('/auth', authRoutes);

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Swal from 'sweetalert2';
 import { donationService } from '../../services';
 import { Button } from "@/components/ui/button";
-import { formatRupiah } from '@/utils/formatters';
+import { formatRupiah, toNumber } from '@/utils/formatters';
 
 const DonationRecords = ({ program, onClose }) => {
     const [donations, setDonations] = useState([]);
@@ -50,9 +50,9 @@ const DonationRecords = ({ program, onClose }) => {
         }
     };
 
-    const progressPercentage = program.target_dana > 0 
-        ? ((program.dana_terkumpul || 0) / program.target_dana) * 100 
-        : 0;
+    const targetDana = toNumber(program.target_dana);
+    const danaTerkumpul = toNumber(program.dana_terkumpul);
+    const progressPercentage = targetDana > 0 ? (danaTerkumpul / targetDana) * 100 : 0;
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -71,13 +71,13 @@ const DonationRecords = ({ program, onClose }) => {
                                 <div>
                                     <span className="text-gray-500">Dana Terkumpul:</span>
                                     <div className="font-semibold text-green-600">
-                                        {formatRupiah(program.dana_terkumpul || 0)}
+                                        {formatRupiah(danaTerkumpul)}
                                     </div>
                                 </div>
                                 <div>
                                     <span className="text-gray-500">Target Dana:</span>
                                     <div className="font-semibold">
-                                        {formatRupiah(program.target_dana)}
+                                        {formatRupiah(targetDana)}
                                     </div>
                                 </div>
                                 <div>

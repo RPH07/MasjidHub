@@ -26,7 +26,7 @@ const verifyToken = async (req, res, next) => {
         
         next();
     } catch (error) {
-        return res.status(403).json({ msg: "Token Invalid atau Expired." });
+        return res.status(401).json({ msg: "Token Invalid atau Expired." });
     }
 }
 

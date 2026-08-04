@@ -33,9 +33,9 @@ const ActiveDonationPrograms = () => {
         return [...programAktif].sort((a, b) => {
             switch (sortBy) {
             case 'newest':
-                return new Date(b.tanggal_dibuat) - new Date(a.tanggal_dibuat)
+                return new Date(b.created_at) - new Date(a.created_at)
             case 'oldest':
-                return new Date(a.tanggal_dibuat) - new Date(b.tanggal_dibuat)
+                return new Date(a.created_at) - new Date(b.created_at)
             case 'highest_target':
                 return toNumber(b.target_dana) - toNumber(a.target_dana)
             case 'highest_collected':
