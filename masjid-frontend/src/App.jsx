@@ -12,22 +12,23 @@ import { Toaster } from 'react-hot-toast';
 const HomePage = lazy(() => import('@/pages/home/HomePage'));
 const About = lazy(() => import('@/pages/About'));
 const Contact = lazy(() => import('@/pages/Contact'));
-const TransparansiDana = lazy(() => import('@/pages/TransparansiDana'));
+const Transparency = lazy(() => import('@/pages/Transparency'));
 const LoginPages = lazy(() => import('@/pages/auth/Login'));
 const RegisterPages = lazy(() => import('@/pages/auth/Signup'));
 const AdminSignup = lazy(() => import('@/pages/auth/AdminSignup'));
 const ZakatForm = lazy(() => import('@/pages/ZakatForm'));
-const Crowdfunding = lazy(() => import('@/pages/user/Crowdfunding'));
+const DonationPrograms = lazy(() => import('@/pages/user/DonationPrograms'));
 const UserDashboard = lazy(() => import('@/pages/user/UserDashboard'));
-const KontribusiHistory = lazy(() => import('@/pages/user/KontribusiHistory'));
-const UserKegiatan = lazy(() => import('@/pages/user/UserKegiatan'));
+const ContributionHistory = lazy(() => import('@/pages/user/ContributionHistory'));
+const UserActivities = lazy(() => import('@/pages/user/UserActivities'));
+const ActivityDetail = lazy(() => import('@/pages/user/ActivityDetail'));
 const Dashboard = lazy(() => import('@/pages/admin/Dashboard'));
-const KegiatanPage = lazy(() => import('@/pages/admin/Kegiatan'));
-const KasPage = lazy(() => import('@/pages/admin/Kas.jsx'));
-const DonasiPage = lazy(() => import('@/pages/admin/Donasi'));
+const ActivitiesPage = lazy(() => import('@/pages/admin/Activities'));
+const CashPage = lazy(() => import('@/pages/admin/Cash.jsx'));
+const DonationsPage = lazy(() => import('@/pages/admin/Donations'));
 const UserAccessPage = lazy(() => import('@/pages/admin/UserAccess'));
-const VerifikasiTransaksi = lazy(() => import('@/pages/admin/VerifikasiTransaksi'));
-const TransparansiAdmin = lazy(() => import('@/pages/admin/TransparansiAdmin'));
+const TransactionVerification = lazy(() => import('@/pages/admin/TransactionVerification'));
+const AdminTransparency = lazy(() => import('@/pages/admin/AdminTransparency'));
 const ZakatSettingsPage = lazy(() => import('@/pages/admin/ZakatSettings'));
 const Maintenance = lazy(() => import('@/pages/Maintenance'));
 const ProfilePage = lazy(() => import('@/pages/Profile'));
@@ -37,9 +38,20 @@ const MAINTENANCE = {
 
 
 const PageLoader = () => (
-  <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 text-sm text-gray-500">
-    Memuat halaman...
-  </div>
+  <div className="min-h-screen bg-gray-50 px-4 py-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-10">
+          <div className="h-8 w-48 animate-pulse rounded-md bg-gray-200 mb-3" />
+          <div className="h-4 w-72 animate-pulse rounded-md bg-gray-200" />
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="h-40 animate-pulse rounded-lg bg-gray-200" />
+          <div className="h-40 animate-pulse rounded-lg bg-gray-200" />
+          <div className="h-40 animate-pulse rounded-lg bg-gray-200" />
+        </div>
+      </div>
+    </div>
 );
 
 const PageTitle = ({ title, children }) => {
@@ -95,12 +107,20 @@ const router = createBrowserRouter([
         element: lazyPage(<About />, "Tentang")
       },
       {
+        path: "/activities",
+        element: lazyPage(<UserActivities />, "Detail Kegiatan")
+      },
+      {
+        path: "/activities/:id",
+        element: lazyPage(<ActivityDetail />, "Detail Kegiatan")
+      },
+      {
         path: "/contact",
         element: lazyPage(<Contact />, "Kontak")
       },
       {
-        path: "/transparansi",
-        element: lazyPage(<TransparansiDana />, "Transparansi Dana")
+        path: "/transparency",
+        element: lazyPage(<Transparency />)
       },
       {
         path: "/login",
@@ -119,8 +139,8 @@ const router = createBrowserRouter([
         element: maintenancePage('zakat', <ZakatForm />, "Zakat")
       },
       {
-        path: "/crowdfunding",
-        element: lazyPage(<Crowdfunding />, "Crowdfunding")
+        path: "/donation-programs",
+        element: lazyPage(<DonationPrograms />)
       },
       {
         path: "/dashboard",
@@ -140,16 +160,16 @@ const router = createBrowserRouter([
             element: maintenancePage('zakat', <ZakatForm />, "Zakat")
           },
           {
-            path: "crowdfunding",
-            element: lazyPage(<Crowdfunding />, "Crowdfunding")
+            path: "donation-programs",
+            element: lazyPage(<DonationPrograms />)
           },
           {
-            path: "kegiatan",
-            element: lazyPage(<UserKegiatan />, "Kegiatan")
+            path: "activities",
+            element: lazyPage(<UserActivities />)
           },
           {
-            path: "kontribusi-history",
-            element: lazyPage(<KontribusiHistory />, "Riwayat Kontribusi")
+            path: "contribution-history",
+            element: lazyPage(<ContributionHistory />)
           },
           {
             path: "profile",
@@ -174,24 +194,24 @@ const router = createBrowserRouter([
             element: lazyPage(<Dashboard />, "Dashboard Admin")
           },
           {
-            path: "kegiatan",
-            element: lazyPage(<KegiatanPage />, "Kelola Kegiatan")
+            path: "activities",
+            element: lazyPage(<ActivitiesPage />)
           },
           {
-            path: "kas",
-            element: lazyPage(<KasPage />, "Kelola Kas")
+            path: "cash",
+            element: lazyPage(<CashPage />)
           },
           {
-            path: "verifikasi-transaksi",
-            element: lazyPage(<VerifikasiTransaksi />, "Verifikasi Transaksi")
+            path: "transaction-verification",
+            element: lazyPage(<TransactionVerification />)
           },
           {
-            path: "transparansi",
-            element: lazyPage(<TransparansiAdmin />, "Kelola Transparansi")
+            path: "transparency",
+            element: lazyPage(<AdminTransparency />)
           },
           {
-            path: "donasi",
-            element: lazyPage(<DonasiPage />, "Kelola Donasi")
+            path: "donations",
+            element: lazyPage(<DonationsPage />)
           },
           {
             path: "users",

@@ -42,9 +42,9 @@ const Navbar = () => {
     // Main navigation items
     const navItems = [
         { path: '/', label: 'Beranda', public: true },
-        { path: '/crowdfunding', label: 'Donasi', public: true },
+        { path: '/donation-programs', label: 'Donasi', public: true },
         { path: '/zakat', label: 'Zakat', public: true },
-        { path: '/transparansi', label: 'Transparansi', public: true },
+        { path: '/transparency', label: 'Transparansi', public: true },
         { path: '/about', label: 'Tentang', public: true },
         { path: '/contact', label: 'Kontak', public: true }
     ];

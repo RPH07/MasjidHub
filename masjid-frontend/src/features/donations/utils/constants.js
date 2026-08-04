@@ -1,0 +1,27 @@
+export const DONASI_STATUS = {
+    DRAFT: "draft",
+    AKTIF: "aktif", 
+    SELESAI: "selesai",
+};
+
+export const KATEGORI_BARANG = {
+    ELEKTRONIK: "elektronik",
+    FURNITURE: "furniture", 
+    PERLENGKAPAN_IBADAH: "perlengkapan_ibadah",
+    RENOVASI: "renovasi",
+    LAINNYA: "lainnya"
+};
+
+export const METODE_PEMBAYARAN = [
+    { value: "transfer_bank", label: "Transfer Bank" },
+    { value: "e_wallet", label: "E-Wallet (GoPay, OVO, Dana)" },
+    { value: "tunai", label: "Tunai" }
+];
+
+export const API_BASE_URL = "http://localhost:5000/api";
+
+export const STATUS_BADGES = {
+    [DONASI_STATUS.DRAFT]: "bg-gray-100 text-gray-800",
+    [DONASI_STATUS.AKTIF]: "bg-green-100 text-green-800", 
+    [DONASI_STATUS.SELESAI]: "bg-blue-100 text-blue-800",
+};

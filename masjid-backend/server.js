@@ -47,11 +47,8 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
+app.use(express.json());
 
-app.use(express.json());  
-// app.use('/images', express.static(path.join(__dirname, 'public/images')));
-// Tambahkan static file serving untuk bukti transfer
-// app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Health Check Route
 app.get('/', (req, res) => {
   res.status(200).json({
@@ -60,6 +57,7 @@ app.get('/', (req, res) => {
     developer: 'Rey'
   });
 });
+
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/kegiatan', kegiatanRoutes);
@@ -73,6 +71,7 @@ app.use('/api/zakat-settings', zakatSettingRoutes);
 app.use('/api/public', publicRoutes)
 
 // Backward-compatible routes for clients configured without the /api prefix.
+app.use('/public', publicRoutes)
 app.use('/auth', authRoutes);
 app.use('/user', userRoutes);
 app.use('/kegiatan', kegiatanRoutes);

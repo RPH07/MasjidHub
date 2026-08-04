@@ -24,22 +24,22 @@ const preload = (imports) => {
 export const preloadUserDashboardPages = () => {
   preload([
     () => import('@/pages/user/UserDashboard'),
-    () => import('@/pages/user/KontribusiHistory'),
-    () => import('@/pages/user/UserKegiatan'),
+    () => import('@/pages/user/ContributionHistory'),
+    () => import('@/pages/user/UserActivities'),
     () => import('@/pages/ZakatForm'),
-    () => import('@/pages/user/Crowdfunding')
+    () => import('@/pages/user/DonationPrograms')
   ]);
 };
 
 export const preloadAdminDashboardPages = () => {
   preload([
     () => import('@/pages/admin/Dashboard'),
-    () => import('@/pages/admin/Kegiatan'),
-    () => import('@/pages/admin/Kas.jsx'),
-    () => import('@/pages/admin/Donasi'),
+    () => import('@/pages/admin/Activities'),
+    () => import('@/pages/admin/Cash.jsx'),
+    () => import('@/pages/admin/Donations'),
     () => import('@/pages/admin/UserAccess'),
-    () => import('@/pages/admin/VerifikasiTransaksi'),
-    () => import('@/pages/admin/TransparansiAdmin'),
+    () => import('@/pages/admin/TransactionVerification'),
+    () => import('@/pages/admin/AdminTransparency'),
     () => import('@/pages/admin/ZakatSettings')
   ]);
 };

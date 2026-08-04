@@ -16,9 +16,6 @@ const HomePage = () => {
     totalJamaah: 0
   });
 
-  const [selectedKegiatan, setSelectedKegiatan] = useState(null);
-  const [showDetailModal, setShowDetailModal] = useState(false);
-
   const navigate = useNavigate();
   const getImageUrl = (foto) => {
     if (!foto) return '';
@@ -32,24 +29,14 @@ const HomePage = () => {
     return localStorage.getItem('accessToken') !== null;
   };
 
-    const handleDetailKegiatan = (kegiatan) => {
-    setSelectedKegiatan(kegiatan);
-    setShowDetailModal(true);
-  };
-
-  const handleCloseModal = () => {
-    setShowDetailModal(false);
-    setSelectedKegiatan(null);
-  };
-
   //  HANDLE DONASI ROUTING
   const handleDonasiClick = () => {
     if (isLoggedIn()) {
-      // Jika sudah login, ke dashboard crowdfunding
-      navigate('/dashboard/crowdfunding');
+      // Jika sudah login, ke dashboard donasi
+      navigate('/dashboard/donation-programs');
     } else {
-      // Jika belum login, ke public crowdfunding
-      navigate('/crowdfunding');
+      // Jika belum login, ke donasi publik
+      navigate('/donation-programs');
     }
   };
 
@@ -278,7 +265,7 @@ useEffect(() => {
                     <p className="text-gray-500 text-sm line-clamp-3 mb-4 leading-relaxed">{item.deskripsi}</p>
                     <Button 
                       className="w-full text-sm font-medium py-2 px-4 rounded border border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50 transition-colors duration-150"
-                      onClick={() => handleDetailKegiatan(item)}
+                      onClick={() => navigate(`/activities/${item.id}`)}
                     >
                       Selengkapnya
                     </Button>
@@ -303,7 +290,7 @@ useEffect(() => {
 
           {kegiatan.length > 6 && (
             <div className="text-center mt-10">
-              <Button className="text-sm font-medium px-6 py-2.5 rounded border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors duration-150">
+              <Button onClick={() => navigate('/activities')} className="text-sm font-medium px-6 py-2.5 rounded border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors duration-150">
                 Lihat Semua Kegiatan
               </Button>
             </div>
@@ -377,77 +364,6 @@ useEffect(() => {
           </div>
         </div>
       </section>
-
-      {/* MODAL DETAIL KEGIATAN */}
-      {showDetailModal && selectedKegiatan && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="flex justify-between items-center p-6 border-b border-gray-100">
-              <h3 className="text-base font-semibold text-gray-900">Detail Kegiatan</h3>
-              <Button
-                onClick={handleCloseModal}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-                aria-label="Tutup"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-              </Button>
-            </div>
-            
-            <div className="p-6">
-              {selectedKegiatan.image_url ? (
-                <img
-                  src={getImageUrl(selectedKegiatan.image_url)}
-                  alt={selectedKegiatan.nama_kegiatan}
-                  className="w-full h-56 object-cover rounded-lg mb-5"
-                />
-              ) : (
-                <div className="w-full h-56 flex items-center justify-center rounded-lg mb-5" style={{ backgroundColor: '#f0f5f1' }}>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#1a4731" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                    <polyline points="9 22 9 12 15 12 15 22"/>
-                  </svg>
-                </div>
-              )}
-
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                {selectedKegiatan.nama_kegiatan}
-              </h2>
-              
-              <div className="flex flex-wrap gap-4 mb-5 text-sm text-gray-500">
-                <span>
-                  {new Date(selectedKegiatan.tanggal).toLocaleDateString('id-ID', {
-                    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-                  })}
-                </span>
-                <span>{selectedKegiatan.lokasi}</span>
-                {selectedKegiatan.kategori && <span>
-                  {typeof selectedKegiatan.kategori === 'object' 
-                    ? selectedKegiatan.kategori.nama_kategori
-                    : selectedKegiatan.kategori}
-                  </span>}
-              </div>
-
-              <div className="mb-6">
-                <p className="text-sm text-gray-500 leading-relaxed whitespace-pre-line">
-                  {selectedKegiatan.deskripsi}
-                </p>
-              </div>
-
-              <div className="flex justify-end">
-                <Button 
-                  variant="outline"
-                  onClick={handleCloseModal}
-                  className="px-5 py-2 text-sm"
-                >
-                  Tutup
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       <Footer />
     </>

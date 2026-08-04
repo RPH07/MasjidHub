@@ -7,8 +7,8 @@ import Footer from '@/components/navigation/Footer';
 
 const dashboardNavItems = [
   { path: '/dashboard', label: 'Ringkasan', exact: true },
-  { path: '/dashboard/kegiatan', label: 'Kegiatan' },
-  { path: '/dashboard/kontribusi-history', label: 'Riwayat' },
+  { path: '/dashboard/activities', label: 'Kegiatan' },
+  { path: '/dashboard/contribution-history', label: 'Riwayat' },
   { path: '/dashboard/profile', label: 'Profil' }
 ];
 
