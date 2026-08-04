@@ -4,6 +4,7 @@ import { Share2, ArrowLeft, CalendarDays, MapPin, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '@/config/api';
 import { Button } from '@/components/ui/button';
+import { ActivityDetailSkeleton } from '@/components/loading';
 
 const ActivityDetail = () => {
     const { id } = useParams();
@@ -13,6 +14,11 @@ const ActivityDetail = () => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        if (!id) {
+            setLoading(false);
+            return;
+        }
+
         const fetchActivity = async () => {
             try {
                 const response = await api.get(`/kegiatan/${id}`);
@@ -30,7 +36,7 @@ const ActivityDetail = () => {
     }, [id]);
 
     const getTitle = (item) => item?.judul || item?.nama_kegiatan || 'Kegiatan Masjid';
-    const getCategory = (item) => item?.kategori.nama_kategori || item?.kategori_nama || 'Umum';
+    const getCategory = (item) => item?.kategori?.nama_kategori || item?.kategori_nama || 'Umum';
     const getImage = (item) => item?.image_url || item?.foto || 'https://via.placeholder.com/800x400?text=No+Image';
     const normalizeLabel = (value) => String(value || '').replace(/[_-]+/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
     const formatDate = (dateString) => {
@@ -69,7 +75,7 @@ const ActivityDetail = () => {
                 return;
             }
             await navigator.clipboard.writeText(url);
-            toast.success('Lin kegiatan disalin')
+            toast.success('Link kegiatan disalin')
         } catch (error) {
             if (error?.name !== 'AbortError') {
                 toast.error('Gagal membagikan link kegiatan');
@@ -78,12 +84,7 @@ const ActivityDetail = () => {
     };
 
     if (loading) {
-        return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center
-        px-4">
-                <p className="text-sm text-gray-500">Memuat detail kegiatan...</p>
-            </div>
-        );
+        return <ActivityDetailSkeleton />;
     }
 
     if (!activity) {
