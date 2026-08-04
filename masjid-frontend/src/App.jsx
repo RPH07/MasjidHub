@@ -21,6 +21,7 @@ const DonationPrograms = lazy(() => import('@/pages/user/DonationPrograms'));
 const UserDashboard = lazy(() => import('@/pages/user/UserDashboard'));
 const ContributionHistory = lazy(() => import('@/pages/user/ContributionHistory'));
 const UserActivities = lazy(() => import('@/pages/user/UserActivities'));
+const ActivityDetail = lazy(() => import('@/pages/user/ActivityDetail'));
 const Dashboard = lazy(() => import('@/pages/admin/Dashboard'));
 const ActivitiesPage = lazy(() => import('@/pages/admin/Activities'));
 const CashPage = lazy(() => import('@/pages/admin/Cash.jsx'));
@@ -93,6 +94,14 @@ const router = createBrowserRouter([
       {
         path: "/about",
         element: lazyPage(<About />, "Tentang")
+      },
+      {
+        path: "/activities",
+        element: lazyPage(<UserActivities />, "Detail Kegiatan")
+      },
+      {
+        path: "/activities/:id",
+        element: lazyPage(<ActivityDetail />, "Detail Kegiatan")
       },
       {
         path: "/contact",
