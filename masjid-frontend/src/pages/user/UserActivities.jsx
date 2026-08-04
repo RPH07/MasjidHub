@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { FloatingInput } from '@/components/form';
 import { useNavigate } from 'react-router-dom';
 import Footer from '@/components/navigation/Footer';
+import { ActivitiesListSkeleton } from '@/components/loading';
+import toast from 'react-hot-toast';
 
 const UserActivities = () => {
   const [kegiatan, setKegiatan] = useState([]);
@@ -26,7 +28,8 @@ const fetchKegiatan = async () => {
       
       setKegiatan(sortedKegiatan);
     } catch (error) {
-      console.error('❌ Error fetching kegiatan:', error);
+      console.error('Error fetching kegiatan:', error);
+      toast.error('Gagal mengambil data kegiatan')
     } finally {
       setLoading(false);
     }
@@ -58,14 +61,7 @@ const fetchKegiatan = async () => {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Memuat kegiatan...</p>
-        </div>
-      </div>
-    );
+    return <ActivitiesListSkeleton />;
   }
 
   return (
