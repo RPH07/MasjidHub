@@ -38,9 +38,20 @@ const MAINTENANCE = {
 
 
 const PageLoader = () => (
-  <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 text-sm text-gray-500">
-    Memuat halaman...
-  </div>
+  <div className="min-h-screen bg-gray-50 px-4 py-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-10">
+          <div className="h-8 w-48 animate-pulse rounded-md bg-gray-200 mb-3" />
+          <div className="h-4 w-72 animate-pulse rounded-md bg-gray-200" />
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="h-40 animate-pulse rounded-lg bg-gray-200" />
+          <div className="h-40 animate-pulse rounded-lg bg-gray-200" />
+          <div className="h-40 animate-pulse rounded-lg bg-gray-200" />
+        </div>
+      </div>
+    </div>
 );
 
 const PageTitle = ({ title, children }) => {
