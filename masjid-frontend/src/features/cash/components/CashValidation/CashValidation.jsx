@@ -134,14 +134,14 @@ const CashValidation = ({
               <Button
                 onClick={() => handleApprove(transaction)}
                 disabled={isActionLoading(transaction, 'approve') || isActionLoading(transaction, 'reject')}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
+                variant="success"
               >
                 {isActionLoading(transaction, 'approve') ? 'Memproses...' : 'Setujui'}
               </Button>
               <Button
                 onClick={() => setRejectModal({ isOpen: true, transaction, reason: '' })}
                 disabled={isActionLoading(transaction, 'approve') || isActionLoading(transaction, 'reject')}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                variant="danger"
               >
                 Tolak
               </Button>
@@ -164,14 +164,14 @@ const CashValidation = ({
               <Button
                 onClick={() => setRejectModal({ isOpen: false, transaction: null, reason: '' })}
                 disabled={rejectModal.transaction && isActionLoading(rejectModal.transaction, 'reject')}
-                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                variant="outline"
               >
                 Batal
               </Button>
               <Button
                 onClick={handleRejectConfirm}
                 disabled={rejectModal.transaction && isActionLoading(rejectModal.transaction, 'reject')}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                variant="danger"
               >
                 {rejectModal.transaction && isActionLoading(rejectModal.transaction, 'reject')
                   ? 'Memproses...'
