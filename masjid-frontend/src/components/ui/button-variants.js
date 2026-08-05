@@ -13,18 +13,36 @@ const buttonVariants = cva(
           "bg-green-600 text-white shadow-xs hover:bg-green-700 focus-visible:ring-green-600/30",
         success:
           "bg-green-600 text-white shadow-xs hover:bg-green-700 focus-visible:ring-green-600/30",
+        info:
+          "bg-blue-600 text-white shadow-xs hover:bg-blue-700 focus-visible:ring-blue-600/30",
         danger:
           "bg-red-600 text-white shadow-xs hover:bg-red-700 focus-visible:ring-red-600/30",
         warning:
           "bg-amber-500 text-white shadow-xs hover:bg-amber-600 focus-visible:ring-amber-500/30",
+        accent:
+          "bg-purple-500 text-white shadow-xs hover:bg-purple-600 focus-visible:ring-purple-500/30",
+        neutral:
+          "bg-gray-300 text-gray-700 shadow-xs hover:bg-gray-400 focus-visible:ring-gray-400/30",
         destructive:
           "bg-destructive text-white shadow-xs hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
         outline:
           "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50",
+        successOutline:
+          "border border-green-600 bg-transparent text-green-700 shadow-none hover:bg-green-50 focus-visible:ring-green-600/20",
+        dangerOutline:
+          "border border-red-600 bg-transparent text-red-700 shadow-none hover:bg-red-50 focus-visible:ring-red-600/20",
+        infoOutline:
+          "border border-blue-600 bg-transparent text-blue-700 shadow-none hover:bg-blue-50 focus-visible:ring-blue-600/20",
         secondary:
           "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80",
         soft:
           "bg-green-50 text-green-700 hover:bg-green-100 focus-visible:ring-green-600/20",
+        infoSoft:
+          "bg-blue-50 text-blue-700 shadow-none hover:bg-blue-100 focus-visible:ring-blue-600/20",
+        dangerSoft:
+          "bg-red-50 text-red-700 shadow-none hover:bg-red-100 focus-visible:ring-red-600/20",
+        warningSoft:
+          "bg-orange-50 text-orange-700 shadow-none hover:bg-orange-100 focus-visible:ring-orange-600/20",
         ghost:
           "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
         link: "text-primary underline-offset-4 hover:underline",
