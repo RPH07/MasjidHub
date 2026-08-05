@@ -5,6 +5,7 @@ import api from '@/config/api';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { FloatingInput } from '@/components/form';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const roleLabels = {
   admin: 'Admin',
@@ -209,8 +210,55 @@ const Profile = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-6 text-sm text-gray-500">
-        Memuat profil...
+      <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-6">
+        <section className='rounded-lg border bg-white p-5 shadow-sm md:p-6'>
+          <div className='flex flex-col gap-5 md:flex-row md:items-center md:justify-between'>
+            <div className='flex items-center gap-4'>
+              <Skeleton className='h-16 w-16 rounded-lg' />
+              <div className='space-y-3'>
+                <Skeleton className='h-7 w-48' />
+                <Skeleton className='h-4 w-72 max-w-full' />
+              </div>
+            </div>
+            <Skeleton className='h-10 w-24 rounded-lg' />
+          </div>
+        </section>
+
+        <section className='grid gap-4 mid:grid-cols-2 lg:grid-cols-4'>
+          {Array.from({length: 4}).map((_, index) => (
+            <div key={index} className='rounded-lg border bg-white p-4 shadow-sm'>
+              <div className='flex items-center gap-3'>
+                <Skeleton className='h-10 w-10 rounded-lg' />
+                <Skeleton className='h-4 w-20' />
+              </div>
+              <Skeleton className='mt-3 h-5 w-32' />
+            </div>
+          ))}
+        </section>
+
+        <section className='grid gap-6 lg:grid-cols--[1fr_1.2fr]'>
+          <div className='rounded-lg border bg-white p-5 shado-sm'>
+            <Skeleton className='h-6 -32' />
+            <div className='mt-5 space-y-4'>
+              {Array.from({length: 4}).map((_, index) => (
+                <div key={index} className='space-y-2'>
+                    <Skeleton className='h-4 w-24 ' />
+                    <Skeleton className='h-5 w-40' />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className='rounded-lg border bg-white p-5 shado-sm'>
+            <Skeleton className='h-6 -44' />
+            <div className='mt-5 space-y-4'>
+              <Skeleton className='h-12 w-full' />
+              <Skeleton className='h-12 w-full' />
+              <Skeleton className='h-12 w-full' />
+              <Skeleton className='h-10 w-full' />
+            </div>
+          </div>
+        </section>
       </div>
     );
   }
