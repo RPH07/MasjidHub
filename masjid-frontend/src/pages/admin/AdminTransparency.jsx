@@ -5,6 +5,7 @@ import transparencyService from '@/services/transparencyService';
 import { formatCurrency } from '@/utils/formatters';
 import { Button } from "@/components/ui/button";
 import { FloatingDate, FloatingInput } from '@/components/form';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const emptyZakatForm = {
   jenis_zakat: 'fitrah',
@@ -59,6 +60,34 @@ const StatusBadge = ({ status }) => {
   );
 };
 
+const AdminTransparencySkeleton = () => (
+  <div className="space-y-6">
+    <div>
+      <Skeleton className="h-4 w-32" />
+      <Skeleton className="mt-2 h-8 w-56" />
+      <Skeleton className="mt-2 h-4 w-full max-w-xl" />
+    </div>
+
+    <div className="flex flex-wrap gap-2 rounded-lg bg-white p-2 shadow-sm">
+      <Skeleton className="h-10 w-40" />
+      <Skeleton className="h-10 w-40" />
+      <Skeleton className="h-10 w-44" />
+    </div>
+
+    <section className="rounded-lg bg-white p-6 shadow-sm">
+      <Skeleton className="mb-4 h-7 w-64" />
+      <div className="grid gap-4 md:grid-cols-2">
+        {Array.from({ length: 6 }).map((_, index) => (
+          <Skeleton key={index} className="h-10 w-full" />
+        ))}
+        <Skeleton className="h-20 w-full md:col-span-2" />
+        <Skeleton className="h-10 w-full md:col-span-2" />
+        <Skeleton className="h-10 w-full md:col-span-2" />
+      </div>
+    </section>
+  </div>
+);
+
 const AdminTransparency = () => {
   const [activeTab, setActiveTab] = useState('zakat');
   const [zakatForm, setZakatForm] = useState(emptyZakatForm);
@@ -80,6 +109,7 @@ const AdminTransparency = () => {
   const selectedProgramId = realisasiForm.programId || programs[0]?.id || '';
   const zakatItems = useMemo(() => zakatReport?.distributions || [], [zakatReport]);
   const realisasiItems = useMemo(() => programReport?.realisasi || [], [programReport]);
+  const initialLoading = fetchLoading && !zakatReport && programs.length === 0;
 
   const fetchData = async () => {
     try {
@@ -220,6 +250,10 @@ const AdminTransparency = () => {
     actionLoading.type === type && 
     actionLoading.id === item.id &&
     actionLoading.action === action;
+
+  if (initialLoading) {
+    return <AdminTransparencySkeleton />;
+  }
 
   return (
     <div className="space-y-6">
