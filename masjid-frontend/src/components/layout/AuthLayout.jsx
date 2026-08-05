@@ -15,11 +15,6 @@ const getFieldIcon = (name, type) => {
     return null;
 };
 
-/**
- * Shell bersama buat semua halaman auth (login/signup/admin signup).
- * Konsep: split panel ala "kuitansi kas" — kiri wordmark + garis ledger,
- * kanan form di atas kertas, dipisah perforasi lubang tiket.
- */
 export const AuthShell = ({
     eyebrow = 'MASJIDHUB',
     tagline = 'Buku kas & agenda masjid, satu tempat.',
