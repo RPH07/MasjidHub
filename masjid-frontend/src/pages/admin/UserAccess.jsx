@@ -3,6 +3,7 @@ import api from "@/config/api";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { FloatingInput } from "@/components/form";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const roles = ['admin', 'dkm', 'jamaah'];
 const jabatanOptions = ['ketua_dkm', 'bendahara', 'sekretaris', 'anggota_dkm'];
@@ -24,6 +25,46 @@ const formatDateTime = (value) => {
         timeStyle: 'short'
     });
 };
+
+const UserAccessTableSkeleton = ({ columns = 6, rows = 6 }) => (
+    <div className="overflow-hidden rounded-lg border bg-white shadow-sm">
+        <div className="overflow-x-auto">
+            <div className="min-w-220 p-3">
+                <div className="grid gap-4 border-b pb-3" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
+                    {Array.from({ length: columns }).map((_, index) => (
+                        <Skeleton key={index} className="h-4 w-20" />
+                    ))}
+                </div>
+
+                <div className="divide-y">
+                    {Array.from({ length: rows }).map((_, rowIndex) => (
+                        <div key={rowIndex} className="grid gap-4 py-3" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
+                            {Array.from({ length: columns }).map((_, colIndex) => (
+                                <Skeleton key={colIndex} className="h-5 w-full" />
+                            ))}
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    </div>
+);
+
+const UserAccessSkeleton = () => (
+    <div className="space-y-6">
+        <div>
+            <Skeleton className="h-8 w-72" />
+            <Skeleton className="mt-2 h-4 w-full max-w-lg" />
+        </div>
+
+        <div className="flex gap-2">
+            <Skeleton className="h-10 w-28" />
+            <Skeleton className="h-10 w-28" />
+        </div>
+
+        <UserAccessTableSkeleton />
+    </div>
+);
 
 const UserAccessPage = () => {
     const { user: currentUser } = useAuth();
@@ -210,7 +251,7 @@ const UserAccessPage = () => {
         }
     }, [activeTab]);
 
-    if (loading) return <div>Memuat data user...</div>;
+    if (loading) return <UserAccessSkeleton />;
 
     return (
         <div className="space-y-6">
@@ -394,7 +435,7 @@ const UserAccessPage = () => {
             {activeTab === 'logs' && isAdmin && (
                 <div className="rounded-lg border bg-white shadow-sm overflow-x-auto">
                     {logsLoading ? (
-                        <div className="p-4 text-sm text-gray-500">Memuat log aktivitas...</div>
+                        <UserAccessTableSkeleton columns={5} rows={5} />
                     ) : (
                         <table className="w-full text-sm">
                             <thead className="bg-gray-50 text-left">
