@@ -1,7 +1,11 @@
 import { useEffect } from "react";
 
-export function usePageTitle(title: string, suffix = "Masjid Nurul Ilmi") {
+export function usePageTitle(title?: string, suffix = "Masjid Nurul Ilmi") {
     useEffect(() => {
-        document.title = suffix ? `${title} | ${suffix}` : title;
+        document.title = title
+            ? suffix
+                ? `${title} | ${suffix}`
+                : title
+            : suffix;
     }, [title, suffix]);
 }
