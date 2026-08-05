@@ -43,7 +43,7 @@ const CashExpense = ({
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <h3 className="text-lg font-medium">Data Pengeluaran</h3>
         <Button
-          className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 text-sm sm:text-base"
+          variant="danger"
           onClick={() => onOpenModal('add-pengeluaran')}
         >
           + Tambah Pengeluaran
@@ -106,16 +106,16 @@ const CashExpense = ({
                       <div className="flex flex-wrap gap-2">
                         {canManageManual(item) && (
                           <>
-                            <Button onClick={() => onEdit(item)} className="text-blue-600 hover:text-blue-900">
+                            <Button onClick={() => onEdit(item)} variant="infoSoft" size="xs">
                               Edit
                             </Button>
-                            <Button onClick={() => onDelete(item.id)} className="text-red-600 hover:text-red-900">
+                            <Button onClick={() => onDelete(item.id)} variant="dangerSoft" size="xs">
                               Hapus
                             </Button>
                           </>
                         )}
                         {canRequestVoid(item) && (
-                          <Button onClick={() => onRequestVoid(item)} className="text-orange-600 hover:text-orange-900">
+                          <Button onClick={() => onRequestVoid(item)} variant="warningSoft" size="xs">
                             Void
                           </Button>
                         )}
