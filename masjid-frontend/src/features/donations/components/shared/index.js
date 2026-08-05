@@ -1,4 +1,5 @@
 export { default as DonationProgramCard } from './DonationProgramCard'
+export { default as DonationProgramListSkeleton } from './DonationProgramListSkeleton'
 export { default as DonationForm } from './DonationForm'
 export { default as DonationModal } from './DonationModal'
 export { default as DonationDetailModal } from './DonationDetailModal'
