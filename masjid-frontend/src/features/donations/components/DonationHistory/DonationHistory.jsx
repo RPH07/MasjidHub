@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import Swal from 'sweetalert2'
-import { DonationProgramCard } from '../shared'
+import { DonationProgramCard, DonationProgramListSkeleton } from '../shared'
 import { useDonationHistory } from '../../hooks/useDonationHistory'
 import { formatDate } from '../../utils/formatters'
 import { formatRupiah, toNumber } from '@/utils/formatters'
@@ -108,11 +108,7 @@ const DonationHistory = () => {
     }, [safeHistory])
 
     if (loading) {
-        return (
-            <div className="flex justify-center items-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
-            </div>
-        )
+        return <DonationProgramListSkeleton statsCount={3} />
     }
 
     if (error) {
