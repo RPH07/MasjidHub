@@ -1,6 +1,7 @@
 import React from 'react';
 import ActivityCard from '../ActivityCard';
 import { ActivitySort } from '../shared';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const ActivityList = ({ 
   kegiatan = [], 
@@ -15,9 +16,29 @@ const ActivityList = ({
   const safeKategoriList = Array.isArray(kategoriList) ? kategoriList : [];
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-        <p className="ml-4 text-gray-600">Memuat kegiatan...</p>
+      <div className="mt-6">
+        <div className='mb-2 flex items-center justify-between'>
+          <Skeleton className="h-6 w-36" />
+          <Skeleton className="h-6 w-32" />
+        </div>
+
+        <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-3'>
+          {Array.from({length: 6}).map((_, index) => (
+            <div key={index} className='rounded-lg order g-hite p-4 shadow-sm'>
+              <Skeleton className="h-40 w-full rounded-md" />
+              <div className='mt-4 space-y-3'>
+                <Skeleton className="h-5 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-5/6" />
+              </div>
+              <div className='mt-4 flex gap-2'>
+                <Skeleton className="h-9 w-20" />
+                <Skeleton className="h-9 w-20" />
+              </div>
+            </div> 
+          ))}
+        </div>
       </div>
     );
   }
