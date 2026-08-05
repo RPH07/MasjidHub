@@ -16,6 +16,50 @@ import {
   BuktiModal
 } from '@/features/cash/components';
 import { TABS, PERIOD_OPTIONS } from '@/features/cash/utils/constants';
+import { Skeleton } from '@/components/ui/skeleton';
+
+const CashSkeleton = () => (
+  <div className="space-y-6 px-5 sm:px-0">
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <Skeleton className="h-8 w-44" />
+      <Skeleton className="h-10 w-full sm:w-40" />
+    </div>
+
+    <div className="border-b border-gray-200">
+      <div className="flex gap-8 overflow-hidden pb-2">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <Skeleton key={index} className="h-7 w-24 shrink-0" />
+        ))}
+      </div>
+    </div>
+
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div key={index} className="rounded-lg border bg-white p-4 shadow-sm sm:p-6">
+          <Skeleton className="h-4 w-28" />
+          <Skeleton className="mt-3 h-8 w-36" />
+          <Skeleton className="mt-3 h-6 w-20" />
+        </div>
+      ))}
+    </div>
+
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      {Array.from({ length: 2 }).map((_, panelIndex) => (
+        <div key={panelIndex} className="rounded-lg border bg-white p-4 shadow-sm">
+          <Skeleton className="mb-4 h-6 w-48" />
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, rowIndex) => (
+              <div key={rowIndex} className="flex items-center justify-between rounded-lg bg-gray-50 p-3">
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-5 w-28" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
 
 const Kas = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -73,11 +117,7 @@ const Kas = () => {
 
   // Loading state
   if (kasDataHook.loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
+    return <CashSkeleton />;
   }
 
   // Handle delete transaction
