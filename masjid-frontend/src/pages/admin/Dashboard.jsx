@@ -1,6 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import api from '@/config/api';
 import { formatCurrency } from '@/utils/formatters';
+import { Skeleton } from '@/components/ui/skeleton';
+
+const DashboardSkeleton = () => (
+  <div className="space-y-6">
+    <Skeleton className="h-8 w-36" />
+
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div key={index} className="rounded-lg border bg-white p-4 shadow-sm">
+          <Skeleton className="h-6 w-28" />
+          <Skeleton className="mt-3 h-8 w-32" />
+          <Skeleton className="mt-2 h-4 w-24" />
+        </div>
+      ))}
+    </div>
+
+    <div className="rounded-lg border bg-white p-4 shadow-sm">
+      <Skeleton className="mb-4 h-6 w-40" />
+      <div className="space-y-4">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <div key={index} className="flex items-center justify-between gap-4 border-b pb-2">
+            <div className="min-w-0 flex-1 space-y-2">
+              <Skeleton className="h-5 w-52 max-w-full" />
+              <Skeleton className="h-4 w-36 max-w-full" />
+            </div>
+            <Skeleton className="h-4 w-24 shrink-0" />
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -61,7 +93,7 @@ const Dashboard = () => {
   }, []);
 
   if (loading) {
-    return <div className="p-6 text-center">Memuat data dashboard...</div>;
+    return <DashboardSkeleton />;
   }
 
   if (error) {
