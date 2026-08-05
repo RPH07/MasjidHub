@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { DonationProgramCard } from '../shared'
+import { DonationProgramCard, DonationProgramListSkeleton } from '../shared'
 import { useDonations } from '../../hooks/useDonations'
 import { Button } from "@/components/ui/button";
 import { formatRupiah, toNumber } from '@/utils/formatters'
@@ -98,11 +98,7 @@ const ActiveDonationPrograms = () => {
     const isInitialLoading = loading && programAktif.length === 0
 
     if (isInitialLoading) {
-        return (
-            <div className="flex justify-center items-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
-            </div>
-        )
+        return <DonationProgramListSkeleton statsCount={4} filters={false} />
     }
 
     if (error) {
