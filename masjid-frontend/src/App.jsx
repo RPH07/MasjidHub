@@ -120,7 +120,7 @@ const router = createBrowserRouter([
       },
       {
         path: "/transparency",
-        element: lazyPage(<Transparency />)
+        element: lazyPage(<Transparency />, "Transparansi Dana")
       },
       {
         path: "/login",
@@ -140,7 +140,7 @@ const router = createBrowserRouter([
       },
       {
         path: "/donation-programs",
-        element: lazyPage(<DonationPrograms />)
+        element: lazyPage(<DonationPrograms />, "Program Donasi")
       },
       {
         path: "/dashboard",
@@ -161,15 +161,15 @@ const router = createBrowserRouter([
           },
           {
             path: "donation-programs",
-            element: lazyPage(<DonationPrograms />)
+            element: lazyPage(<DonationPrograms />, "Program Donasi")
           },
           {
             path: "activities",
-            element: lazyPage(<UserActivities />)
+            element: lazyPage(<UserActivities />, "Kegiatan")
           },
           {
             path: "contribution-history",
-            element: lazyPage(<ContributionHistory />)
+            element: lazyPage(<ContributionHistory />, "Riwayat Kontribusi")
           },
           {
             path: "profile",
@@ -195,23 +195,23 @@ const router = createBrowserRouter([
           },
           {
             path: "activities",
-            element: lazyPage(<ActivitiesPage />)
+            element: lazyPage(<ActivitiesPage />, "Kelola Kegiatan")
           },
           {
             path: "cash",
-            element: lazyPage(<CashPage />)
+            element: lazyPage(<CashPage />, "Kelola Kas")
           },
           {
             path: "transaction-verification",
-            element: lazyPage(<TransactionVerification />)
+            element: lazyPage(<TransactionVerification />, "Verifikasi Transaksi")
           },
           {
             path: "transparency",
-            element: lazyPage(<AdminTransparency />)
+            element: lazyPage(<AdminTransparency />, "Transparansi Dana")
           },
           {
             path: "donations",
-            element: lazyPage(<DonationsPage />)
+            element: lazyPage(<DonationsPage />, "Kelola Donasi")
           },
           {
             path: "users",
