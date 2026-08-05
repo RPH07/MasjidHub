@@ -1,7 +1,50 @@
 import DonationVerification from "./DonationVerification";
 import ZakatVerificationTable from "./ZakatVerificationTable";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 
+const VerificationSkeleton = () => (
+    <div className="space-y-6 px-5 sm:px-0">
+        <div>
+            <Skeleton className="h-8 w-56" />
+            <Skeleton className="mt-2 h-4 w-full max-w-md" />
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+            {Array.from({ length: 2 }).map((_, index) => (
+                <div key={index} className="rounded-lg border bg-white p-4 shadow-sm">
+                    <Skeleton className="h-4 w-44" />
+                    <Skeleton className="mt-3 h-8 w-16" />
+                </div>
+            ))}
+        </div>
+
+        <div className="border-b border-gray-200">
+            <div className="flex gap-6 overflow-hidden pb-2">
+                <Skeleton className="h-8 w-32" />
+                <Skeleton className="h-8 w-36" />
+            </div>
+        </div>
+
+        <div className="overflow-hidden rounded-lg border bg-white shadow-sm">
+            <div className="space-y-3 p-4">
+                <div className="grid grid-cols-4 gap-4">
+                    {Array.from({ length: 4 }).map((_, index) => (
+                        <Skeleton key={index} className="h-4 w-full" />
+                    ))}
+                </div>
+
+                {Array.from({ length: 5 }).map((_, rowIndex) => (
+                    <div key={rowIndex} className="grid grid-cols-4 gap-4 border-t pt-3">
+                        {Array.from({ length: 4 }).map((_, colIndex) => (
+                            <Skeleton key={colIndex} className="h-5 w-full" />
+                        ))}
+                    </div>
+                ))}
+            </div>
+        </div>
+    </div>
+);
 
 const Verification = ({
     activeTab,
@@ -29,6 +72,10 @@ const Verification = ({
             count: donasiPending.length
         }
     ];
+
+    if (loading) {
+        return <VerificationSkeleton />;
+    }
 
     return (
         <div className="space-y-6 px-5 sm:px-0">
