@@ -32,7 +32,8 @@ const CategoryManager = ({
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="text-gray-500 hover:text-gray-700 disabled:opacity-50 transition-colors"
+            variant="icon"
+            size="icon"
             aria-label="Tutup modal kategori"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -60,7 +61,8 @@ const CategoryManager = ({
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 bg-purple-500 text-white py-2 rounded hover:bg-purple-600 disabled:bg-purple-300 disabled:cursor-not-allowed transition-colors"
+              variant="accent"
+              className="flex-1"
             >
               {isSubmitting ? 'Menyimpan...' : 'Tambah Kategori'}
             </Button>
@@ -68,7 +70,7 @@ const CategoryManager = ({
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 disabled:opacity-50 transition-colors"
+              variant="neutral"
             >
               Batal
             </Button>
