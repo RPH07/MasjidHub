@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import Swal from 'sweetalert2'
-import { DonationProgramCard } from '../shared'
+import { DonationProgramCard, DonationProgramListSkeleton } from '../shared'
 import { useDonations } from '../../hooks/'
 import { DONASI_STATUS } from '../../utils/'
 import {EditDonationProgram, DonationRecords} from '../index'
@@ -145,11 +145,7 @@ const DonationProgramList = () => {
     const isInitialLoading = loading && programDonasi.length === 0
 
     if (isInitialLoading) {
-        return (
-            <div className="flex justify-center items-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
-            </div>
-        )
+        return <DonationProgramListSkeleton />
     }
 
     if (error) {
