@@ -54,7 +54,7 @@ const CashIncome = ({
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-medium text-gray-900">Data Pemasukan</h3>
         <Button
-          className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"
+          variant="success"
           onClick={() => onOpenModal('add-pemasukan')}
         >
           + Tambah Pemasukan
@@ -115,7 +115,8 @@ const CashIncome = ({
                       {item.bukti_transfer ? (
                         <Button
                           onClick={() => onOpenBukti(item.bukti_transfer, item)}
-                          className="text-blue-600 hover:text-blue-900 text-sm bg-blue-50 px-2 py-1 rounded"
+                          variant="infoSoft"
+                          size="xs"
                         >
                           Lihat
                         </Button>
@@ -136,16 +137,16 @@ const CashIncome = ({
                       <div className="flex flex-wrap gap-2">
                         {canManageManual(item) && (
                           <>
-                            <Button onClick={() => onEdit(item)} className="text-blue-600 hover:text-blue-900">
+                            <Button onClick={() => onEdit(item)} variant="infoSoft" size="xs">
                               Edit
                             </Button>
-                            <Button onClick={() => onDelete(item.id)} className="text-red-600 hover:text-red-900">
+                            <Button onClick={() => onDelete(item.id)} variant="dangerSoft" size="xs">
                               Hapus
                             </Button>
                           </>
                         )}
                         {canRequestVoid(item) && (
-                          <Button onClick={() => onRequestVoid(item)} className="text-orange-600 hover:text-orange-900">
+                          <Button onClick={() => onRequestVoid(item)} variant="warningSoft" size="xs">
                             Void
                           </Button>
                         )}
