@@ -85,21 +85,24 @@ const CashHistory = ({
           <Button
             onClick={() => handleExport('csv')}
             disabled={exportLoading.csv}
-            className="px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50"
+            variant="success"
+            size="sm"
           >
             {exportLoading.csv ? 'Mengunduh...' : 'CSV'}
           </Button>
           <Button
             onClick={() => handleExport('xlsx')}
             disabled={exportLoading.xlsx}
-            className="px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            variant="info"
+            size="sm"
           >
             {exportLoading.xlsx ? 'Mengunduh...' : 'Excel'}
           </Button>
           <Button
             onClick={() => handleExport('pdf')}
             disabled={exportLoading.pdf}
-            className="px-3 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 disabled:opacity-50"
+            variant="danger"
+            size="sm"
           >
             {exportLoading.pdf ? 'Mengunduh...' : 'PDF'}
           </Button>
@@ -113,7 +116,7 @@ const CashHistory = ({
       ) : (
         <div className="rounded-lg border bg-white shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[960px]">
+            <table className="w-full min-w-240">
               <thead className="bg-gray-50">
                 <tr>
                   {[
@@ -159,7 +162,8 @@ const CashHistory = ({
                       {item.bukti_transfer ? (
                         <Button
                           onClick={() => onOpenBukti(item.bukti_transfer, item)}
-                          className="text-blue-600 hover:text-blue-900 text-sm bg-blue-50 px-2 py-1 rounded"
+                          variant="infoSoft"
+                          size="xs"
                         >
                           Lihat
                         </Button>
