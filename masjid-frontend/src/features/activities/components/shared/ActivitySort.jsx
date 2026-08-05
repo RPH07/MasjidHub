@@ -14,7 +14,8 @@ const ActivitySort = ({ sortOrder, onSort }) => {
     <div className="relative">
       <Button
         onClick={() => setShowSortDropdown(!showSortDropdown)}
-        className="flex items-center gap-2 px-3 py-1 border rounded hover:bg-gray-50 focus:outline-none"
+        variant="outline"
+        size="sm"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
@@ -35,9 +36,8 @@ const ActivitySort = ({ sortOrder, onSort }) => {
           <div className="py-1">
             <Button
               onClick={() => handleSort('desc')}
-              className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center gap-2 ${
-                sortOrder === 'desc' ? 'bg-blue-50 text-blue-600' : 'text-gray-700'
-              }`}
+              variant={sortOrder === 'desc' ? 'infoSoft' : 'ghost'}
+              className="w-full justify-start rounded-none"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
@@ -51,9 +51,8 @@ const ActivitySort = ({ sortOrder, onSort }) => {
             </Button>
             <Button
               onClick={() => handleSort('asc')}
-              className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center gap-2 ${
-                sortOrder === 'asc' ? 'bg-blue-50 text-blue-600' : 'text-gray-700'
-              }`}
+              variant={sortOrder === 'asc' ? 'infoSoft' : 'ghost'}
+              className="w-full justify-start rounded-none"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" transform="rotate(180 12 12)" />
