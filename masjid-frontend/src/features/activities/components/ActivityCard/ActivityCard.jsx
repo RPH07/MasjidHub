@@ -23,7 +23,8 @@ const ActivityCard = ({ kegiatan, kategoriList, onEdit, onDelete }) => {
         <div className="flex gap-1">
           <Button
             onClick={() => onEdit(kegiatan)}
-            className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+            variant="infoSoft"
+            size="icon"
             title="Edit kegiatan"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -33,7 +34,8 @@ const ActivityCard = ({ kegiatan, kategoriList, onEdit, onDelete }) => {
           
           <Button
             onClick={() => onDelete(kegiatan.id, judul)}
-            className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
+            variant="dangerSoft"
+            size="icon"
             title="Hapus kegiatan"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
