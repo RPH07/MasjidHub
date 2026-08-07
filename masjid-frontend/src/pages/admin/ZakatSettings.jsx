@@ -204,7 +204,7 @@ const ZakatSettings = () => {
         <Button
           type="button"
           onClick={fetchSettings}
-          className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          variant="outline"
         >
           <RefreshCcw className="h-4 w-4" />
           Refresh
@@ -239,7 +239,8 @@ const ZakatSettings = () => {
                 <Button
                   type="button"
                   onClick={resetForm}
-                  className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+                  variant="ghost"
+                  size="sm"
                 >
                   <X className="h-4 w-4" />
                   Batal
@@ -295,7 +296,9 @@ const ZakatSettings = () => {
             <Button
               type="submit"
               disabled={saving}
-              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+              variant="success"
+              fullWidth
+              className="mt-5 font-semibold"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingId ? <Save className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
               {editingId ? 'Simpan Perubahan' : 'Tambah Setting'}
@@ -362,7 +365,9 @@ const ZakatSettings = () => {
                               <Button
                                 type="button"
                                 onClick={() => toggleNote(setting.id)}
-                                className="ml-1 h-auto p-0 text-xs font-medium text-green-700 hover:text-green-800 hover:underline"
+                                variant="link"
+                                size="xs"
+                                className="ml-1 h-auto p-0 text-green-700"
                               >
                                 {isExpanded ? 'Show less' : 'Show more'}
                               </Button>
@@ -394,7 +399,8 @@ const ZakatSettings = () => {
                               <Button
                                 type="button"
                                 onClick={() => handleActivate(setting)}
-                                className="rounded-md border border-green-200 px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-50"
+                                variant="successOutline"
+                                size="xs"
                               >
                                 Aktifkan
                               </Button>
@@ -402,7 +408,8 @@ const ZakatSettings = () => {
                             <Button
                               type="button"
                               onClick={() => handleEdit(setting)}
-                              className="rounded-md border border-gray-200 p-1.5 text-gray-600 hover:bg-gray-50"
+                              variant="outline"
+                              size="icon"
                               aria-label="Edit setting"
                             >
                               <Edit3 className="h-4 w-4" />
@@ -411,7 +418,8 @@ const ZakatSettings = () => {
                               <Button
                                 type="button"
                                 onClick={() => handleDelete(setting)}
-                                className="rounded-md border border-red-200 p-1.5 text-red-600 hover:bg-red-50"
+                                variant="dangerOutline"
+                                size="icon"
                                 aria-label="Hapus setting"
                               >
                                 <Trash2 className="h-4 w-4" />
