@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { donationService } from '@/features/donations/services/donationService';
 import transparencyService from '@/services/transparencyService';
 import { Button } from "@/components/ui/button";
+import { Skeleton } from '@/components/ui/skeleton';
 import { formatRupiah, toNumber } from '@/utils/formatters';
 
 const INK = '#1c2620';
@@ -21,6 +22,62 @@ const FILTERS = [
     { key: 'aktif', label: 'Sedang Berjalan' },
     { key: 'selesai', label: 'Telah Selesai' }
 ];
+
+const DonationProgramGridSkeleton = ({ count = 6 }) => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {Array.from({ length: count }).map((_, index) => (
+            <div
+                key={index}
+                style={{ borderColor: INK, backgroundColor: PAPER }}
+                className="border overflow-hidden"
+            >
+                <div style={{ borderColor: INK }} className="relative border-b">
+                    <Skeleton className="h-56 w-full rounded-none bg-[#1c2620]/10" />
+                    <Skeleton className="absolute right-3 top-3 h-7 w-20 rounded-none bg-[#1c2620]/15" />
+                </div>
+
+                <div className="p-6">
+                    <Skeleton className="mb-3 h-7 w-3/4 bg-[#1c2620]/15" />
+                    <Skeleton className="mb-2 h-4 w-full bg-[#1c2620]/10" />
+                    <Skeleton className="mb-4 h-4 w-5/6 bg-[#1c2620]/10" />
+                    <Skeleton className="mb-3 h-2 w-full rounded-none bg-[#1c2620]/15" />
+
+                    <div className="mb-4 flex justify-between gap-4">
+                        <Skeleton className="h-4 w-32 bg-[#1c2620]/10" />
+                        <Skeleton className="h-4 w-28 bg-[#1c2620]/10" />
+                    </div>
+
+                    <Skeleton className="mx-auto mb-4 h-4 w-36 bg-[#1c2620]/10" />
+                    <Skeleton className="h-10 w-full rounded-none bg-[#1c2620]/15" />
+                </div>
+            </div>
+        ))}
+    </div>
+);
+
+const DonationProgramsPageSkeleton = ({ showPublicNavbar = false }) => (
+    <div style={{ backgroundColor: PAPER }} className="min-h-screen">
+        {showPublicNavbar && <Navbar />}
+
+        <div className={`container mx-auto px-4 ${showPublicNavbar ? 'pt-24 pb-12' : 'py-8'}`}>
+            <div className="text-center mb-10">
+                <Skeleton className="mx-auto mb-3 h-3 w-32 bg-[#1c2620]/15" />
+                <Skeleton className="mx-auto mb-3 h-9 w-72 max-w-full bg-[#1c2620]/15" />
+                <Skeleton className="mx-auto h-4 w-full max-w-lg bg-[#1c2620]/10" />
+            </div>
+
+            <div className="mb-10 flex justify-center">
+                <div style={{ borderColor: INK }} className="flex border-b gap-1">
+                    {Array.from({ length: 3 }).map((_, index) => (
+                        <Skeleton key={index} className="h-10 w-32 rounded-none bg-[#1c2620]/10" />
+                    ))}
+                </div>
+            </div>
+
+            <DonationProgramGridSkeleton />
+        </div>
+    </div>
+);
 
 const DonationPrograms = () => {
     const { user } = useAuth();
@@ -172,13 +229,10 @@ const DonationPrograms = () => {
         return true;
     });
 
-    if (loading) {
-        return (
-            <div style={{ backgroundColor: PAPER }} className="flex justify-center items-center h-64">
-                <Loader2 style={{ color: GREEN }} className="h-6 w-6 animate-spin" />
-                <p style={{ color: INK_SOFT }} className="ml-4">Memuat program donasi...</p>
-            </div>
-        );
+    const isInitialLoading = loading && programs.length === 0;
+
+    if (isInitialLoading) {
+        return <DonationProgramsPageSkeleton showPublicNavbar={showPublicNavbar} />;
     }
 
     return (
@@ -247,7 +301,9 @@ const DonationPrograms = () => {
                     </div>
                 </div>
 
-                {filteredPrograms.length === 0 ? (
+                {loading ? (
+                    <DonationProgramGridSkeleton count={Math.max(filteredPrograms.length, 3)} />
+                ) : filteredPrograms.length === 0 ? (
                     <div style={{ borderColor: INK }} className="text-center py-12 border border-dashed">
                         <div style={{ color: INK_SOFT }} className="text-base">
                             {filterStatus === 'aktif' && 'Belum ada program donasi aktif saat ini'}
