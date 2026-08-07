@@ -185,11 +185,7 @@ const ActivitiesPage = () => {
           <Button
             onClick={toggleKategoriManager}
             disabled={kategoriLoading} 
-            className={`px-4 py-2 text-white rounded flex items-center gap-2 transition-colors ${
-              kategoriLoading 
-                ? 'bg-purple-400 cursor-not-allowed' 
-                : 'bg-purple-500 hover:bg-purple-600'
-            }`}
+            variant="accent"
           >
             {kategoriLoading ? (
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
