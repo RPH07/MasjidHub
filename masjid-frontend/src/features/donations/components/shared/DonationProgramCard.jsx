@@ -149,7 +149,8 @@ const DonationProgramCard = ({
                                 {status === 'aktif' && (
                                     <Button
                                         onClick={() => onViewDonations?.(program)}
-                                        className="text-blue-600 hover:text-blue-800 text-sm"
+                                        variant="link"
+                                        size="sm"
                                     >
                                         Lihat Donasi
                                     </Button>
@@ -167,19 +168,22 @@ const DonationProgramCard = ({
                                 <>
                                     <Button
                                         onClick={() => onEdit?.(program)}
-                                        className="text-gray-600 hover:text-gray-800 px-3 py-1 rounded border border-gray-300 text-sm"
+                                        variant="outline"
+                                        size="xs"
                                     >
                                         Edit
                                     </Button>
                                     <Button
                                         onClick={() => onDelete?.(id)}
-                                        className="text-red-600 hover:text-red-800 px-3 py-1 rounded border border-red-300 text-sm"
+                                        variant="dangerOutline"
+                                        size="xs"
                                     >
                                         Hapus
                                     </Button>
                                     <Button
                                         onClick={() => onActivate?.(id)}
-                                        className="bg-green-600 text-white px-4 py-1 rounded hover:bg-green-700 text-sm"
+                                        variant="success"
+                                        size="xs"
                                     >
                                         Aktifkan
                                     </Button>
@@ -190,13 +194,15 @@ const DonationProgramCard = ({
                                 <>
                                     <Button
                                         onClick={() => onViewDonations?.(program)}
-                                        className="text-blue-600 hover:text-blue-800 px-3 py-1 rounded border border-blue-300 text-sm"
+                                        variant="infoOutline"
+                                        size="xs"
                                     >
                                         Kelola Donasi
                                     </Button>
                                     <Button
                                         onClick={() => onComplete?.(id)}
-                                        className="bg-blue-600 text-white px-4 py-1 rounded hover:bg-blue-700 text-sm"
+                                        variant="info"
+                                        size="xs"
                                     >
                                         Selesaikan
                                     </Button>
@@ -206,7 +212,8 @@ const DonationProgramCard = ({
                             {status === 'selesai' && (
                                 <Button
                                     onClick={() => onViewDonations?.(program)}
-                                    className="text-blue-600 hover:text-blue-800 px-3 py-1 rounded border border-blue-300 text-sm"
+                                    variant="infoOutline"
+                                    size="xs"
                                 >
                                     Lihat Laporan
                                 </Button>
