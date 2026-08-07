@@ -4,7 +4,7 @@ import { Share2, ArrowLeft, CalendarDays, MapPin, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '@/config/api';
 import { Button } from '@/components/ui/button';
-import { ActivityDetailSkeleton } from '@/components/loading';
+import { ActivityDetailSkeleton } from '@/features/activities/components/loading';
 
 const ActivityDetail = () => {
     const { id } = useParams();
