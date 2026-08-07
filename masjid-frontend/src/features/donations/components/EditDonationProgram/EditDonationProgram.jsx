@@ -215,14 +215,14 @@ const EditDonationProgram = ({ program, onSave, onCancel, isSubmitting }) => {
                             <Button
                                 type="button"
                                 onClick={onCancel}
-                                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+                                variant="outline"
                             >
                                 Batal
                             </Button>
                             <Button
                                 type="submit"
                                 disabled={isSubmitting}
-                                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
+                                variant="success"
                             >
                                 {isSubmitting ? 'Menyimpan...' : 'Simpan Perubahan'}
                             </Button>
