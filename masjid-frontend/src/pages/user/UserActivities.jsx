@@ -86,6 +86,7 @@ const fetchKegiatan = async () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               inputClassName="border-gray-300 focus:ring-green-500"
+              labelBgClass="bg-gray-50"
               labelFocusClass="peer-focus:text-green-600"
             />
           </div>
