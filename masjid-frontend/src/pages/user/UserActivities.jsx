@@ -184,8 +184,6 @@ const fetchKegiatan = async () => {
           </div>
         )}
       </div>
-
-      <Footer />
     </div>
   );
 };
