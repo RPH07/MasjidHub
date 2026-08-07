@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { FloatingInput } from '@/components/form';
 import { useNavigate } from 'react-router-dom';
 import Footer from '@/components/navigation/Footer';
-import { ActivitiesListSkeleton } from '@/components/loading';
+import { ActivitiesListSkeleton } from '@/features/activities/components/loading';
 import toast from 'react-hot-toast';
 
 const UserActivities = () => {
