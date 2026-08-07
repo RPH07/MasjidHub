@@ -228,7 +228,8 @@ const DonationForm = ({
             <Button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                variant="success"
+                fullWidth
             >
                 {loading ? 'Mengirim Donasi...' : 'Kirim Donasi'}
             </Button>
