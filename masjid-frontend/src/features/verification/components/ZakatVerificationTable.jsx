@@ -76,7 +76,8 @@ const ZakatVerificationTable = ({
                                         <Button
                                             type="button"
                                             onClick={() => onOpenBukti(item.bukti_transfer, item)}
-                                            className="rounded bg-blue-50 px-2 py-1 text-xs text-blue-700 hover:bg-blue-100"
+                                            variant="infoSoft"
+                                            size="xs"
                                         >
                                             Lihat
                                         </Button>
@@ -90,7 +91,8 @@ const ZakatVerificationTable = ({
                                             type="button"
                                             disabled={actionLoading}
                                             onClick={() => onApprove(item)}
-                                            className="rounded bg-green-600 px-3 py-1.5 text-xs text-white hover:bg-green-700 disabled:opacity-50"
+                                            variant="success"
+                                            size="xs"
                                         >
                                             Setujui
                                         </Button>
@@ -99,7 +101,8 @@ const ZakatVerificationTable = ({
                                             type="button"
                                             disabled={actionLoading}
                                             onClick={() => onReject(item)}
-                                            className="rounded bg-red-600 px-3 py-1.5 text-xs text-white hover:bg-red-700 disabled:opacity-50"
+                                            variant="danger"
+                                            size="xs"
                                         >
                                             Tolak
                                         </Button>
