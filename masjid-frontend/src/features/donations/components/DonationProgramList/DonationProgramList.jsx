@@ -154,7 +154,7 @@ const DonationProgramList = () => {
                 <div className="text-red-600 mb-4">Terjadi Kesalahan: {error}</div>
                 <Button
                     onClick={() => fetchProgramDonasi()}
-                    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+                    variant="success"
                 >
                     Coba Lagi
                 </Button>
