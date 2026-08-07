@@ -272,7 +272,7 @@ const UserAccessPage = () => {
                 <Button
                     type="button"
                     onClick={() => setActiveTab('users')}
-                    className={`rounded-md px-4 py-2 text-sm font-medium ${activeTab === 'users' ? 'bg-green-600 text-white' : 'border bg-white text-gray-700'}`}
+                    variant={activeTab === 'users' ? 'success' : 'outline'}
                 >
                     Daftar User
                 </Button>
@@ -281,7 +281,7 @@ const UserAccessPage = () => {
                     <Button
                         type="button"
                         onClick={() => setActiveTab('logs')}
-                        className={`rounded-md px-4 py-2 text-sm font-medium ${activeTab === 'logs' ? 'bg-green-600 text-white' : 'border bg-white text-gray-700'}`}
+                        variant={activeTab === 'logs' ? 'success' : 'outline'}
                     >
                         Log Aktivitas
                     </Button>
@@ -359,7 +359,8 @@ const UserAccessPage = () => {
                                                     type="button"
                                                     disabled={isSaving}
                                                     onClick={() => saveDraft(item)}
-                                                    className="rounded-md bg-green-600 px-3 py-1 text-xs font-medium text-white disabled:opacity-50"
+                                                    variant="success"
+                                                    size="xs"
                                                 >
                                                     Simpan
                                                 </Button>
@@ -371,7 +372,8 @@ const UserAccessPage = () => {
                                                         type="button"
                                                         disabled={isSaving}
                                                         onClick={() => updateStatus(item.id, 'inactive')}
-                                                        className="rounded-md bg-red-600 px-3 py-1 text-xs font-medium text-white disabled:opacity-50"
+                                                        variant="danger"
+                                                        size="xs"
                                                     >
                                                         Nonaktifkan
                                                     </Button>
@@ -379,7 +381,8 @@ const UserAccessPage = () => {
                                                         type="button"
                                                         disabled={isSaving}
                                                         onClick={() => updateStatus(item.id, 'active')}
-                                                        className="rounded-md border px-3 py-1 text-xs font-medium disabled:opacity-50"
+                                                        variant="outline"
+                                                        size="xs"
                                                     >
                                                         Tolak
                                                     </Button>
@@ -391,7 +394,8 @@ const UserAccessPage = () => {
                                                     type="button"
                                                     disabled={isSaving}
                                                     onClick={() => updateStatus(item.id, 'active')}
-                                                    className="rounded-md border px-3 py-1 text-xs font-medium disabled:opacity-50"
+                                                    variant="outline"
+                                                    size="xs"
                                                 >
                                                     Aktifkan
                                                 </Button>
@@ -402,7 +406,8 @@ const UserAccessPage = () => {
                                                     type="button"
                                                     disabled={isSaving}
                                                     onClick={() => deleteUser(item)}
-                                                    className="rounded-md border border-red-200 px-3 py-1 text-xs font-medium text-red-600 disabled:opacity-50"
+                                                    variant="dangerOutline"
+                                                    size="xs"
                                                 >
                                                     Hapus
                                                 </Button>
@@ -413,7 +418,8 @@ const UserAccessPage = () => {
                                                     type="button"
                                                     disabled={isSaving}
                                                     onClick={() => openPasswordModal(item)}
-                                                    className="rounded-md border px-3 py-1 text-xs font-medium disabled:opacity-50"
+                                                    variant="outline"
+                                                    size="xs"
                                                 >
                                                     Reset Password
                                                 </Button>
@@ -531,14 +537,14 @@ const UserAccessPage = () => {
                             <Button
                                 type="button"
                                 onClick={() => setPasswordTarget(null)}
-                                className="rounded-md border px-4 py-2 text-sm"
+                                variant="outline"
                             >
                                 Batal
                             </Button>
                             <Button
                                 type="submit"
                                 disabled={savingId === passwordTarget.id}
-                                className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                                variant="success"
                             >
                                 {savingId === passwordTarget.id ? 'Menyimpan...' : 'Simpan Password'}
                             </Button>
