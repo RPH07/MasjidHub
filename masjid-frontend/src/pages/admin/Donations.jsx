@@ -24,25 +24,33 @@ const Donations = () => {
                 <div className="flex border-b mb-4">
                     <Button
                         onClick={() => handleTabChange('Daftar Program')}
-                        className={`py-2 px-4 font-semibold ${activeTab === 'Daftar Program' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-500'}`}
+                        variant="tab"
+                        active={activeTab === 'Daftar Program'}
+                        className="font-semibold"
                     >
                         Daftar Program
                     </Button>
                     <Button
                         onClick={() => handleTabChange('Tambah Program')}
-                        className={`py-2 px-4 font-semibold ${activeTab === 'Tambah Program' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-500'}`}
+                        variant="tab"
+                        active={activeTab === 'Tambah Program'}
+                        className="font-semibold"
                     >
                         Tambah Program
                     </Button>
                     <Button
                         onClick={() => handleTabChange('Program Aktif')}
-                        className={`py-2 px-4 font-semibold ${activeTab === 'Program Aktif' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-500'}`}
+                        variant="tab"
+                        active={activeTab === 'Program Aktif'}
+                        className="font-semibold"
                     >
                         Program Aktif
                     </Button>
                     <Button
                         onClick={() => handleTabChange('Riwayat Donasi')}
-                        className={`py-2 px-4 font-semibold ${activeTab === 'Riwayat Donasi' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-500'}`}
+                        variant="tab"
+                        active={activeTab === 'Riwayat Donasi'}
+                        className="font-semibold"
                     >
                         Riwayat Donasi
                     </Button>
