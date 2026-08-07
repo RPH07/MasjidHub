@@ -117,7 +117,7 @@ const DonationHistory = () => {
                 <div className="text-red-600 mb-4">{error}</div>
                 <Button
                     onClick={() => fetchHistoryDonasi()}
-                    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+                    variant="success"
                 >
                     Coba Lagi
                 </Button>
@@ -230,13 +230,15 @@ const DonationHistory = () => {
                                 <div className="flex space-x-2">
                                     <Button
                                         onClick={() => handleViewDetail(program)}
-                                        className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
+                                        variant="info"
+                                        size="xs"
                                     >
                                         Detail
                                     </Button>
                                     <Button
                                         onClick={() => handleExportLaporan(program.id, 'pdf')}
-                                        className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
+                                        variant="danger"
+                                        size="xs"
                                     >
                                         PDF
                                     </Button>
@@ -341,7 +343,7 @@ const DonationHistory = () => {
                             <div className="mt-6 pt-4 border-t border-gray-200 flex justify-end space-x-3">
                                 <Button
                                     onClick={() => handleExportLaporan(detailProgram.id, 'pdf')}
-                                    className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 flex items-center gap-2"
+                                    variant="danger"
                                 >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -350,7 +352,7 @@ const DonationHistory = () => {
                                 </Button>
                                 <Button
                                     onClick={handleCloseDetail}
-                                    className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
+                                    variant="neutral"
                                 >
                                     Tutup
                                 </Button>
