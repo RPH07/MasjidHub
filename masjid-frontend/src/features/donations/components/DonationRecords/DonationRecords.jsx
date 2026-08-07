@@ -103,7 +103,9 @@ const DonationRecords = ({ program, onClose }) => {
                         
                         <Button
                             onClick={onClose}
-                            className="text-gray-400 hover:text-gray-600 ml-4"
+                            variant="icon"
+                            size="icon"
+                            className="ml-4 text-gray-400 hover:text-gray-600"
                         >
                             ✕
                         </Button>
@@ -120,7 +122,7 @@ const DonationRecords = ({ program, onClose }) => {
                             <Button
                                 onClick={handleExportPDF}
                                 disabled={isExporting}
-                                className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:opacity-50 text-sm flex items-center"
+                                variant="danger"
                             >
                                 {isExporting ? (
                                     <>
@@ -135,7 +137,7 @@ const DonationRecords = ({ program, onClose }) => {
                             </Button>
                             <Button
                                 onClick={fetchDonations}
-                                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm"
+                                variant="info"
                             >
                                 🔄 Refresh
                             </Button>
@@ -154,7 +156,7 @@ const DonationRecords = ({ program, onClose }) => {
                             <div className="text-red-600 mb-4">{error}</div>
                             <Button
                                 onClick={fetchDonations}
-                                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                                variant="info"
                             >
                                 Coba Lagi
                             </Button>
@@ -235,7 +237,7 @@ const DonationRecords = ({ program, onClose }) => {
                     <div className="flex justify-end">
                         <Button
                             onClick={onClose}
-                            className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700"
+                            variant="neutral"
                         >
                             Tutup
                         </Button>
