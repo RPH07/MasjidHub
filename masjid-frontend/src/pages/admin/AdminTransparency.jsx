@@ -272,7 +272,9 @@ const AdminTransparency = () => {
           <Button
             key={key}
             onClick={() => setActiveTab(key)}
-            className={`rounded-md px-4 py-2 text-sm font-semibold ${activeTab === key ? 'bg-green-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+            variant={activeTab === key ? 'success' : 'ghost'}
+            size="sm"
+            className="font-semibold"
           >
             {label}
           </Button>
@@ -295,7 +297,7 @@ const AdminTransparency = () => {
             <FloatingDate label="Tanggal Distribusi" name="tanggal_distribusi" value={zakatForm.tanggal_distribusi} onChange={(e) => setZakatForm({ ...zakatForm, tanggal_distribusi: e.target.value })} required />
             <textarea className="rounded-lg border px-3 py-2 md:col-span-2" rows="3" placeholder="Deskripsi penyaluran" value={zakatForm.deskripsi} onChange={(e) => setZakatForm({ ...zakatForm, deskripsi: e.target.value })} required />
             <input className="rounded-lg border px-3 py-2 md:col-span-2" type="file" accept="image/*" onChange={(e) => setZakatForm({ ...zakatForm, bukti_foto: e.target.files?.[0] || null })} />
-            <Button type="submit" className="rounded-lg bg-green-600 px-4 py-2 font-semibold text-white hover:bg-green-700 md:col-span-2" disabled={submitLoading.zakat}>
+            <Button type="submit" variant="success" className="font-semibold md:col-span-2" disabled={submitLoading.zakat}>
               {submitLoading.zakat ? 'Menyimpan...' : 'Simpan Draft Penyaluran'}
             </Button>
           </form>
@@ -316,7 +318,7 @@ const AdminTransparency = () => {
             <FloatingDate label="Tanggal Realisasi" name="tanggal_realisasi" value={realisasiForm.tanggal_realisasi} onChange={(e) => setRealisasiForm({ ...realisasiForm, tanggal_realisasi: e.target.value })} required />
             <input className="rounded-lg border px-3 py-2" type="file" accept="image/*" onChange={(e) => setRealisasiForm({ ...realisasiForm, bukti_foto: e.target.files?.[0] || null })} />
             <textarea className="rounded-lg border px-3 py-2 md:col-span-2" rows="3" placeholder="Deskripsi realisasi" value={realisasiForm.deskripsi} onChange={(e) => setRealisasiForm({ ...realisasiForm, deskripsi: e.target.value })} required />
-            <Button type="submit" className="rounded-lg bg-green-600 px-4 py-2 font-semibold text-white hover:bg-green-700 md:col-span-2" disabled={submitLoading.program}>
+            <Button type="submit" variant="success" className="font-semibold md:col-span-2" disabled={submitLoading.program}>
               {submitLoading.program ? 'Menyimpan...' : 'Simpan Draft Realisasi'}
             </Button>
           </form>
@@ -367,14 +369,16 @@ const AdminTransparency = () => {
                           <div className="flex justify-end gap-2">
                             <Button 
                               onClick={() => approveItem('zakat', item)} 
-                              className="rounded border border-green-600 px-3 py-1 text-green-700"
+                              variant="successOutline"
+                              size="xs"
                               disabled={isActionLoading('zakat', item, 'approve')}
                             >
                               {isActionLoading('zakat', item, 'approve') ? 'Menyetujui...' : 'Approve'}
                             </Button>
                             <Button 
                               onClick={() => rejectItem('zakat', item)} 
-                              className="rounded border border-red-600 px-3 py-1 text-red-700"
+                              variant="dangerOutline"
+                              size="xs"
                               disabled={isActionLoading('zakat', item, 'reject')}
                             >
                               {isActionLoading('zakat', item, 'reject') ? 'Menolak...' : 'Reject'}
@@ -421,14 +425,16 @@ const AdminTransparency = () => {
                           <div className="flex justify-end gap-2">
                             <Button 
                               onClick={() => approveItem('program', item)} 
-                              className="rounded border border-green-600 px-3 py-1 text-green-700"
+                              variant="successOutline"
+                              size="xs"
                               disabled={isActionLoading('program', item, 'approve')}
                             >
                               {isActionLoading('program', item, 'approve') ? 'Menyetujui...' : 'Approve'}
                             </Button>
                             <Button 
                               onClick={() => rejectItem('program', item)} 
-                              className="rounded border border-red-600 px-3 py-1 text-red-700"
+                              variant="dangerOutline"
+                              size="xs"
                               disabled={isActionLoading('program', item, 'reject')}
                             >
                               {isActionLoading('program', item, 'reject') ? 'Menolak...' : 'Reject'}
