@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/config/api';
 import { Button } from "@/components/ui/button";
+import { Skeleton } from '@/components/ui/skeleton';
 import { formatRupiah } from '@/utils/formatters';
 import {
   LineChart,
@@ -69,6 +70,68 @@ const RejectionReason = ({ reason }) => {
     </div>
   );
 };
+
+const UserDashboardSkeleton = () => (
+  <div className="p-4 md:p-6">
+    <Skeleton className="mb-6 h-8 w-72 max-w-full" />
+
+    <div className="mb-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div key={index} className="rounded-lg border bg-white p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <Skeleton className="h-5 w-28" />
+              <Skeleton className="mt-3 h-8 w-36 max-w-full" />
+              <Skeleton className="mt-2 h-4 w-24" />
+            </div>
+            <Skeleton className="h-9 w-9 rounded-lg" />
+          </div>
+        </div>
+      ))}
+    </div>
+
+    <div className="mb-8 grid gap-6 md:grid-cols-2">
+      {Array.from({ length: 2 }).map((_, index) => (
+        <div key={index} className="rounded-lg border bg-white p-6 shadow-sm">
+          <Skeleton className="mb-4 h-6 w-44" />
+          <Skeleton className="h-75 w-full" />
+        </div>
+      ))}
+    </div>
+
+    <div className="rounded-lg border bg-white p-6 shadow-sm">
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <Skeleton className="h-6 w-36" />
+        <Skeleton className="h-4 w-32" />
+      </div>
+      <ActivityListSkeleton />
+    </div>
+  </div>
+);
+
+const ActivityListSkeleton = () => (
+  <div className="space-y-3">
+    {Array.from({ length: 4 }).map((_, index) => (
+      <div key={index} className="flex items-start space-x-3 rounded-lg border border-l-4 border-l-gray-200 p-3">
+        <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-5 w-2/3 max-w-full" />
+              <Skeleton className="h-4 w-1/2 max-w-full" />
+              <div className="flex gap-2">
+                <Skeleton className="h-6 w-20 rounded-full" />
+                <Skeleton className="h-6 w-20 rounded-full" />
+              </div>
+            </div>
+            <Skeleton className="h-4 w-12 shrink-0" />
+          </div>
+        </div>
+        <Skeleton className="mt-1 h-5 w-5 shrink-0" />
+      </div>
+    ))}
+  </div>
+);
 
 const UserDashboard = () => {
   const { user } = useAuth();
@@ -589,11 +652,7 @@ const UserDashboard = () => {
   };
 
   if (loading) {
-    return (
-      <div className="p-4 md:p-6">
-        <div className="text-center">Loading...</div>
-      </div>
-    );
+    return <UserDashboardSkeleton />;
   }
 
   return (
@@ -718,10 +777,7 @@ const UserDashboard = () => {
         </div>
         
         {loadingAktivitas ? (
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto"></div>
-            <p className="text-gray-500 mt-2">Memuat aktivitas...</p>
-          </div>
+          <ActivityListSkeleton />
         ) : aktivitasTerbaru.length === 0 ? (
           <div className="text-center text-gray-500 py-8">
             Belum ada aktivitas terbaru
